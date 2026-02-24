@@ -25,6 +25,26 @@ export const MOCK_TRANSACTIONS: { date: string, data: RecentTransaction[] }[] = 
         paymentMethod: 'Crédito', 
         type: 'expense' 
       },
+      {
+        id: '3',
+        title: 'Supermercado',
+        date: '18 fev',
+        dateISO: '2026-02-18T15:30:00Z',
+        amount: 34250,
+        category: 'Alimentação',
+        paymentMethod: 'Débito',
+        type: 'expense'
+      },
+      {
+        id: '4',
+        title: 'Salário',
+        date: '20 fev',
+        dateISO: '2026-02-20T09:00:00Z',
+        amount: 850000,
+        category: 'Renda',
+        paymentMethod: 'Transferência',
+        type: 'income'
+      },
     ]
   }
 ];
