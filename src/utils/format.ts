@@ -36,3 +36,21 @@ export function formatShortDate(dateISO: string): string {
 
   return shortDateFormatter.format(date);
 }
+
+
+export const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+};
+
+export const formatDateTitle = (dateString: string) => {
+  // Ex: terça-feira, 17 de fevereiro
+  const date = new Date(dateString);
+  return date.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+};

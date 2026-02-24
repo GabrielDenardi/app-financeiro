@@ -65,7 +65,7 @@ function formatQuickAddDate(date: Date): string {
   }).format(date);
 }
 
-export function HomeScreen() {
+export default function HomeScreen() {
   const data = homeDashboardMock;
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
   const [isQuickAddModalVisible, setIsQuickAddModalVisible] = useState(false);
@@ -911,7 +911,6 @@ export function HomeScreen() {
           </Modal>
 
           <FloatingActionButton onPress={handleFabPress} style={styles.fab} />
-          <BottomTabBarMock style={styles.tabBar} />
         </View>
       </SafeAreaView>
     </View>
