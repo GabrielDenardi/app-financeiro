@@ -13,17 +13,22 @@ import {
 import { ArrowLeft, Search, X, SlidersHorizontal } from 'lucide-react-native';
 import { TransactionListItem } from '../components/TransictionListItem';
 import { MOCK_TRANSACTIONS } from '../data/transictionsMock';
-import { colors, radius, spacing, typography } from '../theme/index';
+import { colors, radius, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
 
 const TransactionsScreen = ({ navigation }: any) => {
   const [searchText, setSearchText] = useState('');
   const [activeType, setActiveType] = useState<'all' | 'income' | 'expense'>('all');
-  const [activeMonth, setActiveMonth] = useState('Todos');
+  const [activeMonth, setActiveMonth] = React.useState<string>('Todos');
   const [activeMethod, setActiveMethod] = useState('Todos'); 
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  const months = ['Todos', 'Janeiro', 'Fevereiro', 'Março'];
+  const monthMap: Record<string, number> = {
+    jan: 0, fev: 1, mar: 2, abr: 3, mai: 4, jun: 5,
+    jul: 6, ago: 7, set: 8, out: 9, nov: 10, dez: 11
+  };
+  const months = ['Todos', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
   const methods = ['Todos', 'Dinheiro', 'Débito', 'Crédito', 'PIX', 'Transferência', 'Boleto'];
 
   const filteredSections = useMemo(() => {
@@ -36,7 +41,10 @@ const TransactionsScreen = ({ navigation }: any) => {
         const isIncome = item.amount > 0;
         const matchesType = activeType === 'all' || item.type === activeType;
 
-        const matchesMonth = activeMonth === 'Todos' ? true : section.date.toLowerCase().includes(activeMonth.toLowerCase());
+        const matchesMonth =
+          activeMonth === 'Todos' 
+            ? true 
+            : new Date(item.dateISO).getMonth() === monthMap[activeMonth.toLowerCase()];
 
         const matchesMethod = activeMethod === 'Todos' ? true : item.paymentMethod === activeMethod;
 
@@ -88,7 +96,7 @@ const TransactionsScreen = ({ navigation }: any) => {
       {showAdvancedFilters && (
         <View style={styles.advancedFilters}>
           <Text style={styles.filterLabel}>Período</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} >
             {months.map(m => (
               <FilterChip key={m} label={m} active={activeMonth === m} onPress={() => setActiveMonth(m)} />
             ))}
@@ -136,6 +144,7 @@ const TransactionsScreen = ({ navigation }: any) => {
           <View style={styles.emptyContainer}><Text style={styles.emptyText}>Nenhuma transação para os filtros selecionados.</Text></View>
         )}
       />
+
     </SafeAreaView>
   );
 };
