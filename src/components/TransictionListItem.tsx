@@ -3,7 +3,6 @@ import { View, Text, StyleSheet } from 'react-native';
 import { RecentTransaction } from '../types/finance';
 import { colors, radius, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
-// Importação dos ícones
 import { 
   Fuel, 
   Utensils, 
@@ -32,7 +31,6 @@ export const TransactionListItem = ({ item }: { item: RecentTransaction }) => {
 
   return (
     <View style={styles.container}>
-      {/* Ícone dinâmico baseado na categoria */}
       <View style={styles.iconContainer}>
         {getIcon(item.category)}
       </View>

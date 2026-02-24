@@ -46,7 +46,6 @@ export const formatCurrency = (value: number) => {
 };
 
 export const formatDateTitle = (dateString: string) => {
-  // Ex: terça-feira, 17 de fevereiro
   const date = new Date(dateString);
   return date.toLocaleDateString('pt-BR', {
     weekday: 'long',

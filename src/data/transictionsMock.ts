@@ -1,6 +1,5 @@
 import { RecentTransaction } from '../types/finance';
 
-// Opção A: Tipando o array explicitamente (Recomendado)
 export const MOCK_TRANSACTIONS: { date: string, data: RecentTransaction[] }[] = [
   {
     date: '2026-02-17',
@@ -40,7 +39,7 @@ export const MOCK_TRANSACTIONS: { date: string, data: RecentTransaction[] }[] = 
         title: 'Salário',
         date: '20 fev',
         dateISO: '2026-02-20T09:00:00Z',
-        amount: 850000,
+        amount: 85000,
         category: 'Renda',
         paymentMethod: 'Transferência',
         type: 'income'

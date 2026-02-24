@@ -20,29 +20,24 @@ const TransactionsScreen = ({ navigation }: any) => {
   const [searchText, setSearchText] = useState('');
   const [activeType, setActiveType] = useState<'all' | 'income' | 'expense'>('all');
   const [activeMonth, setActiveMonth] = useState('Todos');
-  const [activeMethod, setActiveMethod] = useState('Todos'); // Novo estado para Método
+  const [activeMethod, setActiveMethod] = useState('Todos'); 
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const months = ['Todos', 'Janeiro', 'Fevereiro', 'Março'];
   const methods = ['Todos', 'Dinheiro', 'Débito', 'Crédito', 'PIX', 'Transferência', 'Boleto'];
 
-  // --- Lógica de Filtro Combinada (Busca + Tipo + Mês + Método) ---
   const filteredSections = useMemo(() => {
     return MOCK_TRANSACTIONS.map(section => {
       const filteredItems = section.data.filter(item => {
-        // 1. Busca por Texto
+
         const matchesSearch = item.title.toLowerCase().includes(searchText.toLowerCase()) || 
                              item.category.toLowerCase().includes(searchText.toLowerCase());
         
-        // 2. Filtro por Tipo (Receita/Despesa)
         const isIncome = item.amount > 0;
-        const matchesType = activeType === 'all' ? true : (activeType === 'income' ? isIncome : !isIncome);
+        const matchesType = activeType === 'all' || item.type === activeType;
 
-        // 3. Filtro por Mês
         const matchesMonth = activeMonth === 'Todos' ? true : section.date.toLowerCase().includes(activeMonth.toLowerCase());
 
-        // 4. Filtro por Método (PIX, Dinheiro, etc)
-        // Note: Verifique se no seu mock o campo se chama 'method' ou 'paymentMethod'
         const matchesMethod = activeMethod === 'Todos' ? true : item.paymentMethod === activeMethod;
 
         return matchesSearch && matchesType && matchesMonth && matchesMethod;
@@ -60,16 +55,14 @@ const TransactionsScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack()}>
-          <ArrowLeft size={28} color={colors.textPrimary} />
+          <ArrowLeft size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Transações</Text>
         <View style={{ width: 28 }} /> 
       </View>
 
-      {/* Busca e Toggle de Filtros */}
       <View style={styles.searchRow}>
         <View style={styles.searchContainer}>
           <Search size={18} color={colors.textSecondary} />
@@ -92,10 +85,8 @@ const TransactionsScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
 
-      {/* Área de Filtros Avançados */}
       {showAdvancedFilters && (
         <View style={styles.advancedFilters}>
-          {/* Filtro de Mês */}
           <Text style={styles.filterLabel}>Período</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
             {months.map(m => (
@@ -103,7 +94,6 @@ const TransactionsScreen = ({ navigation }: any) => {
             ))}
           </ScrollView>
 
-          {/* NOVO: Filtro de Método de Pagamento */}
           <Text style={styles.filterLabel}>Método de Pagamento</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
             {methods.map(method => (
@@ -116,7 +106,6 @@ const TransactionsScreen = ({ navigation }: any) => {
             ))}
           </ScrollView>
 
-          {/* Filtro de Tipo */}
           <Text style={styles.filterLabel}>Tipo</Text>
           <View style={styles.chipRow}>
             <FilterChip label="Tudo" active={activeType === 'all'} onPress={() => setActiveType('all')} />
@@ -126,7 +115,6 @@ const TransactionsScreen = ({ navigation }: any) => {
         </View>
       )}
 
-      {/* Resumo Card */}
       <View style={styles.summaryCard}>
         <SummaryItem label="Receitas" value={totals.income} color={colors.success} />
         <View style={styles.divider} />
@@ -135,7 +123,6 @@ const TransactionsScreen = ({ navigation }: any) => {
         <SummaryItem label="Saldo" value={totals.balance} color={totals.balance >= 0 ? colors.textPrimary : colors.danger} />
       </View>
 
-      {/* Lista Final */}
       <SectionList
         sections={filteredSections}
         keyExtractor={(item) => item.id}
@@ -153,7 +140,6 @@ const TransactionsScreen = ({ navigation }: any) => {
   );
 };
 
-// Componentes Auxiliares
 const FilterChip = ({ label, active, onPress }: any) => (
   <TouchableOpacity style={[styles.chip, active && styles.chipActive]} onPress={onPress}>
     <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
@@ -169,8 +155,8 @@ const SummaryItem = ({ label, value, color, isNegative }: any) => (
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md },
-  backButton: { padding: spacing.xs },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', padding: spacing.md },
+  backButton: { padding: spacing.md },
   headerTitle: { ...typography.h2, color: colors.textPrimary, fontWeight: 'bold' },
   searchRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, gap: spacing.sm, marginBottom: spacing.md },
   searchContainer: {
