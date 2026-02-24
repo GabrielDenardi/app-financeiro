@@ -56,8 +56,19 @@ const TransactionsScreen = ({ navigation }: any) => {
   }, [searchText, activeType, activeMonth, activeMethod]);
 
   const totals = useMemo(() => {
-    let income = 0; let expense = 0;
-    filteredSections.forEach(s => s.data.forEach(i => i.amount > 0 ? income += i.amount : expense += Math.abs(i.amount)));
+    let income = 0;
+    let expense = 0;
+
+    filteredSections.forEach(section => {
+      section.data.forEach(item => {
+        if (item.type === 'income') {
+          income += item.amount;
+        } else if (item.type === 'expense') {
+          expense += item.amount;
+        }
+      });
+    });
+
     return { income, expense, balance: income - expense };
   }, [filteredSections]);
 
