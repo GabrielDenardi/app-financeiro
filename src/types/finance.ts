@@ -17,14 +17,35 @@ export interface WeeklyFlowPoint {
 export interface RecentTransaction {
   id: string;
   title: string;
-  category: string;
+  date: string;
   dateISO: string;
-  type: EntryType;
   amount: number;
+  category: string;
+  paymentMethod: string;
+  type: EntryType;
 }
 
 export interface HomeDashboardData {
   summary: SummaryStats;
   weeklyFlow: WeeklyFlowPoint[];
   recentTransactions: RecentTransaction[];
+}
+
+
+export type TransactionType = 'income' | 'expense';
+
+export interface Transaction {
+  id: string;
+  title: string;
+  date: string;       // Ex: "17 fev"
+  dateISO: string;    // Ex: "2026-02-17T00:00:00Z" 
+  amount: number;
+  category: string;
+  paymentMethod: string;
+  type: 'income' | 'expense';
+}
+
+export interface DailyTransactions {
+  date: string;
+  data: Transaction[];
 }
