@@ -1,80 +1,64 @@
 import { Ionicons } from '@expo/vector-icons';
-import type { StyleProp, ViewStyle } from 'react-native';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '../theme';
 
-type TabKey = 'home' | 'transactions' | 'goals' | 'settings';
-
-interface BottomTabBarMockProps {
-  activeTab?: TabKey;
-  style?: StyleProp<ViewStyle>;
-}
-
-interface TabItem {
-  key: TabKey;
-  label: string;
-  activeIcon: keyof typeof Ionicons.glyphMap;
-  inactiveIcon: keyof typeof Ionicons.glyphMap;
-}
-
 export const BOTTOM_TAB_BAR_HEIGHT = 78;
 
-const tabs: TabItem[] = [
-  {
-    key: 'home',
-    label: 'Home',
-    activeIcon: 'grid',
-    inactiveIcon: 'grid-outline',
-  },
-  {
-    key: 'transactions',
-    label: 'Lancamentos',
-    activeIcon: 'swap-horizontal',
-    inactiveIcon: 'swap-horizontal-outline',
-  },
-  {
-    key: 'goals',
-    label: 'Metas',
-    activeIcon: 'trophy',
-    inactiveIcon: 'trophy-outline',
-  },
-  {
-    key: 'settings',
-    label: 'Config',
-    activeIcon: 'settings',
-    inactiveIcon: 'settings-outline',
-  },
-];
-
-export function BottomTabBarMock({ activeTab = 'home', style }: BottomTabBarMockProps) {
+export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBarProps) {
   return (
-    <View style={[styles.container, style]}>
-      {tabs.map((tab) => {
-        const active = tab.key === activeTab;
+    <View style={styles.container}>
+      {state.routes.map((route, index) => {
+        const { options } = descriptors[route.key];
+        const isFocused = state.index === index;
+
+        const onPress = () => {
+          if (!isFocused) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        let iconName: keyof typeof Ionicons.glyphMap = 'ellipse';
+
+        if (route.name === 'Home') {
+          iconName = isFocused ? 'grid' : 'grid-outline';
+        } else if (route.name === 'Transactions') {
+          iconName = isFocused
+            ? 'swap-horizontal'
+            : 'swap-horizontal-outline';
+        } else if (route.name === 'Goals') {
+          iconName = isFocused ? 'trophy' : 'trophy-outline';
+        } else if (route.name === 'Settings') {
+          iconName = isFocused ? 'settings' : 'settings-outline';
+        }
 
         return (
           <Pressable
-            key={tab.key}
-            accessibilityRole="button"
-            onPress={() => {
-              console.log(`[TabBar] ${tab.key}`);
-            }}
+            key={route.key}
+            onPress={onPress}
             style={({ pressed }) => [
               styles.tabButton,
-              active && styles.tabButtonActive,
+              isFocused && styles.tabButtonActive,
               pressed && styles.pressed,
             ]}
           >
-            <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
+            <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
               <Ionicons
-                name={active ? tab.activeIcon : tab.inactiveIcon}
-                size={active ? 19 : 20}
-                color={active ? colors.primary : colors.textSecondary}
+                name={iconName}
+                size={isFocused ? 19 : 20}
+                color={isFocused ? colors.primary : colors.textSecondary}
               />
             </View>
-            <Text style={[styles.tabLabel, active && styles.tabLabelActive]} numberOfLines={1}>
-              {tab.label}
+
+            <Text
+              style={[
+                styles.tabLabel,
+                isFocused && styles.tabLabelActive,
+              ]}
+              numberOfLines={1}
+            >
+              {route.name}
             </Text>
           </Pressable>
         );
