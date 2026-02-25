@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 
 import { BalanceCard } from '../components/BalanceCard';
-import { BOTTOM_TAB_BAR_HEIGHT, BottomTabBarMock } from '../components/BottomTabBarMock';
+import { BOTTOM_TAB_BAR_HEIGHT } from '../components/BottomTabBarMock';
 import { Card } from '../components/Card';
 import { FAB_SIZE, FloatingActionButton } from '../components/FloatingActionButton';
 import { SectionHeader } from '../components/SectionHeader';
@@ -1734,7 +1734,6 @@ export function HomeScreen() {
           </Modal>
 
           <FloatingActionButton onPress={handleFabPress} style={styles.fab} />
-          <BottomTabBarMock style={styles.tabBar} />
         </View>
       </SafeAreaView>
     </View>
@@ -2025,7 +2024,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: spacing.lg,
-    bottom: BOTTOM_TAB_BAR_HEIGHT + spacing.lg,
+    bottom: BOTTOM_TAB_BAR_HEIGHT - FAB_SIZE / 1,
   },
   tabBar: {
     position: 'absolute',

@@ -22,7 +22,7 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
         let iconName: keyof typeof Ionicons.glyphMap = 'ellipse';
 
         if (route.name === 'Home') {
-          iconName = isFocused ? 'grid' : 'grid-outline';
+          iconName = isFocused ? 'home' : 'home-outline';
         } else if (route.name === 'Transactions') {
           iconName = isFocused
             ? 'swap-horizontal'
