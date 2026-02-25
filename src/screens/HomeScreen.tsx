@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
+import Svg, { Circle } from 'react-native-svg';
 import {
   Animated,
   Easing,
@@ -12,6 +13,7 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -21,12 +23,12 @@ import { BalanceCard } from '../components/BalanceCard';
 import { BOTTOM_TAB_BAR_HEIGHT, BottomTabBarMock } from '../components/BottomTabBarMock';
 import { Card } from '../components/Card';
 import { FAB_SIZE, FloatingActionButton } from '../components/FloatingActionButton';
-import { MonthlyBarChart } from '../components/MonthlyBarChart';
 import { SectionHeader } from '../components/SectionHeader';
 import { SummaryStatCard } from '../components/SummaryStatCard';
 import { TransactionListItem } from '../components/TransactionListItem';
 import { homeDashboardMock } from '../data/homeMock';
 import { colors, radius, spacing, typography } from '../theme';
+import { formatCurrencyBRL, HIDDEN_CURRENCY_TEXT } from '../utils/format';
 
 const MODAL_SHEET_CLOSED_TRANSLATE_Y = 420;
 const MODAL_DRAG_DISMISS_DISTANCE = 160;
@@ -43,6 +45,56 @@ const QUICK_ADD_CATEGORY_OPTIONS = [
   'Salario',
   'Freelance',
 ] as const;
+const QUICK_ADD_ACCOUNT_OPTIONS = ['Carteira', 'Nubank', 'Inter', 'Itau'] as const;
+const QUICK_ADD_PAYMENT_OPTIONS = [
+  'Pix',
+  'Cartao de credito',
+  'Cartao de debito',
+  'Dinheiro',
+  'Boleto',
+] as const;
+const HOME_ACCOUNTS = [
+  {
+    id: 'acc-1',
+    bank: 'Nubank',
+    nickname: 'Conta principal',
+    typeLabel: 'Conta corrente',
+    balance: 2500,
+  },
+] as const;
+const HOME_KPI_CARDS = [
+  {
+    id: 'goals',
+    label: 'Metas',
+    value: '1',
+    icon: 'trophy-outline',
+    iconColor: '#D97706',
+    iconSurface: '#FEF3C7',
+  },
+  {
+    id: 'groups',
+    label: 'Grupos',
+    value: '2',
+    icon: 'people-outline',
+    iconColor: '#9333EA',
+    iconSurface: '#F3E8FF',
+  },
+  {
+    id: 'networth',
+    label: 'Patrimonio',
+    value: '2.5k',
+    icon: 'wallet-outline',
+    iconColor: '#2563EB',
+    iconSurface: '#DBEAFE',
+  },
+] as const;
+const HOME_CATEGORY_SPENDING = [
+  { id: 'fuel', label: 'Combustivel', amount: 1250, color: '#10B981' },
+  { id: 'market', label: 'Supermercado', amount: 1000, color: '#3B82F6' },
+] as const;
+const HOME_CATEGORY_DONUT_SIZE = 112;
+const HOME_CATEGORY_DONUT_STROKE_WIDTH = 12;
+const HOME_CATEGORY_DONUT_RADIUS = (HOME_CATEGORY_DONUT_SIZE - HOME_CATEGORY_DONUT_STROKE_WIDTH) / 2;
 
 function applyModalDragResistance(offset: number): number {
   if (offset <= 0) {
@@ -65,7 +117,40 @@ function formatQuickAddDate(date: Date): string {
   }).format(date);
 }
 
-export default function HomeScreen() {
+function formatHiddenOrVisibleCurrency(value: number, hideAmounts: boolean): string {
+  return hideAmounts ? HIDDEN_CURRENCY_TEXT : formatCurrencyBRL(value);
+}
+
+function buildCategorySpendingDonutSegments(
+  items: ReadonlyArray<{ id: string; amount: number; color: string }>,
+) {
+  const total = items.reduce((sum, item) => sum + item.amount, 0);
+  const circumference = 2 * Math.PI * HOME_CATEGORY_DONUT_RADIUS;
+  let currentOffset = 0;
+
+  const segments = items.map((item) => {
+    const ratio = total > 0 ? item.amount / total : 0;
+    const length = circumference * ratio;
+    const segment = {
+      id: item.id,
+      color: item.color,
+      dashLength: length,
+      dashOffset: currentOffset,
+    };
+
+    currentOffset += length;
+    return segment;
+  });
+
+  return {
+    segments,
+    total,
+    circumference,
+    center: HOME_CATEGORY_DONUT_SIZE / 2,
+  };
+}
+
+export function HomeScreen() {
   const data = homeDashboardMock;
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
   const [isQuickAddModalVisible, setIsQuickAddModalVisible] = useState(false);
@@ -74,12 +159,22 @@ export default function HomeScreen() {
   const [quickAddAmount, setQuickAddAmount] = useState('');
   const [quickAddCategory, setQuickAddCategory] = useState<string | null>(null);
   const [quickAddDate, setQuickAddDate] = useState(new Date());
+  const [quickAddAccount, setQuickAddAccount] = useState<string | null>(null);
+  const [quickAddPaymentMethod, setQuickAddPaymentMethod] = useState<string>('Pix');
+  const [quickAddDescription, setQuickAddDescription] = useState('');
+  const [quickAddIsRecurring, setQuickAddIsRecurring] = useState(false);
   const [isQuickAddCategoryPickerOpen, setIsQuickAddCategoryPickerOpen] = useState(false);
+  const [isQuickAddAccountPickerOpen, setIsQuickAddAccountPickerOpen] = useState(false);
+  const [isQuickAddPaymentPickerOpen, setIsQuickAddPaymentPickerOpen] = useState(false);
   const [isQuickAddDatePickerOpen, setIsQuickAddDatePickerOpen] = useState(false);
   const [isQuickAddNativeDatePickerVisible, setIsQuickAddNativeDatePickerVisible] =
     useState(false);
   const [isTransactionsModalVisible, setIsTransactionsModalVisible] = useState(false);
   const [isTransactionsModalMounted, setIsTransactionsModalMounted] = useState(false);
+  const [isAccountsModalVisible, setIsAccountsModalVisible] = useState(false);
+  const [isAccountsModalMounted, setIsAccountsModalMounted] = useState(false);
+  const [isCategorySpendingModalVisible, setIsCategorySpendingModalVisible] = useState(false);
+  const [isCategorySpendingModalMounted, setIsCategorySpendingModalMounted] = useState(false);
   const modalSheetTranslateY = useRef(
     new Animated.Value(MODAL_SHEET_CLOSED_TRANSLATE_Y)
   ).current;
@@ -88,12 +183,20 @@ export default function HomeScreen() {
     new Animated.Value(MODAL_SHEET_CLOSED_TRANSLATE_Y)
   ).current;
   const quickAddModalDragStartY = useRef(0);
+  const accountsSheetTranslateY = useRef(
+    new Animated.Value(MODAL_SHEET_CLOSED_TRANSLATE_Y)
+  ).current;
+  const categorySpendingSheetTranslateY = useRef(
+    new Animated.Value(MODAL_SHEET_CLOSED_TRANSLATE_Y)
+  ).current;
 
   const handleFabPress = () => {
     quickAddSheetTranslateY.setValue(MODAL_SHEET_CLOSED_TRANSLATE_Y);
     setIsQuickAddModalMounted(true);
     setIsQuickAddModalVisible(true);
     setIsQuickAddCategoryPickerOpen(false);
+    setIsQuickAddAccountPickerOpen(false);
+    setIsQuickAddPaymentPickerOpen(false);
     setIsQuickAddDatePickerOpen(false);
     setIsQuickAddNativeDatePickerVisible(false);
     console.log('[Home] add-transaction');
@@ -104,6 +207,28 @@ export default function HomeScreen() {
     setIsTransactionsModalMounted(true);
     setIsTransactionsModalVisible(true);
     console.log('[Home] see-all-transactions');
+  };
+
+  const handleSeeAllAccountsPress = () => {
+    accountsSheetTranslateY.setValue(MODAL_SHEET_CLOSED_TRANSLATE_Y);
+    setIsAccountsModalMounted(true);
+    setIsAccountsModalVisible(true);
+    console.log('[Home] see-all-accounts');
+  };
+
+  const handleSeeMoreCategorySpendingPress = () => {
+    categorySpendingSheetTranslateY.setValue(MODAL_SHEET_CLOSED_TRANSLATE_Y);
+    setIsCategorySpendingModalMounted(true);
+    setIsCategorySpendingModalVisible(true);
+    console.log('[Home] see-more-category-spending');
+  };
+
+  const handleCloseAccountsModal = () => {
+    setIsAccountsModalVisible(false);
+  };
+
+  const handleCloseCategorySpendingModal = () => {
+    setIsCategorySpendingModalVisible(false);
   };
 
   const toggleAmountsVisibility = () => {
@@ -117,6 +242,8 @@ export default function HomeScreen() {
   const handleCloseQuickAddModal = () => {
     setIsQuickAddModalVisible(false);
     setIsQuickAddCategoryPickerOpen(false);
+    setIsQuickAddAccountPickerOpen(false);
+    setIsQuickAddPaymentPickerOpen(false);
     setIsQuickAddDatePickerOpen(false);
     setIsQuickAddNativeDatePickerVisible(false);
   };
@@ -124,10 +251,13 @@ export default function HomeScreen() {
   const handleConfirmQuickAdd = () => {
     console.log(
       `[Home] quick-add type=${quickAddType} amount=${quickAddAmount || '0'} category=${quickAddCategory ?? 'none'
-      } date=${quickAddDate.toISOString()}`
+      } account=${quickAddAccount ?? 'none'} payment=${quickAddPaymentMethod} recurring=${quickAddIsRecurring ? 'yes' : 'no'
+      } description=${quickAddDescription.trim() || 'none'} date=${quickAddDate.toISOString()}`
     );
     setIsQuickAddModalVisible(false);
     setIsQuickAddCategoryPickerOpen(false);
+    setIsQuickAddAccountPickerOpen(false);
+    setIsQuickAddPaymentPickerOpen(false);
     setIsQuickAddDatePickerOpen(false);
     setIsQuickAddNativeDatePickerVisible(false);
   };
@@ -154,8 +284,36 @@ export default function HomeScreen() {
     setIsQuickAddCategoryPickerOpen(false);
   };
 
+  const handleSelectQuickAddAccount = (account: string | null) => {
+    setQuickAddAccount(account);
+    setIsQuickAddAccountPickerOpen(false);
+  };
+
+  const handleSelectQuickAddPaymentMethod = (paymentMethod: string) => {
+    setQuickAddPaymentMethod(paymentMethod);
+    setIsQuickAddPaymentPickerOpen(false);
+  };
+
   const handleToggleQuickAddCategoryPicker = () => {
     setIsQuickAddCategoryPickerOpen((current) => !current);
+    setIsQuickAddAccountPickerOpen(false);
+    setIsQuickAddPaymentPickerOpen(false);
+    setIsQuickAddDatePickerOpen(false);
+    setIsQuickAddNativeDatePickerVisible(false);
+  };
+
+  const handleToggleQuickAddAccountPicker = () => {
+    setIsQuickAddAccountPickerOpen((current) => !current);
+    setIsQuickAddCategoryPickerOpen(false);
+    setIsQuickAddPaymentPickerOpen(false);
+    setIsQuickAddDatePickerOpen(false);
+    setIsQuickAddNativeDatePickerVisible(false);
+  };
+
+  const handleToggleQuickAddPaymentPicker = () => {
+    setIsQuickAddPaymentPickerOpen((current) => !current);
+    setIsQuickAddCategoryPickerOpen(false);
+    setIsQuickAddAccountPickerOpen(false);
     setIsQuickAddDatePickerOpen(false);
     setIsQuickAddNativeDatePickerVisible(false);
   };
@@ -163,6 +321,8 @@ export default function HomeScreen() {
   const handleToggleQuickAddDatePicker = () => {
     setIsQuickAddDatePickerOpen((current) => !current);
     setIsQuickAddCategoryPickerOpen(false);
+    setIsQuickAddAccountPickerOpen(false);
+    setIsQuickAddPaymentPickerOpen(false);
     setIsQuickAddNativeDatePickerVisible(false);
   };
 
@@ -195,6 +355,8 @@ export default function HomeScreen() {
     setIsQuickAddDatePickerOpen(true);
     setIsQuickAddNativeDatePickerVisible(true);
     setIsQuickAddCategoryPickerOpen(false);
+    setIsQuickAddAccountPickerOpen(false);
+    setIsQuickAddPaymentPickerOpen(false);
   };
 
   const handleQuickAddNativeDateChange = (
@@ -286,6 +448,66 @@ export default function HomeScreen() {
     });
   }, [isQuickAddModalMounted, isQuickAddModalVisible, quickAddSheetTranslateY]);
 
+  useEffect(() => {
+    if (!isAccountsModalMounted && !isAccountsModalVisible) {
+      return;
+    }
+
+    if (isAccountsModalVisible) {
+      Animated.timing(accountsSheetTranslateY, {
+        toValue: 0,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    Animated.timing(accountsSheetTranslateY, {
+      toValue: MODAL_SHEET_CLOSED_TRANSLATE_Y,
+      duration: 220,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        accountsSheetTranslateY.setValue(MODAL_SHEET_CLOSED_TRANSLATE_Y);
+        setIsAccountsModalMounted(false);
+      }
+    });
+  }, [accountsSheetTranslateY, isAccountsModalMounted, isAccountsModalVisible]);
+
+  useEffect(() => {
+    if (!isCategorySpendingModalMounted && !isCategorySpendingModalVisible) {
+      return;
+    }
+
+    if (isCategorySpendingModalVisible) {
+      Animated.timing(categorySpendingSheetTranslateY, {
+        toValue: 0,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    Animated.timing(categorySpendingSheetTranslateY, {
+      toValue: MODAL_SHEET_CLOSED_TRANSLATE_Y,
+      duration: 220,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        categorySpendingSheetTranslateY.setValue(MODAL_SHEET_CLOSED_TRANSLATE_Y);
+        setIsCategorySpendingModalMounted(false);
+      }
+    });
+  }, [
+    categorySpendingSheetTranslateY,
+    isCategorySpendingModalMounted,
+    isCategorySpendingModalVisible,
+  ]);
+
   const modalPanResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_event, gestureState) => {
@@ -372,6 +594,19 @@ export default function HomeScreen() {
     outputRange: [1, 0],
     extrapolate: 'clamp',
   });
+  const accountsBackdropOpacity = accountsSheetTranslateY.interpolate({
+    inputRange: [0, MODAL_SHEET_CLOSED_TRANSLATE_Y],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const categorySpendingBackdropOpacity = categorySpendingSheetTranslateY.interpolate({
+    inputRange: [0, MODAL_SHEET_CLOSED_TRANSLATE_Y],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const primaryAccount = HOME_ACCOUNTS[0];
+  const totalCategorySpending = HOME_CATEGORY_SPENDING.reduce((sum, item) => sum + item.amount, 0);
+  const categoryDonut = buildCategorySpendingDonutSegments(HOME_CATEGORY_SPENDING);
 
   return (
     <View style={styles.root}>
@@ -387,7 +622,7 @@ export default function HomeScreen() {
               <View style={styles.headerRow}>
                 <View style={styles.headerTextBlock}>
                   <Text style={styles.headerGreeting}>Boa tarde,</Text>
-                  <Text style={styles.headerName}>Joao Silva</Text>
+                  <Text style={styles.headerName}>João Silva</Text>
                 </View>
 
                 <Pressable
@@ -433,12 +668,158 @@ export default function HomeScreen() {
                   hideAmounts={!isAmountsVisible}
                 />
               </View>
+              <View style={styles.accountsSection}>
+                <SectionHeader
+                  title="Minhas Contas"
+                  actionLabel="Ver todas"
+                  onActionPress={handleSeeAllAccountsPress}
+                />
 
-              <MonthlyBarChart data={data.weeklyFlow} hideValues={!isAmountsVisible} />
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={handleSeeAllAccountsPress}
+                  style={({ pressed }) => [
+                    styles.accountCardButton,
+                    pressed && styles.accountCardButtonPressed,
+                  ]}
+                >
+                  <Card style={styles.accountCard}>
+                    <View style={styles.accountCardDecorLarge} />
+                    <View style={styles.accountCardDecorSmall} />
+
+                    <View style={styles.accountCardHeader}>
+                      <View style={styles.accountCardIconBubble}>
+                        <Ionicons name="card-outline" size={14} color={colors.white} />
+                      </View>
+                      <Text style={styles.accountCardBank} numberOfLines={1}>
+                        {primaryAccount.bank}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.accountCardNickname} numberOfLines={1}>
+                      {primaryAccount.nickname}
+                    </Text>
+
+                    <Text style={styles.accountCardAmount} numberOfLines={1}>
+                      {formatHiddenOrVisibleCurrency(primaryAccount.balance, !isAmountsVisible)}
+                    </Text>
+
+                    <View style={styles.accountCardFooter}>
+                      <Text style={styles.accountCardType} numberOfLines={1}>
+                        {primaryAccount.typeLabel}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.9)" />
+                    </View>
+                  </Card>
+                </Pressable>
+              </View>
+
+              <View style={styles.kpiRow}>
+                {HOME_KPI_CARDS.map((metric) => (
+                  <Pressable
+                    key={metric.id}
+                    accessibilityRole="button"
+                    onPress={() => console.log(`[Home] open-${metric.id}`)}
+                    style={({ pressed }) => [styles.kpiCardPressable, pressed && styles.kpiCardPressed]}
+                  >
+                    <Card style={styles.kpiCard}>
+                      <View style={[styles.kpiIconBubble, { backgroundColor: metric.iconSurface }]}>
+                        <Ionicons name={metric.icon} size={16} color={metric.iconColor} />
+                      </View>
+                      <Text style={styles.kpiLabel} numberOfLines={1}>
+                        {metric.label}
+                      </Text>
+                      <Text style={styles.kpiValue} numberOfLines={1}>
+                        {metric.value}
+                      </Text>
+                    </Card>
+                  </Pressable>
+                ))}
+              </View>
+
+              <View style={styles.categorySpendingSection}>
+                <SectionHeader
+                  title="Gastos por Categoria"
+                  actionLabel="Ver mais"
+                  onActionPress={handleSeeMoreCategorySpendingPress}
+                />
+
+                <Card style={styles.categorySpendingCard}>
+                  <View style={styles.categoryDonutSection}>
+                    <View style={styles.categoryDonutWrap}>
+                      <Svg
+                        width={HOME_CATEGORY_DONUT_SIZE}
+                        height={HOME_CATEGORY_DONUT_SIZE}
+                        style={styles.categoryDonutSvg}
+                      >
+                        <Circle
+                          cx={categoryDonut.center}
+                          cy={categoryDonut.center}
+                          r={HOME_CATEGORY_DONUT_RADIUS}
+                          fill="none"
+                          stroke={colors.mutedSurface}
+                          strokeWidth={HOME_CATEGORY_DONUT_STROKE_WIDTH}
+                        />
+                        {categoryDonut.segments.map((segment) => (
+                          <Circle
+                            key={segment.id}
+                            cx={categoryDonut.center}
+                            cy={categoryDonut.center}
+                            r={HOME_CATEGORY_DONUT_RADIUS}
+                            fill="none"
+                            stroke={segment.color}
+                            strokeWidth={HOME_CATEGORY_DONUT_STROKE_WIDTH}
+                            strokeDasharray={`${segment.dashLength} ${Math.max(
+                              categoryDonut.circumference - segment.dashLength,
+                              0
+                            )}`}
+                            strokeDashoffset={-segment.dashOffset}
+                            strokeLinecap="butt"
+                            transform={`rotate(-90 ${categoryDonut.center} ${categoryDonut.center})`}
+                          />
+                        ))}
+                      </Svg>
+
+                      <View style={styles.categoryDonutCenter}>
+                        <Text style={styles.categoryDonutCenterLabel}>Total</Text>
+                        <Text style={styles.categoryDonutCenterValue} numberOfLines={1}>
+                          {isAmountsVisible ? `R$ ${Math.round(totalCategorySpending)}` : 'R$ ***'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.categoryLegendList}>
+                    {HOME_CATEGORY_SPENDING.map((item) => {
+                      const percent = totalCategorySpending
+                        ? Math.round((item.amount / totalCategorySpending) * 100)
+                        : 0;
+
+                      return (
+                        <View key={item.id} style={styles.categoryLegendRow}>
+                          <View style={styles.categoryLegendLeft}>
+                            <View style={[styles.categoryLegendDot, { backgroundColor: item.color }]} />
+                            <Text style={styles.categoryLegendLabel} numberOfLines={1}>
+                              {item.label}
+                            </Text>
+                          </View>
+
+                          <View style={styles.categoryLegendRight}>
+                            <Text style={styles.categoryLegendPercent}>{percent}%</Text>
+                            <Text style={styles.categoryLegendAmount} numberOfLines={1}>
+                              {formatHiddenOrVisibleCurrency(item.amount, !isAmountsVisible)}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </Card>
+              </View>
 
               <View style={styles.recentSection}>
                 <SectionHeader
-                  title="Últimos lançamentos"
+                  title="Transações Recentes"
                   actionLabel="Ver todos"
                   onActionPress={handleSeeAllPress}
                 />
@@ -453,14 +834,6 @@ export default function HomeScreen() {
                     />
                   ))}
                 </Card>
-
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={handleSeeAllPress}
-                  style={({ pressed }) => [styles.moreButton, pressed && styles.moreButtonPressed]}
-                >
-                  <Text style={styles.moreButtonText}>Ver todos os lançamentos</Text>
-                </Pressable>
               </View>
             </View>
           </ScrollView>
@@ -535,6 +908,284 @@ export default function HomeScreen() {
                   <Pressable
                     accessibilityRole="button"
                     onPress={handleCloseTransactionsModal}
+                    style={({ pressed }) => [
+                      styles.modalDoneButton,
+                      pressed && styles.modalDoneButtonPressed,
+                    ]}
+                  >
+                    <Text style={styles.modalDoneButtonText}>Fechar</Text>
+                  </Pressable>
+                </ScrollView>
+              </Animated.View>
+            </View>
+          </Modal>
+
+          <Modal
+            visible={isAccountsModalMounted}
+            transparent
+            animationType="none"
+            statusBarTranslucent
+            onRequestClose={handleCloseAccountsModal}
+          >
+            <View style={styles.modalOverlay}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Fechar modal de contas"
+                onPress={handleCloseAccountsModal}
+                style={styles.modalBackdrop}
+              >
+                <Animated.View
+                  pointerEvents="none"
+                  style={[styles.modalBackdropFill, { opacity: accountsBackdropOpacity }]}
+                />
+              </Pressable>
+
+              <Animated.View
+                style={[
+                  styles.modalSheet,
+                  styles.infoModalSheet,
+                  { transform: [{ translateY: accountsSheetTranslateY }] },
+                ]}
+              >
+                <View style={styles.modalDragRegion}>
+                  <View style={styles.modalHandle} />
+
+                  <View style={styles.modalHeader}>
+                    <View style={styles.modalHeaderTextBlock}>
+                      <Text style={styles.modalTitle}>Minhas contas</Text>
+                      <Text style={styles.modalSubtitle}>{HOME_ACCOUNTS.length} conta(s)</Text>
+                    </View>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Fechar"
+                      onPress={handleCloseAccountsModal}
+                      style={({ pressed }) => [
+                        styles.modalCloseButton,
+                        pressed && styles.modalCloseButtonPressed,
+                      ]}
+                    >
+                      <Ionicons name="close-outline" size={22} color={colors.textPrimary} />
+                    </Pressable>
+                  </View>
+                </View>
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={styles.infoModalScrollContent}
+                >
+                  <Card style={styles.accountsModalSummaryCard}>
+                    <Text style={styles.accountsModalSummaryLabel}>Saldo total em contas</Text>
+                    <Text style={styles.accountsModalSummaryAmount}>
+                      {formatHiddenOrVisibleCurrency(
+                        HOME_ACCOUNTS.reduce((sum, account) => sum + account.balance, 0),
+                        !isAmountsVisible
+                      )}
+                    </Text>
+                  </Card>
+
+                  <Card noPadding style={styles.accountsModalListCard}>
+                    {HOME_ACCOUNTS.map((account, index) => (
+                      <View key={account.id}>
+                        <View style={styles.accountsModalRow}>
+                          <View style={styles.accountsModalRowLeft}>
+                            <View style={styles.accountsModalBankIcon}>
+                              <Ionicons name="card-outline" size={14} color={colors.primaryLight} />
+                            </View>
+
+                            <View style={styles.accountsModalRowTexts}>
+                              <Text style={styles.accountsModalBankName} numberOfLines={1}>
+                                {account.bank}
+                              </Text>
+                              <Text style={styles.accountsModalRowMeta} numberOfLines={1}>
+                                {account.nickname} • {account.typeLabel}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <Text style={styles.accountsModalRowAmount} numberOfLines={1}>
+                            {formatHiddenOrVisibleCurrency(account.balance, !isAmountsVisible)}
+                          </Text>
+                        </View>
+
+                        {index < HOME_ACCOUNTS.length - 1 ? (
+                          <View style={styles.accountsModalDivider} />
+                        ) : null}
+                      </View>
+                    ))}
+                  </Card>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={handleCloseAccountsModal}
+                    style={({ pressed }) => [
+                      styles.modalDoneButton,
+                      pressed && styles.modalDoneButtonPressed,
+                    ]}
+                  >
+                    <Text style={styles.modalDoneButtonText}>Fechar</Text>
+                  </Pressable>
+                </ScrollView>
+              </Animated.View>
+            </View>
+          </Modal>
+
+          <Modal
+            visible={isCategorySpendingModalMounted}
+            transparent
+            animationType="none"
+            statusBarTranslucent
+            onRequestClose={handleCloseCategorySpendingModal}
+          >
+            <View style={styles.modalOverlay}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Fechar modal de gastos por categoria"
+                onPress={handleCloseCategorySpendingModal}
+                style={styles.modalBackdrop}
+              >
+                <Animated.View
+                  pointerEvents="none"
+                  style={[styles.modalBackdropFill, { opacity: categorySpendingBackdropOpacity }]}
+                />
+              </Pressable>
+
+              <Animated.View
+                style={[
+                  styles.modalSheet,
+                  styles.infoModalSheet,
+                  { transform: [{ translateY: categorySpendingSheetTranslateY }] },
+                ]}
+              >
+                <View style={styles.modalDragRegion}>
+                  <View style={styles.modalHandle} />
+
+                  <View style={styles.modalHeader}>
+                    <View style={styles.modalHeaderTextBlock}>
+                      <Text style={styles.modalTitle}>Gastos por categoria</Text>
+                      <Text style={styles.modalSubtitle}>{data.summary.monthLabel}</Text>
+                    </View>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Fechar"
+                      onPress={handleCloseCategorySpendingModal}
+                      style={({ pressed }) => [
+                        styles.modalCloseButton,
+                        pressed && styles.modalCloseButtonPressed,
+                      ]}
+                    >
+                      <Ionicons name="close-outline" size={22} color={colors.textPrimary} />
+                    </Pressable>
+                  </View>
+                </View>
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={styles.infoModalScrollContent}
+                >
+                  <Card style={styles.categoryModalOverviewCard}>
+                    <View style={styles.categoryModalOverviewChartWrap}>
+                      <Svg
+                        width={HOME_CATEGORY_DONUT_SIZE}
+                        height={HOME_CATEGORY_DONUT_SIZE}
+                        style={styles.categoryDonutSvg}
+                      >
+                        <Circle
+                          cx={categoryDonut.center}
+                          cy={categoryDonut.center}
+                          r={HOME_CATEGORY_DONUT_RADIUS}
+                          fill="none"
+                          stroke={colors.mutedSurface}
+                          strokeWidth={HOME_CATEGORY_DONUT_STROKE_WIDTH}
+                        />
+                        {categoryDonut.segments.map((segment) => (
+                          <Circle
+                            key={`modal-${segment.id}`}
+                            cx={categoryDonut.center}
+                            cy={categoryDonut.center}
+                            r={HOME_CATEGORY_DONUT_RADIUS}
+                            fill="none"
+                            stroke={segment.color}
+                            strokeWidth={HOME_CATEGORY_DONUT_STROKE_WIDTH}
+                            strokeDasharray={`${segment.dashLength} ${Math.max(
+                              categoryDonut.circumference - segment.dashLength,
+                              0
+                            )}`}
+                            strokeDashoffset={-segment.dashOffset}
+                            strokeLinecap="butt"
+                            transform={`rotate(-90 ${categoryDonut.center} ${categoryDonut.center})`}
+                          />
+                        ))}
+                      </Svg>
+
+                      <View style={styles.categoryDonutCenter}>
+                        <Text style={styles.categoryDonutCenterLabel}>Total</Text>
+                        <Text style={styles.categoryDonutCenterValue} numberOfLines={1}>
+                          {isAmountsVisible ? `R$ ${Math.round(totalCategorySpending)}` : 'R$ ***'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.categoryModalOverviewTextBlock}>
+                      <Text style={styles.categoryModalOverviewTitle}>Resumo do mês</Text>
+                      <Text style={styles.categoryModalOverviewText}>
+                        Categorias com maior impacto nas despesas do período.
+                      </Text>
+                    </View>
+                  </Card>
+
+                  <Card noPadding style={styles.categoryModalListCard}>
+                    {HOME_CATEGORY_SPENDING.map((item, index) => {
+                      const percent = totalCategorySpending
+                        ? Math.round((item.amount / totalCategorySpending) * 100)
+                        : 0;
+
+                      return (
+                        <View key={`category-modal-${item.id}`} style={styles.categoryModalRow}>
+                          <View style={styles.categoryModalRowHeader}>
+                            <View style={styles.categoryLegendLeft}>
+                              <View
+                                style={[styles.categoryLegendDot, { backgroundColor: item.color }]}
+                              />
+                              <Text style={styles.categoryLegendLabel} numberOfLines={1}>
+                                {item.label}
+                              </Text>
+                            </View>
+
+                            <View style={styles.categoryLegendRight}>
+                              <Text style={styles.categoryLegendPercent}>{percent}%</Text>
+                              <Text style={styles.categoryLegendAmount} numberOfLines={1}>
+                                {formatHiddenOrVisibleCurrency(item.amount, !isAmountsVisible)}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={styles.categoryModalBarTrack}>
+                            <View
+                              style={[
+                                styles.categoryModalBarFill,
+                                {
+                                  width: `${percent}%`,
+                                  backgroundColor: item.color,
+                                },
+                              ]}
+                            />
+                          </View>
+
+                          {index < HOME_CATEGORY_SPENDING.length - 1 ? (
+                            <View style={styles.accountsModalDivider} />
+                          ) : null}
+                        </View>
+                      );
+                    })}
+                  </Card>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={handleCloseCategorySpendingModal}
                     style={({ pressed }) => [
                       styles.modalDoneButton,
                       pressed && styles.modalDoneButtonPressed,
@@ -704,6 +1355,38 @@ export default function HomeScreen() {
                             />
                           </View>
                         </Pressable>
+                        {isQuickAddCategoryPickerOpen ? (
+                          <View style={styles.quickAddInlineDropdownPanel}>
+                            <Text style={styles.quickAddDropdownTitle}>Categorias</Text>
+                            <View style={styles.quickAddCategoryChips}>
+                              {QUICK_ADD_CATEGORY_OPTIONS.map((category) => {
+                                const selected = quickAddCategory === category;
+
+                                return (
+                                  <Pressable
+                                    key={category}
+                                    accessibilityRole="button"
+                                    onPress={() => handleSelectQuickAddCategory(category)}
+                                    style={({ pressed }) => [
+                                      styles.quickAddCategoryChip,
+                                      selected && styles.quickAddCategoryChipActive,
+                                      pressed && styles.quickAddCategoryChipPressed,
+                                    ]}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.quickAddCategoryChipText,
+                                        selected && styles.quickAddCategoryChipTextActive,
+                                      ]}
+                                    >
+                                      {category}
+                                    </Text>
+                                  </Pressable>
+                                );
+                              })}
+                            </View>
+                          </View>
+                        ) : null}
                         <View style={styles.quickAddPreviewDivider} />
                         <Pressable
                           accessibilityRole="button"
@@ -730,153 +1413,293 @@ export default function HomeScreen() {
                             />
                           </View>
                         </Pressable>
-                      </View>
+                        {isQuickAddDatePickerOpen ? (
+                          <View style={styles.quickAddInlineDropdownPanel}>
+                            <Text style={styles.quickAddDropdownTitle}>Data do lancamento</Text>
 
-                      {isQuickAddCategoryPickerOpen ? (
-                        <Card style={styles.quickAddDropdownCard}>
-                          <Text style={styles.quickAddDropdownTitle}>Categorias</Text>
-                          <View style={styles.quickAddCategoryChips}>
-                            {QUICK_ADD_CATEGORY_OPTIONS.map((category) => {
-                              const selected = quickAddCategory === category;
-
-                              return (
-                                <Pressable
-                                  key={category}
-                                  accessibilityRole="button"
-                                  onPress={() => handleSelectQuickAddCategory(category)}
-                                  style={({ pressed }) => [
-                                    styles.quickAddCategoryChip,
-                                    selected && styles.quickAddCategoryChipActive,
-                                    pressed && styles.quickAddCategoryChipPressed,
-                                  ]}
-                                >
-                                  <Text
-                                    style={[
-                                      styles.quickAddCategoryChipText,
-                                      selected && styles.quickAddCategoryChipTextActive,
-                                    ]}
-                                  >
-                                    {category}
-                                  </Text>
-                                </Pressable>
-                              );
-                            })}
-                          </View>
-                        </Card>
-                      ) : null}
-
-                      {isQuickAddDatePickerOpen ? (
-                        <Card style={styles.quickAddDropdownCard}>
-                          <Text style={styles.quickAddDropdownTitle}>Data do lançamento</Text>
-
-                          <View style={styles.quickAddDatePresets}>
-                            <Pressable
-                              accessibilityRole="button"
-                              onPress={() => setQuickAddDatePreset('yesterday')}
-                              style={({ pressed }) => [
-                                styles.quickAddDatePresetChip,
-                                pressed && styles.quickAddDatePresetChipPressed,
-                              ]}
-                            >
-                              <Text style={styles.quickAddDatePresetChipText}>Ontem</Text>
-                            </Pressable>
-                            <Pressable
-                              accessibilityRole="button"
-                              onPress={() => setQuickAddDatePreset('today')}
-                              style={({ pressed }) => [
-                                styles.quickAddDatePresetChip,
-                                styles.quickAddDatePresetChipPrimary,
-                                pressed && styles.quickAddDatePresetChipPressed,
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.quickAddDatePresetChipText,
-                                  styles.quickAddDatePresetChipTextPrimary,
+                            <View style={styles.quickAddDatePresets}>
+                              <Pressable
+                                accessibilityRole="button"
+                                onPress={() => setQuickAddDatePreset('yesterday')}
+                                style={({ pressed }) => [
+                                  styles.quickAddDatePresetChip,
+                                  pressed && styles.quickAddDatePresetChipPressed,
                                 ]}
                               >
-                                Hoje
-                              </Text>
-                            </Pressable>
-                            <Pressable
-                              accessibilityRole="button"
-                              onPress={() => setQuickAddDatePreset('tomorrow')}
-                              style={({ pressed }) => [
-                                styles.quickAddDatePresetChip,
-                                pressed && styles.quickAddDatePresetChipPressed,
-                              ]}
-                            >
-                              <Text style={styles.quickAddDatePresetChipText}>Amanha</Text>
-                            </Pressable>
-                          </View>
-
-                          <View style={styles.quickAddDateStepper}>
-                            <Pressable
-                              accessibilityRole="button"
-                              onPress={() => adjustQuickAddDateByDays(-1)}
-                              style={({ pressed }) => [
-                                styles.quickAddDateStepButton,
-                                pressed && styles.quickAddDateStepButtonPressed,
-                              ]}
-                            >
-                              <Ionicons name="remove" size={18} color={colors.textPrimary} />
-                            </Pressable>
-
-                            <Text style={styles.quickAddDateStepperText}>
-                              {formatQuickAddDate(quickAddDate)}
-                            </Text>
-
-                            <Pressable
-                              accessibilityRole="button"
-                              onPress={() => adjustQuickAddDateByDays(1)}
-                              style={({ pressed }) => [
-                                styles.quickAddDateStepButton,
-                                pressed && styles.quickAddDateStepButtonPressed,
-                              ]}
-                            >
-                              <Ionicons name="add" size={18} color={colors.textPrimary} />
-                            </Pressable>
-                          </View>
-
-                          <Pressable
-                            accessibilityRole="button"
-                            onPress={handleOpenQuickAddNativeDatePicker}
-                            style={({ pressed }) => [
-                              styles.quickAddOpenCalendarButton,
-                              pressed && styles.quickAddOpenCalendarButtonPressed,
-                            ]}
-                          >
-                            <Ionicons name="calendar-outline" size={16} color={colors.primary} />
-                            <Text style={styles.quickAddOpenCalendarButtonText}>
-                              Escolher no calendario
-                            </Text>
-                          </Pressable>
-
-                          {isQuickAddNativeDatePickerVisible ? (
-                            <View style={styles.quickAddNativeDatePickerWrap}>
-                              <DateTimePicker
-                                value={quickAddDate}
-                                mode="date"
-                                display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                                onChange={handleQuickAddNativeDateChange}
-                              />
-
-                              {Platform.OS === 'ios' ? (
-                                <Pressable
-                                  accessibilityRole="button"
-                                  onPress={() => setIsQuickAddNativeDatePickerVisible(false)}
-                                  style={({ pressed }) => [
-                                    styles.quickAddCalendarDoneButton,
-                                    pressed && styles.quickAddCalendarDoneButtonPressed,
+                                <Text style={styles.quickAddDatePresetChipText}>Ontem</Text>
+                              </Pressable>
+                              <Pressable
+                                accessibilityRole="button"
+                                onPress={() => setQuickAddDatePreset('today')}
+                                style={({ pressed }) => [
+                                  styles.quickAddDatePresetChip,
+                                  styles.quickAddDatePresetChipPrimary,
+                                  pressed && styles.quickAddDatePresetChipPressed,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.quickAddDatePresetChipText,
+                                    styles.quickAddDatePresetChipTextPrimary,
                                   ]}
                                 >
-                                  <Text style={styles.quickAddCalendarDoneButtonText}>Concluir</Text>
-                                </Pressable>
-                              ) : null}
+                                  Hoje
+                                </Text>
+                              </Pressable>
+                              <Pressable
+                                accessibilityRole="button"
+                                onPress={() => setQuickAddDatePreset('tomorrow')}
+                                style={({ pressed }) => [
+                                  styles.quickAddDatePresetChip,
+                                  pressed && styles.quickAddDatePresetChipPressed,
+                                ]}
+                              >
+                                <Text style={styles.quickAddDatePresetChipText}>Amanha</Text>
+                              </Pressable>
                             </View>
-                          ) : null}
-                        </Card>
-                      ) : null}
+
+                            <View style={styles.quickAddDateStepper}>
+                              <Pressable
+                                accessibilityRole="button"
+                                onPress={() => adjustQuickAddDateByDays(-1)}
+                                style={({ pressed }) => [
+                                  styles.quickAddDateStepButton,
+                                  pressed && styles.quickAddDateStepButtonPressed,
+                                ]}
+                              >
+                                <Ionicons name="remove" size={18} color={colors.textPrimary} />
+                              </Pressable>
+
+                              <Text style={styles.quickAddDateStepperText}>
+                                {formatQuickAddDate(quickAddDate)}
+                              </Text>
+
+                              <Pressable
+                                accessibilityRole="button"
+                                onPress={() => adjustQuickAddDateByDays(1)}
+                                style={({ pressed }) => [
+                                  styles.quickAddDateStepButton,
+                                  pressed && styles.quickAddDateStepButtonPressed,
+                                ]}
+                              >
+                                <Ionicons name="add" size={18} color={colors.textPrimary} />
+                              </Pressable>
+                            </View>
+
+                            <Pressable
+                              accessibilityRole="button"
+                              onPress={handleOpenQuickAddNativeDatePicker}
+                              style={({ pressed }) => [
+                                styles.quickAddOpenCalendarButton,
+                                pressed && styles.quickAddOpenCalendarButtonPressed,
+                              ]}
+                            >
+                              <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                              <Text style={styles.quickAddOpenCalendarButtonText}>
+                                Escolher no calendario
+                              </Text>
+                            </Pressable>
+
+                            {isQuickAddNativeDatePickerVisible ? (
+                              <View style={styles.quickAddNativeDatePickerWrap}>
+                                <DateTimePicker
+                                  value={quickAddDate}
+                                  mode="date"
+                                  display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                                  onChange={handleQuickAddNativeDateChange}
+                                />
+
+                                {Platform.OS === 'ios' ? (
+                                  <Pressable
+                                    accessibilityRole="button"
+                                    onPress={() => setIsQuickAddNativeDatePickerVisible(false)}
+                                    style={({ pressed }) => [
+                                      styles.quickAddCalendarDoneButton,
+                                      pressed && styles.quickAddCalendarDoneButtonPressed,
+                                    ]}
+                                  >
+                                    <Text style={styles.quickAddCalendarDoneButtonText}>
+                                      Concluir
+                                    </Text>
+                                  </Pressable>
+                                ) : null}
+                              </View>
+                            ) : null}
+                          </View>
+                        ) : null}
+                        <View style={styles.quickAddPreviewDivider} />
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={handleToggleQuickAddAccountPicker}
+                          style={({ pressed }) => [
+                            styles.quickAddPreviewRow,
+                            pressed && styles.quickAddPreviewRowPressed,
+                          ]}
+                        >
+                          <Text style={styles.quickAddPreviewLabel}>Conta (opcional)</Text>
+                          <View style={styles.quickAddPreviewTrailing}>
+                            <Text
+                              style={[
+                                styles.quickAddPreviewPlaceholder,
+                                quickAddAccount && styles.quickAddPreviewValueSelected,
+                              ]}
+                            >
+                              {quickAddAccount ?? 'Selecionar'}
+                            </Text>
+                            <Ionicons
+                              name={isQuickAddAccountPickerOpen ? 'chevron-up' : 'chevron-down'}
+                              size={16}
+                              color={colors.textSecondary}
+                            />
+                          </View>
+                        </Pressable>
+                        {isQuickAddAccountPickerOpen ? (
+                          <View style={styles.quickAddInlineDropdownPanel}>
+                            <Text style={styles.quickAddDropdownTitle}>Conta</Text>
+                            <View style={styles.quickAddCategoryChips}>
+                              <Pressable
+                                accessibilityRole="button"
+                                onPress={() => handleSelectQuickAddAccount(null)}
+                                style={({ pressed }) => [
+                                  styles.quickAddCategoryChip,
+                                  quickAddAccount === null && styles.quickAddCategoryChipActive,
+                                  pressed && styles.quickAddCategoryChipPressed,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.quickAddCategoryChipText,
+                                    quickAddAccount === null &&
+                                    styles.quickAddCategoryChipTextActive,
+                                  ]}
+                                >
+                                  Nenhuma
+                                </Text>
+                              </Pressable>
+
+                              {QUICK_ADD_ACCOUNT_OPTIONS.map((account) => {
+                                const selected = quickAddAccount === account;
+
+                                return (
+                                  <Pressable
+                                    key={account}
+                                    accessibilityRole="button"
+                                    onPress={() => handleSelectQuickAddAccount(account)}
+                                    style={({ pressed }) => [
+                                      styles.quickAddCategoryChip,
+                                      selected && styles.quickAddCategoryChipActive,
+                                      pressed && styles.quickAddCategoryChipPressed,
+                                    ]}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.quickAddCategoryChipText,
+                                        selected && styles.quickAddCategoryChipTextActive,
+                                      ]}
+                                    >
+                                      {account}
+                                    </Text>
+                                  </Pressable>
+                                );
+                              })}
+                            </View>
+                          </View>
+                        ) : null}
+                        <View style={styles.quickAddPreviewDivider} />
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={handleToggleQuickAddPaymentPicker}
+                          style={({ pressed }) => [
+                            styles.quickAddPreviewRow,
+                            pressed && styles.quickAddPreviewRowPressed,
+                          ]}
+                        >
+                          <Text style={styles.quickAddPreviewLabel}>Pagamento</Text>
+                          <View style={styles.quickAddPreviewTrailing}>
+                            <Text
+                              style={[
+                                styles.quickAddPreviewPlaceholder,
+                                styles.quickAddPreviewValueSelected,
+                              ]}
+                            >
+                              {quickAddPaymentMethod}
+                            </Text>
+                            <Ionicons
+                              name={isQuickAddPaymentPickerOpen ? 'chevron-up' : 'chevron-down'}
+                              size={16}
+                              color={colors.textSecondary}
+                            />
+                          </View>
+                        </Pressable>
+                        {isQuickAddPaymentPickerOpen ? (
+                          <View style={styles.quickAddInlineDropdownPanel}>
+                            <Text style={styles.quickAddDropdownTitle}>Pagamento</Text>
+                            <View style={styles.quickAddCategoryChips}>
+                              {QUICK_ADD_PAYMENT_OPTIONS.map((paymentMethod) => {
+                                const selected = quickAddPaymentMethod === paymentMethod;
+
+                                return (
+                                  <Pressable
+                                    key={paymentMethod}
+                                    accessibilityRole="button"
+                                    onPress={() =>
+                                      handleSelectQuickAddPaymentMethod(paymentMethod)
+                                    }
+                                    style={({ pressed }) => [
+                                      styles.quickAddCategoryChip,
+                                      selected && styles.quickAddCategoryChipActive,
+                                      pressed && styles.quickAddCategoryChipPressed,
+                                    ]}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.quickAddCategoryChipText,
+                                        selected && styles.quickAddCategoryChipTextActive,
+                                      ]}
+                                    >
+                                      {paymentMethod}
+                                    </Text>
+                                  </Pressable>
+                                );
+                              })}
+                            </View>
+                          </View>
+                        ) : null}
+                        <View style={styles.quickAddPreviewDivider} />
+                        <View style={styles.quickAddPreviewRow}>
+                          <View style={styles.quickAddRecurringTextBlock}>
+                            <Text style={styles.quickAddPreviewLabel}>Transação recorrente</Text>
+                            <Text style={styles.quickAddRecurringHint}>Repetir todo mes</Text>
+                          </View>
+                          <Switch
+                            value={quickAddIsRecurring}
+                            onValueChange={setQuickAddIsRecurring}
+                            trackColor={{
+                              false: colors.border,
+                              true: 'rgba(37, 99, 235, 0.35)',
+                            }}
+                            thumbColor={quickAddIsRecurring ? colors.primaryLight : colors.white}
+                            ios_backgroundColor={colors.border}
+                          />
+                        </View>
+                      </View>
+
+                      <Card style={styles.quickAddDescriptionCard}>
+                        <View style={styles.quickAddDescriptionHeader}>
+                          <Text style={styles.quickAddDropdownTitle}>Descrição</Text>
+                        </View>
+                        <TextInput
+                          value={quickAddDescription}
+                          onChangeText={setQuickAddDescription}
+                          placeholder="Adicione uma descricao..."
+                          placeholderTextColor={colors.textSecondary}
+                          multiline
+                          numberOfLines={3}
+                          textAlignVertical="top"
+                          style={styles.quickAddDescriptionInput}
+                        />
+                      </Card>
+
                     </View>
                   </ScrollView>
 
@@ -911,6 +1734,7 @@ export default function HomeScreen() {
           </Modal>
 
           <FloatingActionButton onPress={handleFabPress} style={styles.fab} />
+          <BottomTabBarMock style={styles.tabBar} />
         </View>
       </SafeAreaView>
     </View>
@@ -980,6 +1804,202 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
+  },
+  accountsSection: {
+    gap: spacing.md,
+  },
+  accountCardButton: {
+    alignSelf: 'flex-start',
+    width: '100%',
+  },
+  accountCardButtonPressed: {
+    opacity: 0.9,
+  },
+  accountCard: {
+    backgroundColor: '#2563EB',
+    borderColor: 'rgba(37, 99, 235, 0.2)',
+    overflow: 'hidden',
+    minHeight: 132,
+  },
+  accountCardDecorLarge: {
+    position: 'absolute',
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    top: -16,
+    right: -18,
+  },
+  accountCardDecorSmall: {
+    position: 'absolute',
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    bottom: -12,
+    right: -10,
+  },
+  accountCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  accountCardIconBubble: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+  },
+  accountCardBank: {
+    ...typography.body,
+    color: colors.white,
+    fontWeight: '600',
+    opacity: 0.95,
+    flexShrink: 1,
+  },
+  accountCardNickname: {
+    ...typography.caption,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: spacing.md,
+  },
+  accountCardAmount: {
+    ...typography.value,
+    color: colors.white,
+    marginTop: spacing.xs,
+  },
+  accountCardFooter: {
+    marginTop: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  accountCardType: {
+    ...typography.caption,
+    color: 'rgba(255, 255, 255, 0.88)',
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  kpiRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  kpiCardPressable: {
+    flex: 1,
+  },
+  kpiCardPressed: {
+    opacity: 0.85,
+  },
+  kpiCard: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    gap: spacing.xs,
+  },
+  kpiIconBubble: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  kpiLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  kpiValue: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  categorySpendingSection: {
+    gap: spacing.md,
+  },
+  categorySpendingCard: {
+    gap: spacing.lg,
+  },
+  categoryDonutSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: spacing.xs,
+  },
+  categoryDonutWrap: {
+    width: HOME_CATEGORY_DONUT_SIZE,
+    height: HOME_CATEGORY_DONUT_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  categoryDonutSvg: {
+    position: 'absolute',
+  },
+  categoryDonutCenter: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xs,
+  },
+  categoryDonutCenterLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  categoryDonutCenterValue: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  categoryLegendList: {
+    gap: spacing.sm,
+  },
+  categoryLegendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  categoryLegendLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+    minWidth: 0,
+  },
+  categoryLegendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    flexShrink: 0,
+  },
+  categoryLegendLabel: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  categoryLegendRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexShrink: 0,
+  },
+  categoryLegendPercent: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  categoryLegendAmount: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '700',
   },
   recentSection: {
     gap: spacing.lg,
@@ -1081,6 +2101,129 @@ const styles = StyleSheet.create({
   },
   modalTransactionsCard: {
     overflow: 'hidden',
+  },
+  infoModalSheet: {
+    maxHeight: '82%',
+  },
+  infoModalScrollContent: {
+    padding: spacing.lg,
+    gap: spacing.lg,
+  },
+  accountsModalSummaryCard: {
+    gap: spacing.xs,
+  },
+  accountsModalSummaryLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  accountsModalSummaryAmount: {
+    ...typography.value,
+    color: colors.textPrimary,
+  },
+  accountsModalListCard: {
+    overflow: 'hidden',
+  },
+  accountsModalRow: {
+    minHeight: 68,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  accountsModalRowLeft: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  accountsModalBankIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#DBEAFE',
+    flexShrink: 0,
+  },
+  accountsModalRowTexts: {
+    flex: 1,
+    minWidth: 0,
+  },
+  accountsModalBankName: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  accountsModalRowMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  accountsModalRowAmount: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    flexShrink: 0,
+  },
+  accountsModalDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.lg,
+  },
+  categoryModalOverviewCard: {
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  categoryModalOverviewChartWrap: {
+    width: HOME_CATEGORY_DONUT_SIZE,
+    height: HOME_CATEGORY_DONUT_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  categoryModalOverviewTextBlock: {
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  categoryModalOverviewTitle: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  categoryModalOverviewText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  categoryModalListCard: {
+    overflow: 'hidden',
+  },
+  categoryModalRow: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  categoryModalRowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  categoryModalBarTrack: {
+    height: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.mutedSurface,
+    overflow: 'hidden',
+  },
+  categoryModalBarFill: {
+    height: '100%',
+    borderRadius: radius.pill,
+    minWidth: 8,
   },
   modalDoneButton: {
     alignItems: 'center',
@@ -1224,6 +2367,39 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colors.border,
     marginHorizontal: spacing.lg,
+  },
+  quickAddInlineDropdownPanel: {
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    backgroundColor: colors.surface,
+  },
+  quickAddRecurringTextBlock: {
+    flex: 1,
+    gap: 2,
+    paddingRight: spacing.sm,
+  },
+  quickAddRecurringHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  quickAddDescriptionCard: {
+    gap: spacing.sm,
+  },
+  quickAddDescriptionHeader: {
+    marginBottom: 2,
+  },
+  quickAddDescriptionInput: {
+    ...typography.body,
+    minHeight: 88,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    color: colors.textPrimary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   quickAddDropdownCard: {
     gap: spacing.md,
@@ -1409,3 +2585,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
