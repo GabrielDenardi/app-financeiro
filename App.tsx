@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import HomeScreen from './src/screens/HomeScreen';
+import { HomeScreen } from './src/screens/HomeScreen';
 import TransactionsScreen from './src/screens/TransictionsScreen';
 import { BottomTabBarMock } from './src/components/BottomTabBarMock';
 

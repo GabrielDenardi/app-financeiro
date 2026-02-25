@@ -175,7 +175,14 @@ const SummaryItem = ({ label, value, color, isNegative }: any) => (
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', padding: spacing.md },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xxl,
+    marginBottom: spacing.xl,
+  },
   backButton: { padding: spacing.md },
   headerTitle: { ...typography.h2, color: colors.textPrimary, fontWeight: 'bold' },
   searchRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, gap: spacing.sm, marginBottom: spacing.md },
