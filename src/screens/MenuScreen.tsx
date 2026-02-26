@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 8,
   },
-  logoutButtonText: { color: '#E11D48', fontWeight: 'bold', fontSize: 16 },
+  logoutButtonText: { color: '#E11D48', fontWeight: 'normal', fontSize: 16 },
 
   footerNote: {
     fontSize: 12,
