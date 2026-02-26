@@ -49,3 +49,17 @@ export interface DailyTransactions {
   date: string;
   data: Transaction[];
 }
+
+export interface MenuItem {
+  icon: any;
+  label: string;
+  page?: string;
+  toggle?: boolean;
+  disabled?: boolean;
+  value?: string;
+}
+
+export interface MenuSections {
+  title: string;
+  items: MenuItem[];
+}
