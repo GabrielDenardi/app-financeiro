@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { HomeScreen } from './src/screens/HomeScreen';
 import TransactionsScreen from './src/screens/TransictionsScreen';
 import { BottomTabBarMock } from './src/components/BottomTabBarMock';
+import { MenuScreen } from './src/screens/MenuScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -20,7 +21,7 @@ function TabRoutes() {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Goals" component={Screen} />
-      <Tab.Screen name="Settings" component={Screen} />
+      <Tab.Screen name="Settings" component={MenuScreen} />
     </Tab.Navigator>
   );
 }
