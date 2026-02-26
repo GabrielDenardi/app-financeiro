@@ -1,9 +1,10 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { BottomTabBarMock } from './src/components/BottomTabBarMock';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { TransactionsScreen } from './src/screens/TransictionsScreen';
-import { BottomTabBarMock } from './src/components/BottomTabBarMock';
+import { HelpScreen } from './src/screens/HelpScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -19,7 +20,7 @@ function TabRoutes() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
-      <Tab.Screen name="Goals" component={Screen} />
+      <Tab.Screen name="Goals" component={HelpScreen} />
       <Tab.Screen name="Settings" component={Screen} />
     </Tab.Navigator>
   );
