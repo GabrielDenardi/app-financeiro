@@ -49,3 +49,15 @@ export interface DailyTransactions {
   date: string;
   data: Transaction[];
 }
+
+export type HelpCategory = 'Transações' | 'Cartões' | 'Metas' | 'Grupos' | 'Orçamentos' | 'Contas' | 'Voz' | 'Relatórios';
+
+export interface ArticleHelp {
+  id: string;
+  category: HelpCategory;
+  title: string;
+  level: string;
+  popular: boolean;
+  steps: { id: number, text: string }[];
+  tip: string;
+}
