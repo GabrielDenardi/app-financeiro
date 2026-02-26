@@ -27,6 +27,7 @@ import {
   Newspaper,
   ChartPie,
   Receipt,
+  ArrowLeftRight,
 } from 'lucide-react-native';
 import { helpMock } from '../data/helpMock';
 import { ArticleHelp, HelpCategory } from '../types/finance';
@@ -35,7 +36,7 @@ import { colors } from '../theme';
 const { width } = Dimensions.get('window');
 
 const CATEGORY_CONFIG: Record<HelpCategory, { color: string, bgColor: string, icon: any }> = {
-  'Transações': { color: '#10b981', bgColor: '#ecfdf5', icon: BookOpen },
+  'Transações': { color: '#10b981', bgColor: '#ecfdf5', icon: ArrowLeftRight },
   'Cartões': { color: colors.primaryLight, bgColor: '#eff6ff', icon: CreditCard },
   'Metas': { color: '#f59e0b', bgColor: '#fffbeb', icon: PiggyBank },
   'Grupos': { color: '#8b5cf6', bgColor: '#f5f3ff', icon: MessageCircle },

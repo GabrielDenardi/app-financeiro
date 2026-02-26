@@ -5,7 +5,7 @@ export const helpMock: ArticleHelp[] = [
     id: 'add-transaction',
     category: 'Transações',
     title: 'Como adicionar uma transação',
-    level: 'Básico',
+    level: 'Avançado',
     popular: true,
     steps: [
       { id: 1, text: 'Na tela inicial, toque no botão verde "+" no canto inferior direito da tela.' },
