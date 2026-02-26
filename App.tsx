@@ -35,7 +35,7 @@ export default function App() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="MainTabs" component={TabRoutes} />   
         {/* Telas que estarão no MENU */}
-        <Stack.Screen name="Help" component={Screen} />
+        <Stack.Screen name="Help" component={Screen} />{/* Favor segui o mesmo padrão na adição de mais telas */}
 
       </Stack.Navigator>
     </NavigationContainer>
