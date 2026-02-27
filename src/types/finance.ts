@@ -31,14 +31,13 @@ export interface HomeDashboardData {
   recentTransactions: RecentTransaction[];
 }
 
-
 export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
   id: string;
   title: string;
-  date: string;       // Ex: "17 fev"
-  dateISO: string;    // Ex: "2026-02-17T00:00:00Z" 
+  date: string; // Ex: "17 fev"
+  dateISO: string; // Ex: "2026-02-17T00:00:00Z"
   amount: number;
   category: string;
   paymentMethod: string;
@@ -62,4 +61,16 @@ export interface MenuItem {
 export interface MenuSections {
   title: string;
   items: MenuItem[];
+}
+
+export type HelpCategory = 'Transações' | 'Cartões' | 'Metas' | 'Grupos' | 'Orçamentos' | 'Contas' | 'Voz' | 'Relatórios';
+
+export interface ArticleHelp {
+  id: string;
+  category: HelpCategory;
+  title: string;
+  level: string;
+  popular: boolean;
+  steps: { id: number; text: string }[];
+  tip: string;
 }
