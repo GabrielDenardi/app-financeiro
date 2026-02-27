@@ -8,6 +8,7 @@ import TransactionsScreen from './src/screens/TransictionsScreen';
 import { MenuScreen } from './src/screens/MenuScreen';
 import { BottomTabBarMock } from './src/components/BottomTabBarMock';
 import { AccountsScreen } from './src/screens/AccountsScreen';
+import CardsScreen from './src/screens/CardsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -37,6 +38,7 @@ export default function App() {
         <Stack.Screen name="MainTabs" component={TabRoutes} />   
         {/* Telas que estarão no MENU */}
         <Stack.Screen name="Accounts" component={AccountsScreen} />{/* Favor segui o mesmo padrão na adição de mais telas */}
+        <Stack.Screen name="Cards" component={CardsScreen} />
 
       </Stack.Navigator>
     </NavigationContainer>
