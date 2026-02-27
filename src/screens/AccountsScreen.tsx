@@ -23,8 +23,16 @@ import {
 import { colors, spacing, radius, typography } from '../theme'; 
 import { accountsMock, typeConfig } from '../data/accountsMock';
 
+// Importação dos novos modais
+import { AddAccountModal } from '../components/AddAccountModal';
+import { TransferModal } from '../components/TransferModal';
+
 export function AccountsScreen({ navigation }: any) {
   const [showBalances, setShowBalances] = useState(true);
+  
+  // Estados para controle dos modais
+  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
 
   const totalBalance = accountsMock.reduce((sum, a) => sum + a.balance, 0);
 
@@ -45,11 +53,17 @@ export function AccountsScreen({ navigation }: any) {
             <Text style={[typography.h2, { color: colors.white }]}>Minhas Contas</Text>
             
             <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.actionButtonGhost}>
+              <TouchableOpacity 
+                style={styles.actionButtonGhost}
+                onPress={() => setIsTransferModalVisible(true)}
+              >
                 <RefreshCw color={colors.white} size={14} />
                 <Text style={{color: colors.white}}>Transferir</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButtonSolid}>
+              <TouchableOpacity 
+                style={styles.actionButtonSolid}
+                onPress={() => setIsAddModalVisible(true)}
+              >
                 <Plus color={colors.white} size={14} />
                 <Text style={{color: colors.white}}>Novo</Text>
               </TouchableOpacity>
@@ -193,7 +207,10 @@ export function AccountsScreen({ navigation }: any) {
             <ChevronRight size={18} color={colors.border} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.quickActionCard}>
+        <TouchableOpacity 
+          style={styles.quickActionCard}
+          onPress={() => setIsTransferModalVisible(true)}
+        >
             <View style={styles.quickActionContent}>
             <View style={styles.quickActionIcon}>
                 <RefreshCw size={20} color={colors.primary} />
@@ -211,6 +228,17 @@ export function AccountsScreen({ navigation }: any) {
         </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Modais de interação */}
+      <AddAccountModal 
+        visible={isAddModalVisible} 
+        onClose={() => setIsAddModalVisible(false)} 
+      />
+
+      <TransferModal 
+        visible={isTransferModalVisible} 
+        onClose={() => setIsTransferModalVisible(false)} 
+      />
     </View>
   );
 }
