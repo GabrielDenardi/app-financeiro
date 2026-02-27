@@ -22,15 +22,11 @@ import {
 } from 'lucide-react-native';
 import { colors, spacing, radius, typography } from '../theme'; 
 import { accountsMock, typeConfig } from '../data/accountsMock';
-
-// Importação dos novos modais
 import { AddAccountModal } from '../components/AddAccountModal';
 import { TransferModal } from '../components/TransferModal';
 
 export function AccountsScreen({ navigation }: any) {
   const [showBalances, setShowBalances] = useState(true);
-  
-  // Estados para controle dos modais
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
 
@@ -190,21 +186,24 @@ export function AccountsScreen({ navigation }: any) {
 
         <View style={styles.quickActions}>
 
-        <TouchableOpacity style={styles.quickActionCard}>
-            <View style={styles.quickActionContent}>
+        <TouchableOpacity 
+          style={styles.quickActionCard}
+          onPress={() => navigation.navigate('Cards')}
+        >
+          <View style={styles.quickActionContent}>
             <View style={styles.quickActionIcon}>
-                <CreditCard size={20} color={colors.primary} />
+              <CreditCard size={20} color={colors.primary} />
             </View>
             <View>
-                <Text style={[typography.body, { fontWeight: '600', color: colors.textPrimary }]}>
+              <Text style={[typography.body, { fontWeight: '600', color: colors.textPrimary }]}>
                 Cartões
-                </Text>
-                <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              </Text>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
                 Gerenciar faturas
-                </Text>
+              </Text>
             </View>
-            </View>
-            <ChevronRight size={18} color={colors.border} />
+          </View>
+          <ChevronRight size={18} color={colors.border} />
         </TouchableOpacity>
 
         <TouchableOpacity 
