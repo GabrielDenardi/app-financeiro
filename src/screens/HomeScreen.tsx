@@ -45,7 +45,7 @@ const QUICK_ADD_CATEGORY_OPTIONS = [
   'Salario',
   'Freelance',
 ] as const;
-const QUICK_ADD_ACCOUNT_OPTIONS = ['Carteira', 'Nubank', 'Inter', 'Itau'] as const;
+const QUICK_ADD_ACCOUNT_OPTIONS = ['Carteira', 'Conta Principal', 'Banco Digital', 'Banco Local'] as const;
 const QUICK_ADD_PAYMENT_OPTIONS = [
   'Pix',
   'Cartao de credito',
@@ -56,7 +56,7 @@ const QUICK_ADD_PAYMENT_OPTIONS = [
 const HOME_ACCOUNTS = [
   {
     id: 'acc-1',
-    bank: 'Nubank',
+    bank: 'Conta Principal',
     nickname: 'Conta principal',
     typeLabel: 'Conta corrente',
     balance: 2500,
