@@ -18,6 +18,7 @@ import {
 } from 'lucide-react-native';
 import { colors, spacing, radius, typography } from '../theme';
 import { AddCardModal } from '../components/AddCardModal';
+import { AddCardBillsModal } from '../components/AddCardBillsModal';
 
 
 const { width } = Dimensions.get('window');
@@ -53,6 +54,7 @@ export default function CardsScreen({ navigation }: any) {
   const totalInvoice = 6050.50;
   const urgentAlerts = 1;
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [isAddCardBillsModalVisible, setIsAddCardBillsModalVisible] = useState(false);
 
   return (
     <View style={styles.container}>
@@ -181,7 +183,10 @@ export default function CardsScreen({ navigation }: any) {
             );
           })}
 
-          <TouchableOpacity style={styles.quickAddExpense}>
+          <TouchableOpacity 
+            style={styles.quickAddExpense}
+            onPress={() => setIsAddCardBillsModalVisible(true)}
+          >
             <Receipt size={20} color={colors.primary} />
             <Text style={styles.quickAddText}>Lançar compra</Text>
           </TouchableOpacity>
@@ -190,6 +195,11 @@ export default function CardsScreen({ navigation }: any) {
 
       <AddCardModal 
         visible={isAddModalVisible} 
+        onClose={() => setIsAddModalVisible(false)} 
+      />
+
+      <AddCardBillsModal 
+        visible={isAddCardBillsModalVisible} 
         onClose={() => setIsAddModalVisible(false)} 
       />
     </View>

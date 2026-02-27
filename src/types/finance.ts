@@ -1,6 +1,6 @@
 import { LucideIcon } from 'lucide-react-native';
 
-//Dashboard Mock
+//Dashboard
 export type EntryType = 'income' | 'expense';
 
 export interface SummaryStats {
@@ -34,7 +34,7 @@ export interface HomeDashboardData {
   recentTransactions: RecentTransaction[];
 }
 
-//Transaction Mock
+//Transaction
 export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
@@ -53,7 +53,7 @@ export interface DailyTransactions {
   data: Transaction[];
 }
 
-//Menu Mock
+//Menu
 export interface MenuItem {
   icon: any;
   label: string;
@@ -69,7 +69,7 @@ export interface MenuSections {
 }
 
 
-//Account Mock
+//Account 
 export type AccountType = 'checking' | 'savings' | 'credit_card' | 'investment' | 'cash' | 'other';
 
 export interface Account {
@@ -87,4 +87,20 @@ export interface AccountConfig {
   icon: LucideIcon;
   gradient: string[];
   light: string;
+}
+
+//Card 
+export interface ExpenseData {
+  description: string;
+  card: string;
+  category: string;
+  amount: number;
+  installments: string;
+  date: string;
+}
+
+export interface Props {
+  visible: boolean;
+  onClose: () => void;
+  onSave?: (data: ExpenseData) => void;
 }
