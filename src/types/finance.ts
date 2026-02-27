@@ -1,3 +1,6 @@
+import { LucideIcon } from 'lucide-react-native';
+
+//Dashboard Mock
 export type EntryType = 'income' | 'expense';
 
 export interface SummaryStats {
@@ -31,7 +34,7 @@ export interface HomeDashboardData {
   recentTransactions: RecentTransaction[];
 }
 
-
+//Transaction Mock
 export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
@@ -50,6 +53,7 @@ export interface DailyTransactions {
   data: Transaction[];
 }
 
+//Menu Mock
 export interface MenuItem {
   icon: any;
   label: string;
@@ -62,4 +66,25 @@ export interface MenuItem {
 export interface MenuSections {
   title: string;
   items: MenuItem[];
+}
+
+
+//Account Mock
+export type AccountType = 'checking' | 'savings' | 'credit_card' | 'investment' | 'cash' | 'other';
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  balance: number;
+  institution?: string;
+  color?: string;
+  is_active: boolean;
+}
+
+export interface AccountConfig {
+  label: string;
+  icon: LucideIcon;
+  gradient: string[];
+  light: string;
 }
