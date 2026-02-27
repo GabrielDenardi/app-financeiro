@@ -80,7 +80,6 @@ export function AddAccountModal({ visible, onClose }: { visible: boolean; onClos
 
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             
-            {/* Seleção de Tipo (Horizontal Scroll) */}
             <Text style={styles.sectionLabel}>Tipo de Conta</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
               {ACCOUNT_TYPES.map((type) => (
@@ -97,15 +96,14 @@ export function AddAccountModal({ visible, onClose }: { visible: boolean; onClos
               ))}
             </ScrollView>
 
-            {/* Seleção de Bancos Padrão */}
-            <Text style={styles.sectionLabel}>Instituições sugeridas</Text>
+            <Text style={styles.sectionLabel}>Instituições</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bankScroll}>
               {POPULAR_BANKS.map((bank) => (
                 <Pressable 
                   key={bank.id}
                   onPress={() => {
                     setInstitution(bank.name);
-                    if(!name) setName(bank.name); // Preenche o apelido se estiver vazio
+                    setName(bank.name); 
                   }}
                   style={[styles.bankChip, institution === bank.name && { borderColor: bank.color }]}
                 >
@@ -122,19 +120,6 @@ export function AddAccountModal({ visible, onClose }: { visible: boolean; onClos
                   placeholder="Ex: Minha Carteira" 
                   value={name}
                   onChangeText={setName}
-                  style={styles.textInput} 
-                  textAlign="right"
-                  placeholderTextColor={colors.border}
-                />
-              </View>
-              <View style={styles.divider} />
-              
-              <View style={styles.inputRow}>
-                <Text style={styles.inputLabel}>Instituição</Text>
-                <TextInput 
-                  placeholder="Nome do banco" 
-                  value={institution}
-                  onChangeText={setInstitution}
                   style={styles.textInput} 
                   textAlign="right"
                   placeholderTextColor={colors.border}
