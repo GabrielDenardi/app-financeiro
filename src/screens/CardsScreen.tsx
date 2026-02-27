@@ -380,28 +380,36 @@ const styles = StyleSheet.create({
   },
   cardInst: { 
     ...typography.caption, 
-    color: 'rgba(255,255,255,0.7)', 
+    color: colors.white, 
+    opacity: 0.7, 
     fontSize: 10, 
-    textTransform: 'uppercase' 
+    fontWeight: '600'
   },
   cardName: { 
     ...typography.h2, 
-    color: colors.white 
+    color: colors.white, 
+    fontSize: 19, 
+    fontWeight: '600', 
+    marginTop: 2
   },
   cardNetwork: { 
     ...typography.caption, 
-    color: 'rgba(255,255,255,0.8)', 
-    fontWeight: '700' 
+    color: colors.white, 
+    fontSize: 15, 
+    fontWeight: '600', 
+    fontStyle: 'italic' 
   },
   cardDigits: { 
     ...typography.body, 
-    color: 'rgba(255,255,255,0.6)', 
-    letterSpacing: 4, 
-    marginBottom: 20 
+    color: colors.white, 
+    fontSize: 16, 
+    letterSpacing: 2.5, 
+    opacity: 0.8 
   },
   cardFooter: { 
     flexDirection: 'row', 
-    justifyContent: 'space-between' 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-end'
   },
   cardLabel: { 
     ...typography.caption, 
@@ -411,8 +419,8 @@ const styles = StyleSheet.create({
   cardInfo: { 
     ...typography.body, 
     color: colors.white, 
-    fontWeight: '700', 
-    fontSize: 13 
+    fontSize: 15, 
+    fontWeight: '600'
   },
   cardStatsRow: {
     flexDirection: 'row', 

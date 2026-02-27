@@ -129,7 +129,7 @@ export function AddCardModal({ visible, onClose }: { visible: boolean; onClose: 
                ))}
             </View>
 
-            <Text style={styles.sectionLabel}>Instituições sugeridas</Text>
+            <Text style={styles.sectionLabel}>Instituições</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
               {POPULAR_BANKS.map((bank) => (
                 <Pressable 
@@ -138,8 +138,9 @@ export function AddCardModal({ visible, onClose }: { visible: boolean; onClose: 
                     setInstitution(bank.name);
                     setName(bank.name);
                   }}
-                  style={[styles.bankChip, institution === bank.name && { borderColor: colors.primary }]}
+                  style={[styles.bankChip, institution === bank.name && { borderColor: bank.color }]}
                 >
+                  <View style={[styles.bankDot, { backgroundColor: bank.color }]} />
                   <Text style={styles.bankChipText}>{bank.name}</Text>
                 </Pressable>
               ))}
@@ -289,13 +290,13 @@ const styles = StyleSheet.create({
     borderRadius: 65, backgroundColor: 'rgba(255,255,255,0.07)'
   },
   cardHeaderPreview: { flexDirection: 'row', justifyContent: 'space-between' },
-  cardPreviewInstLabel: { color: colors.white, opacity: 0.7, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
-  cardPreviewNameText: { color: colors.white, fontSize: 19, fontWeight: '700', marginTop: 2 },
-  cardPreviewNetworkText: { color: colors.white, fontSize: 15, fontWeight: '800', fontStyle: 'italic', opacity: 0.9 },
+  cardPreviewInstLabel: { color: colors.white, opacity: 0.7, fontSize: 10, fontWeight: '600' },
+  cardPreviewNameText: { color: colors.white, fontSize: 19, fontWeight: '600', marginTop: 2 },
+  cardPreviewNetworkText: { color: colors.white, fontSize: 15, fontWeight: '600', fontStyle: 'italic' },
   cardPreviewDigitsText: { color: colors.white, fontSize: 16, letterSpacing: 2.5, opacity: 0.8 },
   cardPreviewFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   cardFooterLabel: { color: colors.white, fontSize: 10, opacity: 0.6, marginBottom: 2 },
-  cardFooterValue: { color: colors.white, fontSize: 15, fontWeight: '700' },
+  cardFooterValue: { color: colors.white, fontSize: 15, fontWeight: '600' },
 
   sectionLabel: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.sm, marginLeft: 4, fontWeight: '600' },
   colorRow: { flexDirection: 'row', gap: 10, marginBottom: spacing.xl },
@@ -305,10 +306,10 @@ const styles = StyleSheet.create({
   bankChip: {
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
     backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border, marginRight: spacing.sm,
+    borderWidth: 1, borderColor: colors.border, marginRight: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 6,
   },
+  bankDot: { width: 8, height: 8, borderRadius: 4 },
   bankChipText: { fontSize: 13, color: colors.textPrimary, fontWeight: '500' },
-
   typeItem: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
