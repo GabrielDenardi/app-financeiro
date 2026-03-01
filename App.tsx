@@ -8,6 +8,7 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { TransactionsScreen } from './src/screens/TransictionsScreen';
 import { HelpScreen } from './src/screens/HelpScreen';
 import { MenuScreen } from './src/screens/MenuScreen';
+import { PrivacySecurityScreen } from './src/screens/PrivacySecurityScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -34,6 +35,7 @@ export default function App() {
         <Stack.Screen name="MainTabs" component={TabRoutes} />
         {/* Telas que estarão no MENU */}
         <Stack.Screen name="Help" component={HelpScreen} />{/* Favor segui o mesmo padrão na adição de mais telas */}
+        <Stack.Screen name="Privacy" component={PrivacySecurityScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
