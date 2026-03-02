@@ -9,7 +9,7 @@ import { TransactionsScreen } from './src/screens/TransictionsScreen';
 import { HelpScreen } from './src/screens/HelpScreen';
 import { MenuScreen } from './src/screens/MenuScreen';
 import { PrivacySecurityScreen } from './src/screens/PrivacySecurityScreen';
-import ImportScreen from './src/screens/ImportScreen'; 
+import ImportScreen from './src/screens/ImportScreen';
 import SobreScreen from './src/screens/SobreScreen';
 
 const Tab = createBottomTabNavigator();
@@ -21,7 +21,6 @@ function TabRoutes() {
       screenOptions={{ headerShown: false }}
       tabBar={(props) => <BottomTabBarMock {...props} />}
     >
-      {/* Telas que estarão no rodapé */}
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Goals" component={HelpScreen} />
@@ -35,7 +34,6 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="MainTabs" component={TabRoutes} />
-        {/* Telas que estarão no menu */}
         <Stack.Screen name="Help" component={HelpScreen} />
         <Stack.Screen name="Privacy" component={PrivacySecurityScreen} />
         <Stack.Screen name="Import" component={ImportScreen} />
