@@ -8,6 +8,7 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { TransactionsScreen } from './src/screens/TransictionsScreen';
 import { HelpScreen } from './src/screens/HelpScreen';
 import { MenuScreen } from './src/screens/MenuScreen';
+import ImportScreen from './src/screens/ImportScreen'; 
 import SobreScreen from './src/screens/SobreScreen';
 
 const Tab = createBottomTabNavigator();
@@ -33,8 +34,10 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="MainTabs" component={TabRoutes} />
+
         {/* Telas que estarão no menu */}
         <Stack.Screen name="Help" component={HelpScreen} />
+        <Stack.Screen name="Import" component={ImportScreen} />
         <Stack.Screen name="About" component={SobreScreen} />
       </Stack.Navigator>
     </NavigationContainer>
