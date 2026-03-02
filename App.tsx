@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -9,6 +9,7 @@ import { TransactionsScreen } from './src/screens/TransictionsScreen';
 import { HelpScreen } from './src/screens/HelpScreen';
 import { MenuScreen } from './src/screens/MenuScreen';
 import ImportScreen from './src/screens/ImportScreen'; 
+import SobreScreen from './src/screens/SobreScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -19,6 +20,7 @@ function TabRoutes() {
       screenOptions={{ headerShown: false }}
       tabBar={(props) => <BottomTabBarMock {...props} />}
     >
+      {/* Telas que estarão no rodapé */}
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Goals" component={HelpScreen} />
@@ -32,12 +34,11 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="MainTabs" component={TabRoutes} />
-        
-        {/* Telas que estarão no MENU */}
+
+        {/* Telas que estarão no menu */}
         <Stack.Screen name="Help" component={HelpScreen} />
-        
         <Stack.Screen name="Import" component={ImportScreen} />
-        
+        <Stack.Screen name="About" component={SobreScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
