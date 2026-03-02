@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -9,6 +9,8 @@ import { TransactionsScreen } from './src/screens/TransictionsScreen';
 import { HelpScreen } from './src/screens/HelpScreen';
 import { MenuScreen } from './src/screens/MenuScreen';
 import { PrivacySecurityScreen } from './src/screens/PrivacySecurityScreen';
+import ImportScreen from './src/screens/ImportScreen'; 
+import SobreScreen from './src/screens/SobreScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -19,7 +21,7 @@ function TabRoutes() {
       screenOptions={{ headerShown: false }}
       tabBar={(props) => <BottomTabBarMock {...props} />}
     >
-      {/* Telas que estarão no RODAPÉ */}
+      {/* Telas que estarão no rodapé */}
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Goals" component={HelpScreen} />
@@ -33,9 +35,11 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="MainTabs" component={TabRoutes} />
-        {/* Telas que estarão no MENU */}
-        <Stack.Screen name="Help" component={HelpScreen} />{/* Favor segui o mesmo padrão na adição de mais telas */}
+        {/* Telas que estarão no menu */}
+        <Stack.Screen name="Help" component={HelpScreen} />
         <Stack.Screen name="Privacy" component={PrivacySecurityScreen} />
+        <Stack.Screen name="Import" component={ImportScreen} />
+        <Stack.Screen name="About" component={SobreScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
