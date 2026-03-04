@@ -16,7 +16,7 @@ import { MOCK_TRANSACTIONS } from '../data/transictionsMock';
 import { colors, radius, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
 
-const TransactionsScreen = ({ navigation }: any) => {
+export function TransactionsScreen ({ navigation }: any) {
   const [searchText, setSearchText] = useState('');
   const [activeType, setActiveType] = useState<'all' | 'income' | 'expense'>('all');
   const [activeMonth, setActiveMonth] = React.useState<string>('Todos');
@@ -222,5 +222,3 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', marginTop: 50 },
   emptyText: { ...typography.body, color: colors.textSecondary }
 });
-
-export default TransactionsScreen;
