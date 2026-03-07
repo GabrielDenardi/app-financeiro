@@ -1,4 +1,4 @@
-﻿import React from 'react';
+﻿import { useState, useMemo } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -11,6 +11,7 @@ import { MenuScreen } from './src/screens/MenuScreen';
 import { PrivacySecurityScreen } from './src/screens/PrivacySecurityScreen';
 import ImportScreen from './src/screens/ImportScreen';
 import SobreScreen from './src/screens/SobreScreen';
+import ReportsScreen from './src/screens/ReportScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -38,6 +39,7 @@ export default function App() {
         <Stack.Screen name="Privacy" component={PrivacySecurityScreen} />
         <Stack.Screen name="Import" component={ImportScreen} />
         <Stack.Screen name="About" component={SobreScreen} />
+        <Stack.Screen name="Reports" component={ReportsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
