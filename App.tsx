@@ -11,6 +11,7 @@ import { MenuScreen } from './src/screens/MenuScreen';
 import { PrivacySecurityScreen } from './src/screens/PrivacySecurityScreen';
 import ImportScreen from './src/screens/ImportScreen';
 import SobreScreen from './src/screens/SobreScreen';
+import MetasScreen from './src/screens/MetasScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -23,7 +24,8 @@ function TabRoutes() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
-      <Tab.Screen name="Goals" component={HelpScreen} />
+      {/* Alterado aqui para renderizar a tela correta na Tab */}
+      <Tab.Screen name="Goals" component={MetasScreen} /> 
       <Tab.Screen name="Settings" component={MenuScreen} />
     </Tab.Navigator>
   );
@@ -37,7 +39,8 @@ export default function App() {
         <Stack.Screen name="Help" component={HelpScreen} />
         <Stack.Screen name="Privacy" component={PrivacySecurityScreen} />
         <Stack.Screen name="Import" component={ImportScreen} />
-        <Stack.Screen name="About" component={SobreScreen} />
+        <Stack.Screen name="Sobre" component={SobreScreen} />
+        <Stack.Screen name="Metas" component={MetasScreen} /> 
       </Stack.Navigator>
     </NavigationContainer>
   );
