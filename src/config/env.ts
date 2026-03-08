@@ -18,7 +18,13 @@ function sanitizePublicUrl(url: string): string {
 
   try {
     const parsed = new URL(url);
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+    if (
+      parsed.protocol === 'http:' ||
+      parsed.protocol === 'https:' ||
+      parsed.protocol === 'appfinanceiro:' ||
+      parsed.protocol === 'exp:' ||
+      parsed.protocol === 'exps:'
+    ) {
       return url;
     }
   } catch {

@@ -26,11 +26,11 @@ export function validatePassword(value: string): string | null {
   }
 
   if (!/[a-z]/i.test(password) || !/\d/.test(password)) {
-    return 'Use letras e numeros na senha.';
+    return 'Use letras e números na senha.';
   }
 
   if (hasSequence(password)) {
-    return 'Evite sequencias simples como 1234 ou abcd.';
+    return 'Evite sequências simples como 1234 ou abcd.';
   }
 
   return null;

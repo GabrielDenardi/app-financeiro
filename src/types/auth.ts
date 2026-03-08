@@ -1,5 +1,11 @@
 export type AuthSessionState = 'loading' | 'authenticated' | 'unauthenticated';
 
+export type AuthenticatedUserSummary = {
+  id: string;
+  email: string | null;
+  fullName: string;
+};
+
 export type RegistrationDraft = {
   cpf: string;
   email: string;
