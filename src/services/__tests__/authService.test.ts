@@ -10,7 +10,7 @@ jest.mock('../../config/env', () => ({
     supabaseUrl: 'https://test.supabase.co',
     supabaseAnonKey: 'anon-key',
     privacyPolicyUrl: 'https://example.com/privacy',
-    emailRedirectUrl: 'https://example.com/callback',
+    emailRedirectUrl: 'appfinanceiro://auth/callback',
   },
 }));
 
@@ -24,6 +24,10 @@ jest.mock('../../lib/supabase', () => ({
       resetPasswordForEmail: (...args: unknown[]) => mockResetPassword(...args),
     },
   },
+}));
+
+jest.mock('../../lib/authRedirect', () => ({
+  getAuthRedirectUrl: () => 'appfinanceiro://auth/callback',
 }));
 
 import {
@@ -135,7 +139,7 @@ describe('authService', () => {
     await expect(requestPasswordResetByCpf('39053344705')).resolves.toBeUndefined();
     expect(mockResetPassword).toHaveBeenCalledWith(
       'cliente@teste.com',
-      expect.objectContaining({ redirectTo: 'https://example.com/callback' }),
+      expect.objectContaining({ redirectTo: 'appfinanceiro://auth/callback' }),
     );
   });
 });

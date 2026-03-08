@@ -28,6 +28,7 @@ import { SummaryStatCard } from '../components/SummaryStatCard';
 import { TransactionListItem } from '../components/TransactionListItem';
 import { homeDashboardMock } from '../data/homeMock';
 import { colors, radius, spacing, typography } from '../theme';
+import type { AuthenticatedUserSummary } from '../types/auth';
 import { formatCurrencyBRL, HIDDEN_CURRENCY_TEXT } from '../utils/format';
 
 const MODAL_SHEET_CLOSED_TRANSLATE_Y = 420;
@@ -150,8 +151,25 @@ function buildCategorySpendingDonutSegments(
   };
 }
 
-export function HomeScreen() {
+function getHomeDisplayName(currentUser: AuthenticatedUserSummary | null) {
+  if (currentUser?.fullName.trim()) {
+    return currentUser.fullName.trim();
+  }
+
+  if (currentUser?.email) {
+    return currentUser.email.split('@')[0];
+  }
+
+  return 'Usuario';
+}
+
+type HomeScreenProps = {
+  currentUser: AuthenticatedUserSummary | null;
+};
+
+export function HomeScreen({ currentUser }: HomeScreenProps) {
   const data = homeDashboardMock;
+  const displayName = getHomeDisplayName(currentUser);
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
   const [isQuickAddModalVisible, setIsQuickAddModalVisible] = useState(false);
   const [isQuickAddModalMounted, setIsQuickAddModalMounted] = useState(false);
@@ -622,7 +640,7 @@ export function HomeScreen() {
               <View style={styles.headerRow}>
                 <View style={styles.headerTextBlock}>
                   <Text style={styles.headerGreeting}>Boa tarde,</Text>
-                  <Text style={styles.headerName}>João Silva</Text>
+                  <Text style={styles.headerName}>{displayName}</Text>
                 </View>
 
                 <Pressable

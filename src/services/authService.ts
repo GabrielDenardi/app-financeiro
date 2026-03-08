@@ -1,5 +1,6 @@
-import { appEnv, hasSupabaseEnv } from '../config/env';
+import { hasSupabaseEnv } from '../config/env';
 import { digitsOnly } from '../features/auth/utils/masks';
+import { getAuthRedirectUrl } from '../lib/authRedirect';
 import { supabase } from '../lib/supabase';
 import type { CpfLookupResult, RegistrationDraft } from '../types/auth';
 
@@ -31,7 +32,7 @@ function ensureSupabaseEnv() {
   if (!hasSupabaseEnv) {
     throw new AuthServiceError(
       'missing_env',
-      'Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY antes de usar autenticacao.',
+      'Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY antes de usar autenticação.',
     );
   }
 }
@@ -61,12 +62,12 @@ function mapAuthError(errorMessage: string): AuthServiceError {
   if (text.includes('email not confirmed') || text.includes('confirm')) {
     return new AuthServiceError(
       'email_not_confirmed',
-      'Seu e-mail ainda nao foi confirmado. Verifique sua caixa de entrada.',
+      'Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada.',
     );
   }
 
   if (text.includes('invalid login credentials') || text.includes('invalid')) {
-    return new AuthServiceError('invalid_credentials', 'Senha invalida. Tente novamente.');
+    return new AuthServiceError('invalid_credentials', 'Senha inválida. Tente novamente.');
   }
 
   return new AuthServiceError('unknown', errorMessage);
@@ -102,7 +103,7 @@ export async function lookupCpf(cpfDigits: string): Promise<CpfLookupResult> {
     if (lowered.includes('could not find the function')) {
       throw new AuthServiceError(
         'unknown',
-        'Funcao lookup_account_by_cpf nao encontrada no Supabase. Rode a migration SQL de onboarding no seu projeto.',
+        'Função lookup_account_by_cpf não encontrada no Supabase. Rode a migration SQL de onboarding no seu projeto.',
       );
     }
 
@@ -117,10 +118,10 @@ export async function signInWithCpf(cpfDigits: string, password: string): Promis
 
   const lookup = await lookupCpf(cpfDigits);
   if (!lookup.account_exists || !lookup.email) {
-    throw new AuthServiceError('cpf_not_found', 'Nao existe conta para este CPF.');
+    throw new AuthServiceError('cpf_not_found', 'Não existe conta para este CPF.');
   }
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: lookup.email,
     password,
   });
@@ -132,16 +133,20 @@ export async function signInWithCpf(cpfDigits: string, password: string): Promis
 
 export async function registerWithDraft(draft: RegistrationDraft): Promise<void> {
   ensureSupabaseEnv();
+  const normalizedEmail = draft.email.trim().toLowerCase();
+  const normalizedCpf = digitsOnly(draft.cpf);
+  const normalizedPhone = digitsOnly(draft.phone);
+  const redirectTo = getAuthRedirectUrl();
 
-  const { error } = await supabase.auth.signUp({
-    email: draft.email.trim().toLowerCase(),
+  const { data, error } = await supabase.auth.signUp({
+    email: normalizedEmail,
     password: draft.password,
     options: {
-      emailRedirectTo: appEnv.emailRedirectUrl || undefined,
+      emailRedirectTo: redirectTo,
       data: {
-        cpf: digitsOnly(draft.cpf),
+        cpf: normalizedCpf,
         full_name: draft.fullName.trim(),
-        phone: digitsOnly(draft.phone),
+        phone: normalizedPhone,
         birth_date: draft.birthDate,
         birth_country: draft.birthCountry,
         mother_name: draft.motherName.trim(),
@@ -163,12 +168,14 @@ export async function registerWithDraft(draft: RegistrationDraft): Promise<void>
 
 export async function resendConfirmation(email: string): Promise<void> {
   ensureSupabaseEnv();
+  const normalizedEmail = email.trim().toLowerCase();
+  const redirectTo = getAuthRedirectUrl();
 
-  const { error } = await supabase.auth.resend({
+  const { data, error } = await supabase.auth.resend({
     type: 'signup',
-    email,
+    email: normalizedEmail,
     options: {
-      emailRedirectTo: appEnv.emailRedirectUrl || undefined,
+      emailRedirectTo: redirectTo,
     },
   });
 
@@ -179,14 +186,15 @@ export async function resendConfirmation(email: string): Promise<void> {
 
 export async function requestPasswordResetByCpf(cpfDigits: string): Promise<void> {
   ensureSupabaseEnv();
+  const redirectTo = getAuthRedirectUrl();
 
   const lookup = await lookupCpf(cpfDigits);
   if (!lookup.account_exists || !lookup.email) {
-    throw new AuthServiceError('cpf_not_found', 'Nao existe conta para este CPF.');
+    throw new AuthServiceError('cpf_not_found', 'Não existe conta para este CPF.');
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(lookup.email, {
-    redirectTo: appEnv.emailRedirectUrl || undefined,
+    redirectTo,
   });
 
   if (error) {

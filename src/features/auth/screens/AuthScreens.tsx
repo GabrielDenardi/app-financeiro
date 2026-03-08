@@ -93,10 +93,10 @@ function toExistingAccount(cpf: string, lookup: Awaited<ReturnType<typeof lookup
 export function WelcomeScreen({ navigation }: ScreenProps<'Welcome'>) {
   return (
     <AuthScaffold
-      title="Um app financeiro sem complicacoes"
+      title="Um app financeiro sem complicações"
       subtitle="Controle seus gastos e investimentos com uma jornada simples e segura."
       scrollable={false}
-      footer={<PrimaryButton title="Comecar" onPress={() => navigation.navigate('Cpf')} />}
+      footer={<PrimaryButton title="Começar" onPress={() => navigation.navigate('Cpf')} />}
     >
       <View style={styles.welcomeContent}>
         <HeroCardsIllustration />
@@ -115,7 +115,7 @@ export function CpfScreen({ navigation }: ScreenProps<'Cpf'>) {
     const cpfDigits = digitsOnly(cpf);
 
     if (!isValidCpf(cpfDigits)) {
-      setError('CPF invalido. Confira os numeros e tente novamente.');
+      setError('CPF inválido. Confira os números e tente novamente.');
       return;
     }
 
@@ -135,7 +135,7 @@ export function CpfScreen({ navigation }: ScreenProps<'Cpf'>) {
       setExistingAccount(null);
       navigation.navigate('RegisterEmail');
     } catch (lookupError) {
-      setError(getReadableError(lookupError, 'Nao foi possivel validar o CPF agora.'));
+      setError(getReadableError(lookupError, 'Não foi possível validar o CPF agora.'));
     } finally {
       setIsLoading(false);
     }
@@ -159,7 +159,7 @@ export function CpfScreen({ navigation }: ScreenProps<'Cpf'>) {
         keyboardType="number-pad"
         maxLength={14}
         error={error}
-        helperText="Somente seu CPF para identificar se voce ja tem conta."
+        helperText="Somente seu CPF para identificar se você já tem conta."
       />
     </AuthScaffold>
   );
@@ -177,12 +177,12 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
   if (!existingAccount) {
     return (
       <AuthScaffold
-        title="Conta nao identificada"
+        title="Conta não identificada"
         subtitle="Volte e informe seu CPF para continuar."
         onBack={() => navigation.goBack()}
         footer={<PrimaryButton title="Voltar ao CPF" onPress={() => navigation.navigate('Cpf')} />}
       >
-        <InlineMessage message="Nao encontramos dados de conta para esta etapa." variant="error" />
+        <InlineMessage message="Não encontramos dados de conta para esta etapa." variant="error" />
       </AuthScaffold>
     );
   }
@@ -202,9 +202,9 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
     } catch (signInError) {
       if (signInError instanceof AuthServiceError && signInError.code === 'email_not_confirmed') {
         setError(signInError.message);
-        setInfo('Reenvie o e-mail de confirmacao para liberar o acesso.');
+        setInfo('Reenvie o e-mail de confirmação para liberar o acesso.');
       } else {
-        setError(getReadableError(signInError, 'Nao foi possivel entrar agora.'));
+        setError(getReadableError(signInError, 'Não foi possível entrar agora.'));
       }
     } finally {
       setIsLoading(false);
@@ -218,9 +218,9 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
 
     try {
       await requestPasswordResetByCpf(existingAccount.cpf);
-      setInfo(`Enviamos um link de redefinicao para ${existingAccount.emailMasked}.`);
+      setInfo(`Enviamos um link de redefinição para ${existingAccount.emailMasked}.`);
     } catch (resetError) {
-      setError(getReadableError(resetError, 'Nao foi possivel enviar a redefinicao.'));
+      setError(getReadableError(resetError, 'Não foi possível enviar a redefinição.'));
     } finally {
       setIsResetting(false);
     }
@@ -233,9 +233,9 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
 
     try {
       await resendConfirmation(existingAccount.email);
-      setInfo(`Enviamos um novo e-mail de confirmacao para ${existingAccount.emailMasked}.`);
+      setInfo(`Enviamos um novo e-mail de confirmação para ${existingAccount.emailMasked}.`);
     } catch (resendError) {
-      setError(getReadableError(resendError, 'Nao foi possivel reenviar o e-mail.'));
+      setError(getReadableError(resendError, 'Não foi possível reenviar o e-mail.'));
     } finally {
       setIsResending(false);
     }
@@ -243,8 +243,8 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
 
   return (
     <AuthScaffold
-      title="Esta conta ja existe"
-      subtitle={`Ja existe uma conta com este CPF. Digite sua senha para entrar (${existingAccount.emailMasked}).`}
+      title="Esta conta já existe"
+      subtitle={`Já existe uma conta com este CPF. Digite sua senha para entrar (${existingAccount.emailMasked}).`}
       onBack={() => navigation.goBack()}
       footer={
         <AuthButtonRow>
@@ -278,7 +278,7 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
         style={({ pressed }) => [styles.linkButton, pressed && styles.pressed]}
       >
         <Text style={styles.linkButtonText}>
-          Reenviar e-mail de confirmacao
+          Reenviar e-mail de confirmação
           {isResending ? '...' : ''}
         </Text>
       </Pressable>
@@ -295,7 +295,7 @@ export function RegisterEmailScreen({ navigation }: ScreenProps<'RegisterEmail'>
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!isValidEmail(normalizedEmail)) {
-      setError('Digite um e-mail valido.');
+      setError('Digite um e-mail válido.');
       return;
     }
 
@@ -306,7 +306,7 @@ export function RegisterEmailScreen({ navigation }: ScreenProps<'RegisterEmail'>
   return (
     <AuthScaffold
       title="Qual o seu e-mail?"
-      subtitle="Essa sera sua principal forma de comunicacao."
+      subtitle="Essa será sua principal forma de comunicação."
       progress={progressMap.email}
       onBack={() => navigation.goBack()}
       footer={<PrimaryButton title="Continuar" onPress={handleContinue} />}
@@ -336,7 +336,7 @@ export function RegisterPhoneScreen({ navigation }: ScreenProps<'RegisterPhone'>
     const phoneDigits = digitsOnly(phone);
 
     if (!isValidPhoneBR(phoneDigits)) {
-      setError('Digite um celular com DDD e 9 digitos.');
+      setError('Digite um celular com DDD e 9 dígitos.');
       return;
     }
 
@@ -346,8 +346,8 @@ export function RegisterPhoneScreen({ navigation }: ScreenProps<'RegisterPhone'>
 
   return (
     <AuthScaffold
-      title="Qual o numero do seu celular?"
-      subtitle="Digite o numero com DDD."
+      title="Qual o número do seu celular?"
+      subtitle="Digite o número com DDD."
       progress={progressMap.phone}
       onBack={() => navigation.goBack()}
       footer={<PrimaryButton title="Continuar" onPress={handleContinue} />}
@@ -415,12 +415,12 @@ export function RegisterBirthDateScreen({ navigation }: ScreenProps<'RegisterBir
     const parsed = parseDateBR(birthDate);
 
     if (!parsed) {
-      setError('Digite uma data valida no formato dd/mm/aaaa.');
+      setError('Digite uma data válida no formato dd/mm/aaaa.');
       return;
     }
 
     if (!isAdult(parsed, 18)) {
-      setError('Voce precisa ter pelo menos 18 anos para continuar.');
+      setError('Você precisa ter pelo menos 18 anos para continuar.');
       return;
     }
 
@@ -460,7 +460,7 @@ export function RegisterBirthCountryScreen({ navigation }: ScreenProps<'Register
 
   return (
     <AuthScaffold
-      title="Escolha o pais onde voce nasceu"
+      title="Escolha o país onde você nasceu"
       progress={progressMap.birthCountry}
       onBack={() => navigation.goBack()}
       footer={
@@ -475,7 +475,7 @@ export function RegisterBirthCountryScreen({ navigation }: ScreenProps<'Register
         items={items}
         selectedValue={selectedValue}
         onSelect={(value) => setField('birthCountry', value)}
-        searchPlaceholder="Buscar pais"
+        searchPlaceholder="Buscar país"
       />
     </AuthScaffold>
   );
@@ -490,7 +490,7 @@ export function RegisterMotherNameScreen({ navigation }: ScreenProps<'RegisterMo
     const normalized = motherName.trim().replace(/\s+/g, ' ');
 
     if (normalized.length < 3) {
-      setError('Informe o nome completo da sua mae.');
+      setError('Informe o nome completo da sua mãe.');
       return;
     }
 
@@ -500,14 +500,14 @@ export function RegisterMotherNameScreen({ navigation }: ScreenProps<'RegisterMo
 
   return (
     <AuthScaffold
-      title="Qual o nome completo da sua mae?"
-      subtitle='Se nao houver registro, digite "nome ausente".'
+      title="Qual o nome completo da sua mãe?"
+      subtitle='Se não houver registro, digite "nome ausente".'
       progress={progressMap.motherName}
       onBack={() => navigation.goBack()}
       footer={<PrimaryButton title="Continuar" onPress={handleContinue} />}
     >
       <MaskedTextInput
-        placeholder="Nome da mae"
+        placeholder="Nome da mãe"
         value={motherName}
         onChangeText={(value) => {
           setMotherName(value);
@@ -532,7 +532,7 @@ export function RegisterCepScreen({ navigation }: ScreenProps<'RegisterCep'>) {
     const cepDigits = digitsOnly(cep);
 
     if (!isValidCep(cepDigits)) {
-      setError('Digite um CEP valido com 8 digitos.');
+      setError('Digite um CEP válido com 8 dígitos.');
       return;
     }
 
@@ -550,12 +550,12 @@ export function RegisterCepScreen({ navigation }: ScreenProps<'RegisterCep'>) {
       });
 
       if (!address) {
-        setInfo('Nao foi possivel preencher automaticamente. Continue com preenchimento manual.');
+        setInfo('Não foi possível preencher automaticamente. Continue com preenchimento manual.');
       }
 
       navigation.navigate('RegisterAddress');
     } catch (lookupError) {
-      setError(getReadableError(lookupError, 'Nao foi possivel buscar o CEP.'));
+      setError(getReadableError(lookupError, 'Não foi possível buscar o CEP.'));
     } finally {
       setIsLoading(false);
     }
@@ -563,7 +563,7 @@ export function RegisterCepScreen({ navigation }: ScreenProps<'RegisterCep'>) {
 
   return (
     <AuthScaffold
-      title="Qual o CEP do seu endereco?"
+      title="Qual o CEP do seu endereço?"
       progress={progressMap.cep}
       onBack={() => navigation.goBack()}
       footer={<PrimaryButton title="Continuar" onPress={handleContinue} loading={isLoading} />}
@@ -602,7 +602,7 @@ export function RegisterAddressScreen({ navigation }: ScreenProps<'RegisterAddre
     }
 
     if (normalizedNumber.length === 0 || normalizedNumber.length > 6) {
-      setError('Digite um numero de endereco com ate 6 digitos.');
+      setError('Digite um número de endereço com até 6 dígitos.');
       return;
     }
 
@@ -616,14 +616,14 @@ export function RegisterAddressScreen({ navigation }: ScreenProps<'RegisterAddre
 
   return (
     <AuthScaffold
-      title="Confirme seu endereco"
+      title="Confirme seu endereço"
       subtitle="Ajuste os dados antes de continuar."
       progress={progressMap.address}
       onBack={() => navigation.goBack()}
       footer={<PrimaryButton title="Continuar" onPress={handleContinue} />}
     >
       <MaskedTextInput
-        label="Endereco"
+        label="Endereço"
         placeholder="Rua, Avenida, Alameda..."
         value={street}
         onChangeText={(value) => {
@@ -635,8 +635,8 @@ export function RegisterAddressScreen({ navigation }: ScreenProps<'RegisterAddre
         inputStyle={styles.compactInput}
       />
       <MaskedTextInput
-        label="Numero do endereco"
-        placeholder="Numero"
+        label="Número do endereço"
+        placeholder="Número"
         value={addressNumber}
         onChangeText={(value) => {
           setAddressNumber(formatAddressNumber(value));
@@ -674,7 +674,7 @@ export function RegisterCityScreen({ navigation }: ScreenProps<'RegisterCity'>) 
     }
 
     if (normalized.length > 50) {
-      setError('A cidade deve ter ate 50 caracteres.');
+      setError('A cidade deve ter até 50 caracteres.');
       return;
     }
 
@@ -743,7 +743,7 @@ export function RegisterConsentScreen({ navigation }: ScreenProps<'RegisterConse
 
   const handleContinue = () => {
     if (!accepted) {
-      setError('Voce precisa aceitar os termos para continuar.');
+      setError('Você precisa aceitar os termos para continuar.');
       return;
     }
 
@@ -754,7 +754,7 @@ export function RegisterConsentScreen({ navigation }: ScreenProps<'RegisterConse
   return (
     <AuthScaffold
       title="Falta pouco para concluir"
-      subtitle="Ao enviar, voce declara que leu e concorda com as condicoes de tratamento de dados pessoais."
+      subtitle="Ao enviar, você declara que leu e concorda com as condições de tratamento de dados pessoais."
       progress={progressMap.consent}
       onBack={() => navigation.goBack()}
       footer={<PrimaryButton title="Aceitar e continuar" onPress={handleContinue} />}
@@ -775,25 +775,25 @@ export function RegisterConsentScreen({ navigation }: ScreenProps<'RegisterConse
         ]}
       >
         <View style={[styles.checkbox, accepted && styles.checkboxActive]} />
-        <Text style={styles.checkboxText}>Li e concordo com os termos e condicoes.</Text>
+        <Text style={styles.checkboxText}>Li e concordo com os termos e condições.</Text>
       </Pressable>
 
       <Pressable
         onPress={() => {
           if (!appEnv.privacyPolicyUrl) {
             setError(
-              'Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a politica de privacidade.',
+              'Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a política de privacidade.',
             );
             return;
           }
 
           Linking.openURL(appEnv.privacyPolicyUrl).catch(() => {
-            setError('Nao foi possivel abrir a politica de privacidade.');
+            setError('Não foi possível abrir a política de privacidade.');
           });
         }}
         style={({ pressed }) => [styles.linkButton, pressed && styles.pressed]}
       >
-        <Text style={styles.linkButtonText}>Ler politica de privacidade</Text>
+        <Text style={styles.linkButtonText}>Ler política de privacidade</Text>
       </Pressable>
 
       {error ? <InlineMessage message={error} /> : null}
@@ -826,7 +826,7 @@ export function RegisterPasswordScreen({ navigation }: ScreenProps<'RegisterPass
       navigation.navigate('EmailConfirmation', { email: draft.email });
       resetDraft();
     } catch (registerError) {
-      setError(getReadableError(registerError, 'Nao foi possivel concluir seu cadastro agora.'));
+      setError(getReadableError(registerError, 'Não foi possível concluir seu cadastro agora.'));
     } finally {
       setIsLoading(false);
     }
@@ -835,7 +835,7 @@ export function RegisterPasswordScreen({ navigation }: ScreenProps<'RegisterPass
   return (
     <AuthScaffold
       title="Crie uma senha para entrar"
-      subtitle="Minimo de 8 caracteres, com letras e numeros, evitando sequencias."
+      subtitle="Mínimo de 8 caracteres, com letras e números, evitando sequências."
       progress={progressMap.password}
       onBack={() => navigation.goBack()}
       footer={<PrimaryButton title="Concluir cadastro" onPress={handleContinue} loading={isLoading} />}
@@ -858,7 +858,7 @@ export function RegisterPasswordScreen({ navigation }: ScreenProps<'RegisterPass
       />
       <InlineMessage
         variant="info"
-        message="Dica: combine letras e numeros e evite repeticoes ou sequencias previsiveis."
+        message="Dica: combine letras e números e evite repetições ou sequências previsíveis."
       />
       {info ? <InlineMessage variant="success" message={info} /> : null}
     </AuthScaffold>
@@ -876,7 +876,7 @@ export function EmailConfirmationScreen({
 
   const handleOpenEmail = () => {
     Linking.openURL(`mailto:${email}`).catch(() => {
-      setError('Nao foi possivel abrir seu aplicativo de e-mail.');
+      setError('Não foi possível abrir seu aplicativo de e-mail.');
     });
   };
 
@@ -887,9 +887,9 @@ export function EmailConfirmationScreen({
 
     try {
       await resendConfirmation(email);
-      setInfo('Novo e-mail de confirmacao enviado com sucesso.');
+      setInfo('Novo e-mail de confirmação enviado com sucesso.');
     } catch (resendError) {
-      setError(getReadableError(resendError, 'Nao foi possivel reenviar o e-mail.'));
+      setError(getReadableError(resendError, 'Não foi possível reenviar o e-mail.'));
     } finally {
       setIsLoading(false);
     }
@@ -904,7 +904,7 @@ export function EmailConfirmationScreen({
         <View style={styles.footerColumn}>
           <PrimaryButton title="Abrir app de e-mail" onPress={handleOpenEmail} />
           <SecondaryButton
-            title="Ja confirmei o e-mail"
+            title="Já confirmei o e-mail"
             onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Cpf' }] })}
           />
         </View>
@@ -912,18 +912,18 @@ export function EmailConfirmationScreen({
     >
       <InlineMessage
         variant="info"
-        message="A confirmacao pode levar alguns minutos. Se necessario, solicite novo envio."
+        message="A confirmação pode levar alguns minutos. Se necessário, solicite novo envio."
       />
       <Pressable onPress={handleResend} style={({ pressed }) => [styles.linkButton, pressed && styles.pressed]}>
         <Text style={styles.linkButtonText}>
-          {isLoading ? 'Reenviando e-mail...' : 'Nao recebi o e-mail'}
+          {isLoading ? 'Reenviando e-mail...' : 'Não recebi o e-mail'}
         </Text>
       </Pressable>
       <Pressable
         onPress={() => navigation.navigate('RegisterEmail')}
         style={({ pressed }) => [styles.linkButton, pressed && styles.pressed]}
       >
-        <Text style={styles.linkButtonText}>Meu e-mail esta errado</Text>
+        <Text style={styles.linkButtonText}>Meu e-mail está errado</Text>
       </Pressable>
       {info ? <InlineMessage variant="success" message={info} /> : null}
       {error ? <InlineMessage message={error} /> : null}
