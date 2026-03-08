@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { HelpScreen } from '../screens/HelpScreen';
 import ImportScreen from '../screens/ImportScreen';
 import { PrivacySecurityScreen } from '../screens/PrivacySecurityScreen';
+import ReportsScreen from '../screens/ReportScreen';
 import SobreScreen from '../screens/SobreScreen';
 import type { AuthenticatedUserSummary } from '../types/auth';
 import { AppTabs } from './AppTabs';
@@ -24,6 +25,7 @@ export function AppStack({ currentUser }: AppStackProps) {
       <Stack.Screen name="Privacy" component={PrivacySecurityScreen} />
       <Stack.Screen name="Import" component={ImportScreen} />
       <Stack.Screen name="About" component={SobreScreen} />
+      <Stack.Screen name="Reports" component={ReportsScreen} />
     </Stack.Navigator>
   );
 }
