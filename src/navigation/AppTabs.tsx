@@ -4,9 +4,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BottomTabBarMock } from '../components/BottomTabBarMock';
 import { HomeScreen } from '../screens/HomeScreen';
 import { GoalsScreen } from '../screens/GoalsScreen';
-import { SettingsScreen } from '../screens/SettingsScreen';
+import { MenuScreen } from '../screens/MenuScreen';
+import { TransactionsScreen } from '../screens/TransictionsScreen';
 import type { AuthenticatedUserSummary } from '../types/auth';
-import TransactionsScreen from '../screens/TransictionsScreen';
 import type { AppTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
@@ -26,7 +26,9 @@ export function AppTabs({ currentUser }: AppTabsProps) {
       </Tab.Screen>
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Goals" component={GoalsScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen name="Settings">
+        {({ navigation }) => <MenuScreen navigation={navigation} user={currentUser} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }

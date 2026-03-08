@@ -12,8 +12,8 @@ import {
 } from '../lib/authRedirect';
 import { supabase } from '../lib/supabase';
 import type { AuthSessionState, AuthenticatedUserSummary } from '../types/auth';
+import { AppStack } from './AppStack';
 import { AuthStack } from './AuthStack';
-import { AppTabs } from './AppTabs';
 
 type CallbackNotice = {
   variant: 'success' | 'error';
@@ -186,7 +186,7 @@ export function RootNavigator() {
   }
 
   if (sessionState === 'authenticated') {
-    return <AppTabs currentUser={currentUser} />;
+    return <AppStack currentUser={currentUser} />;
   }
 
   return (

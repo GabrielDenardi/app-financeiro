@@ -11,6 +11,11 @@ export const typography = {
     lineHeight: 24,
     fontWeight: '600',
   } satisfies TextStyle,
+  h3: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '500',
+  } satisfies TextStyle,
   body: {
     fontSize: 14,
     lineHeight: 20,
