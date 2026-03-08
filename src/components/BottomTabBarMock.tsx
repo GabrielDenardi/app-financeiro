@@ -1,4 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -19,7 +20,8 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
           }
         };
 
-        let iconName: keyof typeof Ionicons.glyphMap = 'ellipse';
+        // Mudamos para 'any' para aceitar nomes de ambas as bibliotecas
+        let iconName: any = 'ellipse';
 
         if (route.name === 'Home') {
           iconName = isFocused ? 'home' : 'home-outline';
@@ -29,6 +31,9 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
             : 'swap-horizontal-outline';
         } else if (route.name === 'Goals') {
           iconName = isFocused ? 'trophy' : 'trophy-outline';
+        } else if (route.name === 'Budget') {
+          // Nomes exclusivos do MaterialCommunityIcons
+          iconName = isFocused ? 'piggy-bank' : 'piggy-bank-outline';
         } else if (route.name === 'Settings') {
           iconName = isFocused ? 'settings' : 'settings-outline';
         }
@@ -44,11 +49,19 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
             ]}
           >
             <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
-              <Ionicons
-                name={iconName}
-                size={isFocused ? 19 : 20}
-                color={isFocused ? colors.primary : colors.textSecondary}
-              />
+              {route.name === 'Budget' ? (
+                <MaterialCommunityIcons
+                  name={iconName}
+                  size={isFocused ? 20 : 22}
+                  color={isFocused ? colors.primary : colors.textSecondary}
+                />
+              ) : (
+                <Ionicons
+                  name={iconName}
+                  size={isFocused ? 19 : 20}
+                  color={isFocused ? colors.primary : colors.textSecondary}
+                />
+              )}
             </View>
 
             <Text
@@ -58,7 +71,7 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
               ]}
               numberOfLines={1}
             >
-              {route.name}
+              {route.name === 'Budget' ? 'Orçamentos' : route.name}
             </Text>
           </Pressable>
         );
@@ -115,6 +128,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     fontWeight: '500',
+    fontSize: 10,
   },
   tabLabelActive: {
     color: colors.primary,
