@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import {
   Animated,
@@ -168,6 +169,7 @@ type HomeScreenProps = {
 };
 
 export function HomeScreen({ currentUser }: HomeScreenProps) {
+  const navigation = useNavigation<any>();
   const data = homeDashboardMock;
   const displayName = getHomeDisplayName(currentUser);
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
@@ -218,6 +220,20 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
     setIsQuickAddDatePickerOpen(false);
     setIsQuickAddNativeDatePickerVisible(false);
     console.log('[Home] add-transaction');
+  };
+
+  const handleHomeMetricPress = (metricId: string) => {
+    if (metricId === 'goals') {
+      navigation.navigate('Goals');
+      return;
+    }
+
+    if (metricId === 'groups') {
+      navigation.getParent?.()?.navigate('Groups');
+      return;
+    }
+
+    console.log(`[Home] open-${metricId}`);
   };
 
   const handleSeeAllPress = () => {
@@ -732,14 +748,14 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
                 </Pressable>
               </View>
 
-              <View style={styles.kpiRow}>
-                {HOME_KPI_CARDS.map((metric) => (
-                  <Pressable
-                    key={metric.id}
-                    accessibilityRole="button"
-                    onPress={() => console.log(`[Home] open-${metric.id}`)}
-                    style={({ pressed }) => [styles.kpiCardPressable, pressed && styles.kpiCardPressed]}
-                  >
+                <View style={styles.kpiRow}>
+                  {HOME_KPI_CARDS.map((metric) => (
+                    <Pressable
+                      key={metric.id}
+                      accessibilityRole="button"
+                      onPress={() => handleHomeMetricPress(metric.id)}
+                      style={({ pressed }) => [styles.kpiCardPressable, pressed && styles.kpiCardPressed]}
+                    >
                     <Card style={styles.kpiCard}>
                       <View style={[styles.kpiIconBubble, { backgroundColor: metric.iconSurface }]}>
                         <Ionicons name={metric.icon} size={16} color={metric.iconColor} />
