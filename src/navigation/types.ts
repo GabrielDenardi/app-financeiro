@@ -2,6 +2,7 @@ export type AppTabParamList = {
   Home: undefined;
   Transactions: undefined;
   Goals: undefined;
+  Budget: undefined;
   Settings: undefined;
 };
 
