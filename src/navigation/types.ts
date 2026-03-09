@@ -6,6 +6,18 @@ export type AppTabParamList = {
   Settings: undefined;
 };
 
+export type AppStackParamList = {
+  MainTabs: undefined;
+  Help: undefined;
+  Privacy: undefined;
+  Import: undefined;
+  About: undefined;
+  Budgets: undefined;
+  Reports: undefined;
+  Groups: undefined;
+  GroupDetails: { groupId: string };
+};
+
 export type AuthStackParamList = {
   Welcome: undefined;
   Cpf: undefined;
