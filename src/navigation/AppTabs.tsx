@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { BottomTabBarMock } from '../components/BottomTabBarMock';
+import BudgetsScreen from '../screens/BudgetScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { MenuScreen } from '../screens/MenuScreen';
 import MetasScreen from '../screens/MetasScreen';
@@ -26,6 +27,7 @@ export function AppTabs({ currentUser }: AppTabsProps) {
       </Tab.Screen>
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
       <Tab.Screen name="Goals" component={MetasScreen} />
+      <Tab.Screen name="Budget" component={BudgetsScreen} />
       <Tab.Screen name="Settings">
         {({ navigation }) => <MenuScreen navigation={navigation} user={currentUser} />}
       </Tab.Screen>

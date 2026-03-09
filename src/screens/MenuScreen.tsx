@@ -26,7 +26,7 @@ type MenuScreenProps = {
   user: AuthenticatedUserSummary | null;
 };
 
-const IMPLEMENTED_ROUTES = new Set(['Goals', 'Help', 'Privacy', 'Import', 'About', 'Reports']);
+const IMPLEMENTED_ROUTES = new Set(['Goals', 'Help', 'Privacy', 'Import', 'About', 'Budgets', 'Reports']);
 
 export function MenuScreen({ navigation, user }: MenuScreenProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
