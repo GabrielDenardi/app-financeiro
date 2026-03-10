@@ -8,6 +8,7 @@ export type AppTabParamList = {
 
 export type AppStackParamList = {
   MainTabs: undefined;
+  EditProfile: undefined;
   Help: undefined;
   Privacy: undefined;
   Import: undefined;

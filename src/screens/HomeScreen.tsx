@@ -28,6 +28,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { SummaryStatCard } from '../components/SummaryStatCard';
 import { TransactionListItem } from '../components/TransactionListItem';
 import { homeDashboardMock } from '../data/homeMock';
+import { useProfile } from '../features/profile/hooks/useProfile';
 import { colors, radius, spacing, typography } from '../theme';
 import type { AuthenticatedUserSummary } from '../types/auth';
 import { formatCurrencyBRL, HIDDEN_CURRENCY_TEXT } from '../utils/format';
@@ -152,13 +153,13 @@ function buildCategorySpendingDonutSegments(
   };
 }
 
-function getHomeDisplayName(currentUser: AuthenticatedUserSummary | null) {
-  if (currentUser?.fullName.trim()) {
-    return currentUser.fullName.trim();
+function getHomeDisplayName(fullName: string | null | undefined, email: string | null | undefined) {
+  if (fullName?.trim()) {
+    return fullName.trim();
   }
 
-  if (currentUser?.email) {
-    return currentUser.email.split('@')[0];
+  if (email) {
+    return email.split('@')[0];
   }
 
   return 'Usuario';
@@ -171,7 +172,11 @@ type HomeScreenProps = {
 export function HomeScreen({ currentUser }: HomeScreenProps) {
   const navigation = useNavigation<any>();
   const data = homeDashboardMock;
-  const displayName = getHomeDisplayName(currentUser);
+  const profileQuery = useProfile(currentUser?.id);
+  const displayName = getHomeDisplayName(
+    profileQuery.data?.fullName ?? currentUser?.fullName,
+    profileQuery.data?.email ?? currentUser?.email,
+  );
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
   const [isQuickAddModalVisible, setIsQuickAddModalVisible] = useState(false);
   const [isQuickAddModalMounted, setIsQuickAddModalMounted] = useState(false);

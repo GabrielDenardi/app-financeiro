@@ -16,6 +16,7 @@ import {
   ChevronRight, 
   LogOut 
 } from 'lucide-react-native';
+import { useProfile } from '../features/profile/hooks/useProfile';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import type { AuthenticatedUserSummary } from '../types/auth';
@@ -39,6 +40,10 @@ const IMPLEMENTED_ROUTES = new Set([
 
 export function MenuScreen({ navigation, user }: MenuScreenProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const profileQuery = useProfile(user?.id);
+  const profileName = profileQuery.data?.fullName || user?.fullName || 'Usuario';
+  const profileEmail = profileQuery.data?.email || user?.email || 'usuario@email.com';
+  const parentNavigation = navigation?.getParent?.();
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -58,7 +63,21 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
       return;
     }
 
+    if (parentNavigation) {
+      parentNavigation.navigate(page);
+      return;
+    }
+
     navigation?.navigate(page);
+  };
+
+  const handleEditProfile = () => {
+    if (parentNavigation) {
+      parentNavigation.navigate('EditProfile');
+      return;
+    }
+
+    navigation?.navigate('EditProfile');
   };
 
   return (
@@ -84,16 +103,16 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+              {profileName.charAt(0)?.toUpperCase() || 'U'}
             </Text>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.fullName || 'Usuário'}</Text>
-            <Text style={styles.profileEmail}>{user?.email || 'usuario@email.com'}</Text>
+            <Text style={styles.profileName}>{profileName}</Text>
+            <Text style={styles.profileEmail}>{profileEmail}</Text>
           </View>
           <TouchableOpacity 
             style={styles.editButton}
-            onPress={() => navigation?.navigate('EditProfile')}
+            onPress={handleEditProfile}
           >
             <User size={16} color={colors.textPrimary} />
             <Text style={styles.editButtonText}>Editar</Text>

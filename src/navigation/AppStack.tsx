@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { EditProfileScreen } from '../features/profile/screens/EditProfileScreen';
 import { GroupDetailsScreen } from '../features/groups/screens/GroupDetailsScreen';
 import { GroupsScreen } from '../features/groups/screens/GroupsScreen';
 import BudgetsScreen from '../screens/BudgetScreen';
@@ -24,6 +25,9 @@ export function AppStack({ currentUser }: AppStackProps) {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs">
         {() => <AppTabs currentUser={currentUser} />}
+      </Stack.Screen>
+      <Stack.Screen name="EditProfile">
+        {(props) => <EditProfileScreen {...props} currentUser={currentUser} />}
       </Stack.Screen>
       <Stack.Screen name="Help" component={HelpScreen} />
       <Stack.Screen name="Privacy" component={PrivacySecurityScreen} />
