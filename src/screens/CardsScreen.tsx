@@ -200,7 +200,7 @@ export default function CardsScreen({ navigation }: any) {
 
       <AddCardBillsModal 
         visible={isAddCardBillsModalVisible} 
-        onClose={() => setIsAddModalVisible(false)} 
+        onClose={() => setIsAddCardBillsModalVisible(false)} 
       />
     </View>
   );

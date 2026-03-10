@@ -1,12 +1,12 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { 
-  Modal, View, Text, StyleSheet, 
-  TextInput, ScrollView, TouchableOpacity, Dimensions,
-  KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard
+  Modal, View, Text, StyleSheet, TextInput, ScrollView, 
+  TouchableOpacity, Dimensions, KeyboardAvoidingView, 
+  Platform, Animated, PanResponder 
 } from 'react-native';
-import { X, AlignLeft, Calendar, ChevronRight, Check } from 'lucide-react-native';
+import { X, ChevronRight, Check } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { colors, spacing, radius, typography } from '../theme';
+import { colors } from '../theme'; 
 import { Props } from '../types/finance';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -36,42 +36,72 @@ export function AddCardBillsModal({ visible, onClose, onSave }: Props) {
   const [installment, setInstallment] = useState('À vista');
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const pan = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
-  // Função para limpar os campos
-  const resetForm = useCallback(() => {
+  // PanResponder com trava superior (não sobe além do 0)
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 5,
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          pan.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 120) {
+          closeModal();
+        } else {
+          Animated.timing(pan, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(pan, { toValue: 0, duration: 350, useNativeDriver: true })
+      ]).start();
+    }
+  }, [visible]);
+
+  const closeModal = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+      Animated.timing(pan, { toValue: SCREEN_HEIGHT, duration: 300, useNativeDriver: true })
+    ]).start(() => {
+      resetForm();
+      onClose?.();
+    });
+  }, [onClose]);
+
+  const resetForm = () => {
     setDescription('');
     setAmount('');
     setInstallment('À vista');
     setSelectedCard(AVAILABLE_CARDS[0]);
     setCategory(CATEGORIES[0]);
     setDate(new Date());
-  }, []);
-
-  const handleClose = useCallback(() => {
-    resetForm();
-    onClose?.();
-  }, [onClose, resetForm]);
+    pan.setValue(SCREEN_HEIGHT);
+  };
 
   const formatCurrency = (value: string) => {
     const cleanValue = value.replace(/\D/g, '');
     const numberValue = Number(cleanValue) / 100;
-    return numberValue.toLocaleString('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+    return numberValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const handleSave = () => {
     const numericAmount = Number(amount.replace(/\./g, '').replace(',', '.'));
-    onSave?.({
-      description,
-      card: selectedCard.name,
-      category: category.label,
-      amount: numericAmount,
-      installments: installment,
-      date: date.toLocaleDateString('pt-BR')
-    });
-    handleClose();
+    onSave?.({ description, card: selectedCard.name, category: category.label, amount: numericAmount, installments: installment, date: date.toLocaleDateString('pt-BR') });
+    closeModal();
   };
 
   const renderInstallmentSchedule = () => {
@@ -86,7 +116,6 @@ export function AddCardBillsModal({ visible, onClose, onSave }: Props) {
       const dueDate = new Date(date);
       dueDate.setMonth(date.getMonth() + (i - 1));
       const monthLabel = dueDate.toLocaleString('pt-BR', { month: 'short' }).replace('.', '') + '/' + dueDate.getFullYear().toString().slice(-2);
-      
       schedule.push(
         <View key={i} style={styles.scheduleCard}>
           <Text style={styles.scheduleNumber}>{i}/{numInstallments}</Text>
@@ -101,151 +130,105 @@ export function AddCardBillsModal({ visible, onClose, onSave }: Props) {
         <View style={styles.summaryBox}>
           <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Valor total</Text><Text style={styles.summaryValueBold}>R$ {amount}</Text></View>
           <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Por parcela</Text><Text style={styles.summaryValueBlue}>{numInstallments}x de R$ {installmentValue}</Text></View>
-          <View style={styles.summaryRow}><Text style={styles.summaryLabel}>1º vencimento</Text><Text style={styles.summaryValueBlue}>{date.toLocaleDateString('pt-BR')}</Text></View>
         </View>
-        <Text style={styles.scheduleTitle}>Cronograma de parcelas</Text>
+        <Text style={styles.scheduleTitle}>Cronograma</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scheduleScroll}>{schedule}</ScrollView>
       </View>
     );
   };
 
   return (
-    <Modal 
-      visible={visible} 
-      transparent 
-      animationType="slide"
-      onRequestClose={handleClose}
-    >
+    <Modal visible={visible} transparent animationType="none" onRequestClose={closeModal}>
       <View style={styles.overlay}>
-        {/* Backdrop: TouchableWithoutFeedback garante que o clique fora feche sem efeito visual de clique */}
-        <TouchableWithoutFeedback onPress={handleClose}>
-          <View style={styles.backdrop} />
-        </TouchableWithoutFeedback>
+        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={closeModal} />
+        </Animated.View>
         
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.sheetContainer}
-        >
-          <View style={styles.sheet}>
-            <View style={styles.handle} />
-            
-            <View style={styles.header}>
-              <View>
-                <Text style={styles.title}>Lançar Despesa</Text>
-                <Text style={styles.subtitle}>Registre um gasto no seu cartão</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ justifyContent: 'flex-end' }}>
+          <Animated.View style={[styles.sheet, { transform: [{ translateY: pan }] }]}>
+
+            <View {...panResponder.panHandlers} style={styles.gestureCapture}>
+              <View style={styles.handle} />
+              <View style={styles.header}>
+                <View>
+                  <Text style={styles.title}>Lançar Despesa</Text>
+                  <Text style={styles.subtitle}>Registre um gasto no seu cartão</Text>
+                </View>
+                <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
+                  <X size={18} color={colors.textPrimary} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-                <X size={20} color={colors.textPrimary} />
-              </TouchableOpacity>
             </View>
 
             <ScrollView 
               contentContainerStyle={styles.content} 
               showsVerticalScrollIndicator={false} 
               keyboardShouldPersistTaps="handled"
+              bounces={false}
             >
-              <Text style={styles.sectionLabel}>Escolha o Cartão</Text>
+              <Text style={styles.inputLabel}>Escolha o Cartão</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
                 {AVAILABLE_CARDS.map((card) => (
                   <TouchableOpacity 
-                    key={card.id}
-                    onPress={() => setSelectedCard(card)}
+                    key={card.id} 
+                    onPress={() => setSelectedCard(card)} 
                     style={[styles.cardChip, selectedCard.id === card.id && { borderColor: card.color, backgroundColor: card.color + '10' }]}
                   >
                     <View style={[styles.cardDot, { backgroundColor: card.color }]} />
-                    <View>
-                      <Text style={[styles.cardChipName, selectedCard.id === card.id && { color: card.color }]}>{card.name}</Text>
-                      <Text style={styles.cardChipDigits}>•••• {card.lastDigits}</Text>
-                    </View>
+                    <Text style={[styles.cardChipName, selectedCard.id === card.id && { color: card.color }]}>{card.name}</Text>
                     {selectedCard.id === card.id && <Check size={14} color={card.color} style={{ marginLeft: 8 }} />}
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
-              <View style={[styles.inputCard, { marginTop: spacing.md }]}>
-                <View style={styles.inputRow}>
-                  <View style={styles.labelGroup}><AlignLeft size={18} color={colors.textSecondary} /><Text style={styles.inputLabel}>Descrição</Text></View>
-                  <TextInput 
-                    placeholder="Ex: Aluguel..." 
-                    value={description} 
-                    onChangeText={setDescription} 
-                    style={styles.textInput} 
-                    textAlign="right" 
-                    placeholderTextColor={colors.border} 
-                  />
-                </View>
+              <View style={styles.mainCard}>
+                <View style={styles.infoRow}><Text style={styles.infoLabel}>Valor</Text><TextInput placeholder="R$ 0,00" keyboardType="numeric" value={amount} onChangeText={(t) => setAmount(formatCurrency(t))} style={styles.amountInput} /></View>
                 <View style={styles.divider} />
-                <View style={styles.inputRow}>
-                  <View style={styles.labelGroup}><Text style={[styles.inputLabel, { fontWeight: '600', color: colors.textPrimary }]}>R$ Valor</Text></View>
-                  <TextInput 
-                    placeholder="0,00" 
-                    keyboardType="numeric" 
-                    value={amount} 
-                    onChangeText={(t) => setAmount(formatCurrency(t))} 
-                    style={styles.amountInput} 
-                    textAlign="right" 
-                  />
-                </View>
+                <TouchableOpacity style={styles.infoRow} onPress={() => setShowDatePicker(true)}><Text style={styles.infoLabel}>Data</Text><View style={styles.valueWithIcon}><Text style={styles.infoValue}>{date.toLocaleDateString('pt-BR')}</Text><ChevronRight size={18} color={colors.textSecondary} /></View></TouchableOpacity>
               </View>
 
-              <Text style={styles.sectionLabel}>Categoria</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-                {CATEGORIES.map((item) => (
-                  <TouchableOpacity key={item.id} onPress={() => setCategory(item)} style={[styles.chip, category.id === item.id && { borderColor: item.color, backgroundColor: item.color + '10' }]}>
-                    <View style={[styles.categoryDot, { backgroundColor: item.color }]} />
-                    <Text style={[styles.chipText, category.id === item.id && { color: item.color, fontWeight: '700' }]}>{item.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <Text style={styles.sectionLabel}>Parcelamento</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-                {INSTALLMENTS.map((opt) => (
-                  <TouchableOpacity key={opt} onPress={() => setInstallment(opt)} style={[styles.installmentChip, installment === opt && styles.installmentChipActive]}>
-                    <Text style={[styles.installmentText, installment === opt && styles.installmentTextActive]}>{opt}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              <View style={styles.mutedCard}>
+                <Text style={styles.mutedCardHeader}>Detalhes da Fatura</Text>
+                <Text style={styles.sectionLabelMini}>Categoria</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.miniChipScroll}>
+                   {CATEGORIES.map((item) => (
+                     <TouchableOpacity key={item.id} onPress={() => setCategory(item)} style={[styles.miniChip, category.id === item.id && { backgroundColor: item.color + '20', borderColor: item.color }]}>
+                       <Text style={[styles.miniChipText, category.id === item.id && { color: item.color, fontWeight: '700' }]}>{item.label}</Text>
+                     </TouchableOpacity>
+                   ))}
+                </ScrollView>
+                <Text style={[styles.sectionLabelMini, { marginTop: 16 }]}>Parcelas</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.miniChipScroll}>
+                  {INSTALLMENTS.map((opt) => (
+                    <TouchableOpacity key={opt} onPress={() => setInstallment(opt)} style={[styles.miniChip, installment === opt && { borderColor: colors.primaryLight, backgroundColor: '#EFF6FF' }]}>
+                      <Text style={[styles.miniChipText, installment === opt && { color: colors.primaryLight, fontWeight: '700' }]}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
 
               {renderInstallmentSchedule()}
 
-              <TouchableOpacity style={[styles.inputCard, { marginTop: spacing.lg }]} onPress={() => setShowDatePicker(true)}>
-                <View style={styles.inputRow}>
-                  <View style={styles.labelGroup}><Calendar size={18} color={colors.textSecondary} /><Text style={styles.inputLabel}>Data da Compra</Text></View>
-                  <View style={styles.dateValueBox}>
-                    <Text style={styles.dateValueText}>{date.toLocaleDateString('pt-BR')}</Text>
-                    <ChevronRight size={16} color={colors.border} />
-                  </View>
-                </View>
-              </TouchableOpacity>
-
-              {showDatePicker && (
-                <DateTimePicker 
-                  value={date} 
-                  mode="date" 
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'} 
-                  onChange={(e, d) => { 
-                    setShowDatePicker(false); 
-                    if (d) setDate(d); 
-                  }} 
-                />
-              )}
-
-              <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
-                  <Text style={styles.cancelButtonText}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.saveButton, (!description || !amount) ? styles.buttonDisabled : { backgroundColor: colors.primary }]} 
-                  disabled={!description || !amount} 
-                  onPress={handleSave}
-                >
-                  <Text style={styles.saveButtonText}>Confirmar Lançamento</Text>
-                </TouchableOpacity>
+              <View style={styles.descriptionContainer}>
+                <Text style={styles.descriptionHeader}>Descrição</Text>
+                <TextInput placeholder="Adicione uma descrição..." multiline value={description} onChangeText={setDescription} style={styles.descriptionInput} placeholderTextColor={colors.textSecondary} />
               </View>
+
+              <View style={{ height: 140 }} /> 
             </ScrollView>
-          </View>
+
+            <View style={styles.fixedFooter}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={closeModal}>
+                <Text style={styles.cancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.continueBtn, (!amount || !description) && { opacity: 0.6 }]} onPress={handleSave} disabled={!amount || !description}>
+                <Text style={styles.continueBtnText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
         </KeyboardAvoidingView>
+
+        {showDatePicker && (<DateTimePicker value={date} mode="date" display="default" onChange={(e, d) => { setShowDatePicker(false); if (d) setDate(d); }} />)}
       </View>
     </Modal>
   );
@@ -253,64 +236,76 @@ export function AddCardBillsModal({ visible, onClose, onSave }: Props) {
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheetContainer: { justifyContent: 'flex-end' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 23, 42, 0.4)' },
   sheet: {
     backgroundColor: colors.background,
     borderTopLeftRadius: 32, borderTopRightRadius: 32,
     maxHeight: SCREEN_HEIGHT * 0.9,
-    width: '100%',
+    minHeight: 100,
+  },
+  gestureCapture: {
+    paddingTop: 12, 
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 32, borderTopRightRadius: 32,
+    zIndex: 5,
   },
   handle: {
-    width: 36, height: 4, backgroundColor: colors.border,
-    borderRadius: radius.pill, alignSelf: 'center', marginVertical: spacing.md,
+    width: 40, height: 4, backgroundColor: colors.border,
+    borderRadius: 2, alignSelf: 'center', marginBottom: 12,
   },
   header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: spacing.xl, marginBottom: spacing.md,
+    flexDirection: 'row', justifyContent: 'space-between', 
+    alignItems: 'center', paddingHorizontal: 24, marginBottom: 20,
   },
-  title: { ...typography.h2, color: colors.textPrimary },
-  subtitle: { ...typography.caption, color: colors.textSecondary },
-  closeButton: { padding: spacing.xs, backgroundColor: colors.mutedSurface, borderRadius: radius.pill },
-  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl },
-  sectionLabel: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.lg, marginBottom: spacing.sm, marginLeft: 4, fontWeight: '600' },
-  horizontalScroll: { marginHorizontal: -spacing.xl, paddingHorizontal: spacing.xl },
-  cardChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: 10, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, marginRight: spacing.sm },
-  cardDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  cardChipName: { fontSize: 13, color: colors.textPrimary, fontWeight: '600' },
-  cardChipDigits: { fontSize: 11, color: colors.textSecondary },
-  inputCard: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
-  inputRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, minHeight: 56 },
-  labelGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  inputLabel: { fontSize: 13, color: colors.textSecondary },
-  textInput: { flex: 1, fontSize: 14, color: colors.textPrimary, fontWeight: '600', marginLeft: 10 },
-  amountInput: { flex: 1, fontSize: 15, color: colors.textPrimary, fontWeight: '600', marginLeft: 10 },
-  divider: { height: 1, backgroundColor: colors.border, marginHorizontal: spacing.md },
-  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, marginRight: spacing.sm },
-  categoryDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
-  chipText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
-  installmentChip: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, marginRight: spacing.xs },
-  installmentChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + '10' },
-  installmentText: { fontSize: 13, color: colors.textSecondary },
-  installmentTextActive: { color: colors.primary, fontWeight: '700' },
-  installmentContainer: { marginTop: spacing.md, backgroundColor: '#F8FAFC', borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: '#E2E8F0' },
-  summaryBox: { marginBottom: spacing.md },
+  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+  subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  closeButton: { 
+    width: 34, height: 34, borderRadius: 17, 
+    backgroundColor: colors.surface, alignItems: 'center', 
+    justifyContent: 'center', borderWidth: 1, borderColor: colors.border 
+  },
+  content: { paddingHorizontal: 20 },
+  inputLabel: { fontSize: 13, color: colors.textSecondary, marginBottom: 12, marginLeft: 4, fontWeight: '600' },
+  horizontalScroll: { marginHorizontal: -20, paddingHorizontal: 20, marginBottom: 20 },
+  cardChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 44, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, marginRight: 8 },
+  cardDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
+  cardChipName: { fontSize: 13, color: colors.textPrimary, fontWeight: '500' },
+  mainCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 16, marginBottom: 16 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
+  infoLabel: { fontSize: 14, color: colors.textSecondary },
+  valueWithIcon: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  infoValue: { fontSize: 14, color: colors.textPrimary, fontWeight: '700' },
+  amountInput: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, textAlign: 'right', flex: 1 },
+  divider: { height: 1, backgroundColor: colors.border },
+  mutedCard: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 16 },
+  mutedCardHeader: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 16 },
+  sectionLabelMini: { fontSize: 11, color: colors.textSecondary, textTransform: 'uppercase', fontWeight: '600', marginBottom: 8, marginLeft: 4 },
+  miniChipScroll: { marginHorizontal: -16, paddingHorizontal: 16, marginBottom: 3, },
+  miniChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.border, marginRight: 6, backgroundColor: colors.surface },
+  miniChipText: { fontSize: 12, color: colors.textSecondary },
+  descriptionContainer: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16, marginTop: 4 },
+  descriptionHeader: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 12 },
+  descriptionInput: { height: 80, textAlignVertical: 'top', fontSize: 14, color: colors.textPrimary, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12 },
+  installmentContainer: { marginBottom: 16, backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border },
+  summaryBox: { marginBottom: 12 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   summaryLabel: { fontSize: 12, color: colors.textSecondary },
   summaryValueBold: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
-  summaryValueBlue: { fontSize: 13, fontWeight: '600', color: '#2563EB' },
-  scheduleTitle: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: spacing.sm },
-  scheduleScroll: { marginHorizontal: -spacing.md, paddingHorizontal: spacing.md },
-  scheduleCard: { backgroundColor: '#EFF6FF', padding: 12, borderRadius: radius.md, borderWidth: 1, borderColor: '#DBEAFE', marginRight: 8, minWidth: 100, alignItems: 'center' },
-  scheduleNumber: { fontSize: 11, color: '#1E40AF', fontWeight: '600' },
-  scheduleValue: { fontSize: 13, color: '#1E40AF', fontWeight: '700', marginVertical: 2 },
-  scheduleMonth: { fontSize: 11, color: '#60A5FA', fontWeight: '500' },
-  dateValueBox: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dateValueText: { fontSize: 14, color: colors.textPrimary, fontWeight: '600' },
-  actionRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl },
-  cancelButton: { flex: 1, height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
-  cancelButtonText: { fontWeight: '600', color: colors.textSecondary },
-  saveButton: { flex: 2, height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
-  buttonDisabled: { opacity: 0.5, backgroundColor: '#94a3b8' },
-  saveButtonText: { fontWeight: '700', color: colors.white, fontSize: 15 },
+  summaryValueBlue: { fontSize: 13, fontWeight: '600', color: colors.primaryLight },
+  scheduleTitle: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 10 },
+  scheduleScroll: { marginHorizontal: -16, paddingHorizontal: 16 },
+  scheduleCard: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border, marginRight: 8, minWidth: 100, alignItems: 'center' },
+  scheduleNumber: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
+  scheduleValue: { fontSize: 13, color: colors.textPrimary, fontWeight: '700', marginVertical: 2 },
+  scheduleMonth: { fontSize: 11, color: colors.primaryLight, fontWeight: '500' },
+  fixedFooter: { 
+    position: 'absolute', bottom: 0, left: 0, right: 0, 
+    flexDirection: 'row', gap: 12, paddingHorizontal: 20, 
+    paddingTop: 16, paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    backgroundColor: colors.background, borderTopWidth: 1, borderColor: colors.border,
+  },
+  cancelBtn: { flex: 1, height: 54, borderRadius: 14, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  cancelBtnText: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+  continueBtn: { flex: 1, height: 54, borderRadius: 14, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  continueBtnText: { fontSize: 15, fontWeight: '600', color: colors.white },
 });
