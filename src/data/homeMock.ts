@@ -14,6 +14,7 @@ export const homeDashboardMock: HomeDashboardData = {
     { weekLabel: 'S3', income: 1900, expense: 910 },
     { weekLabel: 'S4', income: 2000, expense: 850 },
   ],
+  categorySpending: [],
   recentTransactions: [
       { 
         id: '1', 

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { financeQueryKeys } from '../../finance/queryKeys';
 import type { CreateGroupInput, CreateGroupSplitInput, RequestSettlementInput } from '../../../types/groups';
 import {
   confirmGroupSettlement,
@@ -65,6 +66,7 @@ export function useCreateGroupSplitMutation(currentUserId: string | null | undef
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupsQueryKeys.list(currentUserId) });
       queryClient.invalidateQueries({ queryKey: groupsQueryKeys.detail(currentUserId, groupId) });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.root });
     },
   });
 }
@@ -80,6 +82,7 @@ export function useRequestSettlementMutation(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupsQueryKeys.list(currentUserId) });
       queryClient.invalidateQueries({ queryKey: groupsQueryKeys.detail(currentUserId, groupId) });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.root });
     },
   });
 }
@@ -95,6 +98,7 @@ export function useConfirmSettlementMutation(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: groupsQueryKeys.list(currentUserId) });
       queryClient.invalidateQueries({ queryKey: groupsQueryKeys.detail(currentUserId, groupId) });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.root });
     },
   });
 }

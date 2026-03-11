@@ -1,321 +1,231 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { 
-  Modal, View, Text, StyleSheet, TextInput, ScrollView, 
-  TouchableOpacity, Dimensions, KeyboardAvoidingView, 
-  Platform, Animated, PanResponder 
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import { RefreshCw, X, ArrowLeftRight, ArrowRight } from 'lucide-react-native';
-import { colors, spacing, radius, typography } from '../theme';
-import { accountsMock } from '../data/accountsMock';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+import type { AccountBalanceSnapshot, CreateTransferInput } from '../features/accounts/types';
+import { colors, radius, spacing, typography } from '../theme';
 
-export function TransferModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+type TransferModalProps = {
+  visible: boolean;
+  accounts: AccountBalanceSnapshot[];
+  submitting?: boolean;
+  onClose: () => void;
+  onSubmit: (input: CreateTransferInput) => Promise<void> | void;
+};
+
+export function TransferModal({
+  visible,
+  accounts,
+  submitting = false,
+  onClose,
+  onSubmit,
+}: TransferModalProps) {
   const [amount, setAmount] = useState('');
-  const [fromAccount, setFromAccount] = useState(accountsMock[0]?.id || '');
-  const [toAccount, setToAccount] = useState(accountsMock[1]?.id || '');
+  const [fromAccountId, setFromAccountId] = useState('');
+  const [toAccountId, setToAccountId] = useState('');
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const pan = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 5,
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) pan.setValue(gestureState.dy);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 120) handleClose();
-        else {
-          Animated.timing(pan, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-        }
-      },
-    })
-  ).current;
+  const activeAccounts = useMemo(() => accounts.filter((account) => account.isActive), [accounts]);
 
   useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(pan, { toValue: 0, duration: 350, useNativeDriver: true })
-      ]).start();
-    }
-  }, [visible]);
-
-  const handleClose = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
-      Animated.timing(pan, { toValue: SCREEN_HEIGHT, duration: 300, useNativeDriver: true })
-    ]).start(() => {
+    if (!visible) {
       setAmount('');
-      onClose();
-      pan.setValue(SCREEN_HEIGHT);
+      setFromAccountId(activeAccounts[0]?.id ?? '');
+      setToAccountId(activeAccounts[1]?.id ?? activeAccounts[0]?.id ?? '');
+      return;
+    }
+
+    setFromAccountId((current) => current || activeAccounts[0]?.id || '');
+    setToAccountId((current) => current || activeAccounts[1]?.id || activeAccounts[0]?.id || '');
+  }, [activeAccounts, visible]);
+
+  const handleSubmit = async () => {
+    await onSubmit({
+      fromAccountId,
+      toAccountId,
+      amount: Number(amount.replace(/\./g, '').replace(',', '.') || 0),
     });
-  }, [onClose]);
-
-  const handleTransfer = () => {
-    console.log({
-      from: accountsMock.find(a => a.id === fromAccount)?.name,
-      to: accountsMock.find(a => a.id === toAccount)?.name,
-      value: amount
-    });
-    handleClose();
   };
-
-  const swapAccounts = () => {
-    const temp = fromAccount;
-    setFromAccount(toAccount);
-    setToAccount(temp);
-  };
-
-  const selectedFrom = accountsMock.find(a => a.id === fromAccount);
-  const selectedTo = accountsMock.find(a => a.id === toAccount);
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={handleClose} />
-        </Animated.View>
-        
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Animated.View style={[styles.sheet, { transform: [{ translateY: pan }] }]}>
-            
-            <View {...panResponder.panHandlers} style={styles.gestureCapture}>
-              <View style={styles.handle} />
-              <View style={styles.header}>
-                <View>
-                  <Text style={styles.title}>Transferência</Text>
-                  <Text style={styles.subtitle}>Mover saldo entre suas contas</Text>
-                </View>
-                <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-                  <X size={18} color={colors.textPrimary} />
-                </TouchableOpacity>
-              </View>
-            </View>
+        <Pressable style={styles.backdrop} onPress={onClose} />
+        <View style={styles.sheet}>
+          <Text style={styles.title}>Transferir saldo</Text>
+          <Text style={styles.subtitle}>As duas pontas vao refletir no banco de dados.</Text>
 
-            <ScrollView 
-              contentContainerStyle={styles.content} 
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-            >
-              <View style={styles.transferFlowCard}>
-                <View style={styles.flowItem}>
-                  <Text style={styles.flowLabel}>De (Origem)</Text>
-                  <Text style={styles.flowAccountName} numberOfLines={1}>
-                    {selectedFrom?.name || 'Selecionar'}
-                  </Text>
-                </View>
-                
-                <TouchableOpacity onPress={swapAccounts} style={styles.swapButton} activeOpacity={0.7}>
-                  <ArrowLeftRight size={18} color={colors.primary} />
-                </TouchableOpacity>
+          <TextInput
+            placeholder="Valor"
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="decimal-pad"
+            style={styles.input}
+            placeholderTextColor={colors.textSecondary}
+          />
 
-                <View style={[styles.flowItem, { alignItems: 'flex-end' }]}>
-                  <Text style={styles.flowLabel}>Para (Destino)</Text>
-                  <Text style={[styles.flowAccountName, { textAlign: 'right' }]} numberOfLines={1}>
-                    {selectedTo?.name || 'Selecionar'}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.sectionLabel}>Conta de Saída</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-                {accountsMock.map((acc) => (
-                  <TouchableOpacity 
-                    key={`from-${acc.id}`}
-                    onPress={() => setFromAccount(acc.id)}
-                    style={[styles.accountChip, fromAccount === acc.id && styles.accountChipActive]}
-                  >
-                    <Text style={[styles.accountChipText, fromAccount === acc.id && styles.accountChipTextActive]}>
-                      {acc.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <Text style={styles.sectionLabel}>Conta de Entrada</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-                {accountsMock.map((acc) => (
-                  <TouchableOpacity 
-                    key={`to-${acc.id}`}
-                    onPress={() => setToAccount(acc.id)}
-                    disabled={acc.id === fromAccount}
-                    style={[
-                      styles.accountChip, 
-                      toAccount === acc.id && styles.accountChipActive,
-                      acc.id === fromAccount && styles.accountDisabled
-                    ]}
-                  >
-                    <Text style={[styles.accountChipText, toAccount === acc.id && styles.accountChipTextActive]}>
-                      {acc.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <View style={styles.inputCard}>
-                <Text style={styles.inputLabel}>Quanto deseja transferir?</Text>
-                <View style={styles.amountContainer}>
-                  <Text style={styles.currencyPrefix}>R$</Text>
-                  <TextInput 
-                    placeholder="0,00" 
-                    keyboardType="decimal-pad"
-                    value={amount}
-                    onChangeText={setAmount}
-                    style={styles.amountInput}
-                    placeholderTextColor={colors.textSecondary}
-                    maxLength={10}
-                  />
-                </View>
-              </View>
-
-              <View style={{ height: 140 }} />
-            </ScrollView>
-
-            <View style={styles.fixedFooter}>
-              <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.saveButton, (!amount || fromAccount === toAccount) && { opacity: 0.5 }]} 
-                onPress={handleTransfer}
-                disabled={!amount || fromAccount === toAccount}
+          <Text style={styles.label}>Origem</Text>
+          <View style={styles.chips}>
+            {activeAccounts.map((account) => (
+              <Pressable
+                key={`from-${account.id}`}
+                onPress={() => setFromAccountId(account.id)}
+                style={[styles.chip, fromAccountId === account.id && styles.chipActive]}
               >
-                <RefreshCw size={18} color={colors.white} style={{ marginRight: 8 }} />
-                <Text style={styles.saveButtonText}>Confirmar</Text>
-              </TouchableOpacity>
-            </View>
+                <Text style={[styles.chipText, fromAccountId === account.id && styles.chipTextActive]}>
+                  {account.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
 
-          </Animated.View>
-        </KeyboardAvoidingView>
+          <Text style={styles.label}>Destino</Text>
+          <View style={styles.chips}>
+            {activeAccounts.map((account) => (
+              <Pressable
+                key={`to-${account.id}`}
+                onPress={() => setToAccountId(account.id)}
+                disabled={account.id === fromAccountId}
+                style={[
+                  styles.chip,
+                  toAccountId === account.id && styles.chipActive,
+                  account.id === fromAccountId && styles.chipDisabled,
+                ]}
+              >
+                <Text style={[styles.chipText, toAccountId === account.id && styles.chipTextActive]}>
+                  {account.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.actions}>
+            <Pressable style={styles.secondaryButton} onPress={onClose}>
+              <Text style={styles.secondaryButtonText}>Cancelar</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.primaryButton, (!amount || fromAccountId === toAccountId || submitting) && styles.primaryButtonDisabled]}
+              onPress={handleSubmit}
+              disabled={!amount || fromAccountId === toAccountId || submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <Text style={styles.primaryButtonText}>Transferir</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 23, 42, 0.4)' },
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+  },
+  backdrop: {
+    flex: 1,
+  },
   sheet: {
     backgroundColor: colors.background,
-    borderTopLeftRadius: 32, borderTopRightRadius: 32,
-    maxHeight: SCREEN_HEIGHT * 0.85,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: spacing.lg,
+    gap: spacing.md,
   },
-  gestureCapture: {
-    paddingTop: 12, backgroundColor: colors.background,
-    borderTopLeftRadius: 32, borderTopRightRadius: 32,
-    zIndex: 10,
+  title: {
+    ...typography.h2,
+    color: colors.textPrimary,
   },
-  handle: {
-    width: 40, height: 4, backgroundColor: colors.border,
-    borderRadius: 2, alignSelf: 'center', marginBottom: 12,
+  subtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', 
-    alignItems: 'center', paddingHorizontal: 24, marginBottom: 20,
+  label: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '700',
   },
-  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
-  subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  closeButton: { 
-    width: 34, height: 34, borderRadius: 17, 
-    backgroundColor: colors.surface, alignItems: 'center', 
-    justifyContent: 'center', borderWidth: 1, borderColor: colors.border 
-  },
-  content: { paddingHorizontal: 24 },
-  
-  transferFlowCard: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: colors.surface, padding: 20,
-    borderRadius: 20, borderWidth: 1, borderColor: colors.border,
-    marginBottom: 24,
-  },
-  flowItem: { flex: 1 },
-  flowLabel: { fontSize: 10, color: colors.textSecondary, fontWeight: '700', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 0.5 },
-  flowAccountName: { fontSize: 15, color: colors.textPrimary, fontWeight: '700' },
-  swapButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#EEF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 12,
-    borderColor: '#D0DBFF',
-    borderWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-
-  sectionLabel: { fontSize: 12, color: colors.textSecondary, marginBottom: 12, fontWeight: '700', textTransform: 'uppercase' },
-  horizontalScroll: { marginHorizontal: -24, paddingHorizontal: 24, marginBottom: 24 },
-  accountChip: {
-    paddingHorizontal: 16, height: 40, justifyContent: 'center',
-    backgroundColor: colors.surface, borderRadius: 10,
-    borderWidth: 1, borderColor: colors.border, marginRight: 8,
-  },
-  accountChipActive: { borderColor: colors.primary, backgroundColor: '#EEF2FF' },
-  accountDisabled: { opacity: 0.3, backgroundColor: colors.mutedSurface },
-  accountChipText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
-  accountChipTextActive: { color: colors.primary, fontWeight: '700' },
-
-inputCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
+  input: {
+    minHeight: 48,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    alignItems: 'center', 
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    color: colors.textPrimary,
   },
-  inputLabel: { 
-    fontSize: 14, 
-    color: colors.textSecondary, 
-    marginBottom: 12,
-    fontWeight: '500'
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
-  amountContainer: { 
-    flexDirection: 'row', 
+  chip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  chipActive: {
+    backgroundColor: '#DBEAFE',
+    borderColor: colors.primary,
+  },
+  chipDisabled: {
+    opacity: 0.35,
+  },
+  chipText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: colors.primary,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  secondaryButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    width: 100,
   },
-  currencyPrefix: { 
-    fontSize: 24, 
-    color: colors.textPrimary, 
+  secondaryButtonText: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  primaryButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
+  },
+  primaryButtonText: {
+    ...typography.body,
+    color: colors.white,
     fontWeight: '700',
-    marginRight: 4,
-    marginTop: 4,
   },
-  amountInput: { 
-    fontSize: 30, 
-    color: colors.textPrimary, 
-    fontWeight: '700',
-    padding: 0,
-    minWidth: 150,
-    textAlign: 'center', 
-    overflow: 'hidden',
-  },
-
-  fixedFooter: { 
-    position: 'absolute', bottom: 0, left: 0, right: 0, 
-    flexDirection: 'row', gap: 12, paddingHorizontal: 24, 
-    paddingTop: 16, paddingBottom: Platform.OS === 'ios' ? 34 : 20,
-    backgroundColor: colors.background, borderTopWidth: 1, borderColor: colors.border,
-  },
-  cancelButton: {
-    flex: 1, height: 54, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface,
-  },
-  cancelButtonText: { fontSize: 15, color: colors.textPrimary, fontWeight: '600' },
-  saveButton: {
-    flex: 1, height: 54, backgroundColor: colors.primaryLight, borderRadius: 14,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-  },
-  saveButtonText: { fontSize: 15, color: colors.white, fontWeight: '700' },
 });

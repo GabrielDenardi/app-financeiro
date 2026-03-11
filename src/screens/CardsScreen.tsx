@@ -1,497 +1,436 @@
-import React, { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Dimensions,
+  ActivityIndicator,
+  Alert,
+  Pressable,
   SafeAreaView,
-  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { 
-  Plus, 
-  ChevronLeft, 
-  AlertTriangle, 
-  Receipt 
-} from 'lucide-react-native';
-import { colors, spacing, radius, typography } from '../theme';
-import { AddCardModal } from '../components/AddCardModal';
+import { ArrowLeft, CreditCard, Plus, Receipt } from 'lucide-react-native';
+
 import { AddCardBillsModal } from '../components/AddCardBillsModal';
-
-
-const { width } = Dimensions.get('window');
-
-const MOCK_CARDS = [
-  { 
-    id: '1', 
-    name: 'Nubank Principal', 
-    institution: 'Nubank', 
-    lastDigits: '4582', 
-    limit: 5000, 
-    usedLimit: 1250.50, 
-    dueDay: 10, 
-    closingDay: 3, 
-    color: ['#8A05BE', '#530275'], 
-    network: 'Mastercard' 
-  },
-  { 
-    id: '2', 
-    name: 'Inter Black', 
-    institution: 'Inter', 
-    lastDigits: '9901', 
-    limit: 15000, 
-    usedLimit: 4800, 
-    dueDay: 25, 
-    closingDay: 18, 
-    color: ['#FF7A00', '#CC6200'], 
-    network: 'Visa' 
-  },
-];
+import { AddCardModal } from '../components/AddCardModal';
+import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import { useAccounts } from '../features/accounts/hooks/useAccounts';
+import {
+  useCardInvoices,
+  useCards,
+  useCreateCardMutation,
+  usePayCardInvoiceMutation,
+  useRecordCardChargeMutation,
+} from '../features/cards/hooks/useCards';
+import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
+import { formatCurrencyBRL } from '../utils/format';
+import { colors, radius, spacing, typography } from '../theme';
 
 export default function CardsScreen({ navigation }: any) {
-  const totalInvoice = 6050.50;
-  const urgentAlerts = 1;
-  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
-  const [isAddCardBillsModalVisible, setIsAddCardBillsModalVisible] = useState(false);
+  const currentUser = useAuthenticatedUser();
+  const cardsQuery = useCards(currentUser?.id);
+  const invoicesQuery = useCardInvoices(currentUser?.id);
+  const accountsQuery = useAccounts(currentUser?.id);
+  const categoriesQuery = useFinanceCategories(currentUser?.id);
+  const createCardMutation = useCreateCardMutation(currentUser?.id);
+  const recordChargeMutation = useRecordCardChargeMutation(currentUser?.id);
+  const payInvoiceMutation = usePayCardInvoiceMutation(currentUser?.id);
+
+  const [cardModalVisible, setCardModalVisible] = useState(false);
+  const [chargeModalVisible, setChargeModalVisible] = useState(false);
+  const [paymentAccountId, setPaymentAccountId] = useState('');
+
+  const cards = cardsQuery.data ?? [];
+  const invoices = invoicesQuery.data ?? [];
+  const activeAccounts = (accountsQuery.data ?? []).filter((account) => account.isActive);
+  const totalOpenInvoices = invoices.reduce((sum, invoice) => sum + invoice.openAmount, 0);
+  const urgentAlerts = invoices.filter((invoice) => invoice.isDueSoon).length;
+
+  useEffect(() => {
+    setPaymentAccountId((current) => current || activeAccounts[0]?.id || '');
+  }, [activeAccounts]);
+
+  const handleCreateCard = async (input: any) => {
+    try {
+      await createCardMutation.mutateAsync(input);
+      setCardModalVisible(false);
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel criar o cartao.');
+    }
+  };
+
+  const handleCreateCharge = async (input: any) => {
+    try {
+      await recordChargeMutation.mutateAsync(input);
+      setChargeModalVisible(false);
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel lancar a compra.');
+    }
+  };
+
+  const handlePayInvoice = async (cardId: string, invoiceMonth: string) => {
+    if (!paymentAccountId) {
+      Alert.alert('Conta necessaria', 'Selecione uma conta para pagar a fatura.');
+      return;
+    }
+
+    try {
+      await payInvoiceMutation.mutateAsync({
+        cardId,
+        invoiceMonth,
+        accountId: paymentAccountId,
+      });
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel pagar a fatura.');
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <LinearGradient
-            colors={[colors.primary, colors.primary]} 
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.headerGradient}
-          >
-            <SafeAreaView style={styles.safeArea}>
-              <View style={styles.headerContent}>
-                <View style={styles.headerTop}>
-                  <TouchableOpacity 
-                    onPress={() => navigation.goBack()} 
-                    style={styles.backButton}
-                  >
-                    <ChevronLeft color={colors.white} size={24} />
-                  </TouchableOpacity>
-                  
-                  <Text style={styles.headerTitle}>Meus Cartões</Text>
-                  
-                  <TouchableOpacity 
-                    style={styles.addButton} 
-                    onPress={() => setIsAddModalVisible(true)}
-                  >
-                        <Plus color={colors.white} size={20} />
-                        <Text style={styles.addButtonText}>Novo</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Total Faturas</Text>
-                    <Text style={styles.statValue}>
-                      R$ {totalInvoice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.statDivider} />
-                  
-                  <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Alertas</Text>
-                    <Text style={[styles.statValue, { color: '#FCD34D' }]}>
-                      {urgentAlerts}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </SafeAreaView>
-          </LinearGradient>
+          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+            <ArrowLeft size={22} color={colors.textPrimary} />
+          </Pressable>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>Meus cartoes</Text>
+            <Text style={styles.subtitle}>Limite, compras parceladas e pagamento de fatura reais.</Text>
+          </View>
         </View>
 
-        <View style={styles.mainContent}>
-          {urgentAlerts > 0 && (
-            <View style={styles.alertCard}>
-              <View style={styles.alertIcon}>
-                <AlertTriangle color="#d97706" size={20} />
-              </View>
-              <View style={styles.alertTextContent}>
-                <Text style={styles.alertTitle}>Nubank Principal</Text>
-                <Text style={styles.alertSubtitle}>Fatura vence em 3 dias • R$ 1.250,50</Text>
-              </View>
-              <TouchableOpacity style={styles.alertAction}>
-                <Text style={styles.alertActionText}>Pagar</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryLabel}>Faturas em aberto</Text>
+          <Text style={styles.summaryValue}>{formatCurrencyBRL(totalOpenInvoices)}</Text>
+          <Text style={styles.summaryMeta}>{urgentAlerts} alerta(s) de vencimento nos proximos dias.</Text>
+        </View>
 
-          <Text style={styles.sectionLabel}>Cartões Ativos</Text>
-          
-          {MOCK_CARDS.map((card) => {
-            const limitProgress = (card.usedLimit / card.limit) * 100;
-            return (
-              <View key={card.id} style={styles.cardWrapper}>
-                <TouchableOpacity activeOpacity={0.9}>
-                  <LinearGradient
-                    colors={card.color as any}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.cardVisual}
-                  >
-                    <View style={styles.cardDecorator1} />
-                    <View style={styles.cardDecorator2} />
-                    <View style={styles.cardHeader}>
-                      <View>
-                        <Text style={styles.cardInst}>{card.institution}</Text>
-                        <Text style={styles.cardName}>{card.name}</Text>
-                      </View>
-                      <Text style={styles.cardNetwork}>{card.network}</Text>
-                    </View>
-                    <Text style={styles.cardDigits}>•••• •••• •••• {card.lastDigits}</Text>
-                    <View style={styles.cardFooter}>
-                      <View>
-                        <Text style={styles.cardLabel}>Vencimento</Text>
-                        <Text style={styles.cardInfo}>Dia {card.dueDay}</Text>
-                      </View>
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={styles.cardLabel}>Limite Disp.</Text>
-                        <Text style={styles.cardInfo}>
-                          R$ {(card.limit - card.usedLimit).toLocaleString('pt-BR')}
-                        </Text>
-                      </View>
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
+        <View style={styles.actionsRow}>
+          <Pressable style={styles.primaryAction} onPress={() => setCardModalVisible(true)}>
+            <Plus color={colors.white} size={18} />
+            <Text style={styles.primaryActionText}>Novo cartao</Text>
+          </Pressable>
+          <Pressable style={styles.secondaryAction} onPress={() => setChargeModalVisible(true)}>
+            <Receipt color={colors.primary} size={18} />
+            <Text style={styles.secondaryActionText}>Lancar compra</Text>
+          </Pressable>
+        </View>
 
-                <View style={styles.cardStatsRow}>
-                  <View style={styles.cardMiniStat}>
-                    <Text style={styles.miniStatLabel}>Fatura Atual</Text>
-                    <Text style={styles.miniStatValue}>R$ {card.usedLimit.toFixed(2)}</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Conta usada para pagar a fatura</Text>
+          <View style={styles.chipsWrap}>
+            {activeAccounts.map((account) => (
+              <Pressable
+                key={account.id}
+                onPress={() => setPaymentAccountId(account.id)}
+                style={[styles.filterChip, paymentAccountId === account.id && styles.filterChipActive]}
+              >
+                <Text style={[styles.filterChipText, paymentAccountId === account.id && styles.filterChipTextActive]}>
+                  {account.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Cartoes ativos</Text>
+          {cardsQuery.isLoading ? (
+            <ActivityIndicator />
+          ) : cards.length ? (
+            cards.map((card) => (
+              <View key={card.id} style={[styles.cardVisual, { backgroundColor: card.color }]}>
+                <View style={styles.cardHeader}>
+                  <View>
+                    <Text style={styles.cardInstitution}>{card.institution || 'Cartao'}</Text>
+                    <Text style={styles.cardName}>{card.name}</Text>
                   </View>
-                  <View style={styles.miniStatDivider} />
-                  <View style={styles.cardMiniStat}>
-                    <Text style={styles.miniStatLabel}>Limite Usado</Text>
-                    <View style={styles.progressContainer}>
-                      <View style={[styles.progressBar, { width: `${limitProgress}%` }]} />
-                    </View>
+                  <CreditCard color={colors.white} size={20} />
+                </View>
+                <Text style={styles.cardDigits}>•••• {card.lastDigits}</Text>
+                <View style={styles.cardFooter}>
+                  <View>
+                    <Text style={styles.cardFooterLabel}>Limite usado</Text>
+                    <Text style={styles.cardFooterValue}>{formatCurrencyBRL(card.usedLimitAmount)}</Text>
+                  </View>
+                  <View style={styles.cardFooterRight}>
+                    <Text style={styles.cardFooterLabel}>Disponivel</Text>
+                    <Text style={styles.cardFooterValue}>{formatCurrencyBRL(card.availableLimitAmount)}</Text>
                   </View>
                 </View>
               </View>
-            );
-          })}
+            ))
+          ) : (
+            <Text style={styles.emptyText}>Cadastre seu primeiro cartao para gerar parcelas e faturas.</Text>
+          )}
+        </View>
 
-          <TouchableOpacity 
-            style={styles.quickAddExpense}
-            onPress={() => setIsAddCardBillsModalVisible(true)}
-          >
-            <Receipt size={20} color={colors.primary} />
-            <Text style={styles.quickAddText}>Lançar compra</Text>
-          </TouchableOpacity>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Faturas</Text>
+          <View style={styles.listCard}>
+            {invoices.length ? (
+              invoices.map((invoice) => (
+                <View key={`${invoice.cardId}-${invoice.invoiceMonth}`} style={styles.invoiceRow}>
+                  <View style={styles.invoiceLeft}>
+                    <Text style={styles.invoiceTitle}>{invoice.cardName}</Text>
+                    <Text style={styles.invoiceMeta}>
+                      {invoice.invoiceMonth} • vence {invoice.dueDate ? invoice.dueDate.split('-').reverse().join('/') : '--'}
+                    </Text>
+                    <Text style={styles.invoiceMeta}>
+                      Aberto {formatCurrencyBRL(invoice.openAmount)} de {formatCurrencyBRL(invoice.invoiceAmount)}
+                    </Text>
+                  </View>
+                  <Pressable
+                    style={[styles.payButton, payInvoiceMutation.isPending && styles.payButtonDisabled]}
+                    onPress={() => handlePayInvoice(invoice.cardId, invoice.invoiceMonth)}
+                    disabled={payInvoiceMutation.isPending || invoice.openAmount <= 0}
+                  >
+                    {payInvoiceMutation.isPending ? (
+                      <ActivityIndicator color={colors.white} />
+                    ) : (
+                      <Text style={styles.payButtonText}>Pagar</Text>
+                    )}
+                  </Pressable>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>As faturas geradas pelas compras vao aparecer aqui.</Text>
+            )}
+          </View>
         </View>
       </ScrollView>
 
-      <AddCardModal 
-        visible={isAddModalVisible} 
-        onClose={() => setIsAddModalVisible(false)} 
+      <AddCardModal
+        visible={cardModalVisible}
+        submitting={createCardMutation.isPending}
+        onClose={() => setCardModalVisible(false)}
+        onSubmit={handleCreateCard}
       />
-
-      <AddCardBillsModal 
-        visible={isAddCardBillsModalVisible} 
-        onClose={() => setIsAddCardBillsModalVisible(false)} 
+      <AddCardBillsModal
+        visible={chargeModalVisible}
+        cards={cards}
+        categories={categoriesQuery.data ?? []}
+        submitting={recordChargeMutation.isPending}
+        onClose={() => setChargeModalVisible(false)}
+        onSubmit={handleCreateCharge}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: colors.background 
-  },
-  scrollContent: { 
-    paddingBottom: 40 
-  },
   safeArea: {
     flex: 1,
+    backgroundColor: colors.background,
   },
-  header: { 
-    minHeight: 220, 
-    width: '100%',
-    backgroundColor: 'transparent', 
-  },
-  headerGradient: { 
-    flex: 1, 
-    paddingTop: Platform.OS === 'ios' ? 0 : spacing.md, 
-    paddingBottom: spacing.xl + 10,
-    borderBottomLeftRadius: radius.lg * 1.5,
-    borderBottomRightRadius: radius.lg * 1.5,
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.shadow,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  headerContent: { 
-    paddingHorizontal: spacing.xl 
-  },
-  headerTop: {
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between',
-    marginTop: spacing.md, 
-    marginBottom: spacing.xl
-  },
-  headerTitle: { 
-    ...typography.h2, 
-    color: colors.white 
-  },
-  backButton: { 
-    padding: 8, 
-    marginLeft: -8 
-  },
-  addButton: {
-    paddingHorizontal: 12, 
-    paddingVertical: 8, 
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: radius.pill, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 4
-  },
-  addButtonText: { 
-    color: colors.white, 
-    fontWeight: '600', 
-    fontSize: 12 
-  },
-  statsRow: {
-    flexDirection: 'row', 
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: radius.lg, 
+  content: {
     padding: spacing.lg,
+    gap: spacing.lg,
   },
-  statItem: { 
-    flex: 1, 
-    alignItems: 'center' 
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.xl,
   },
-  statLabel: { 
-    ...typography.caption, 
-    color: 'rgba(255,255,255,0.8)', 
-    marginBottom: 4 
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  statValue: { 
-    ...typography.h2, 
-    color: colors.white 
+  headerText: {
+    flex: 1,
   },
-  statDivider: { 
-    width: 1, 
-    height: 30, 
-    backgroundColor: 'rgba(255,255,255,0.2)' 
+  title: {
+    ...typography.h1,
+    color: colors.textPrimary,
   },
-  mainContent: { 
-    paddingHorizontal: spacing.xl, 
-    marginTop: 24 
+  subtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
-  alertCard: {
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#fff7ed',
-    borderWidth: 1, 
-    borderColor: '#ffedd5', 
+  summaryCard: {
+    backgroundColor: colors.primary,
     borderRadius: radius.lg,
-    padding: spacing.md, 
-    marginBottom: spacing.xl,
-    elevation: 2, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1, 
-    shadowRadius: 2,
+    padding: spacing.lg,
+    gap: spacing.xs,
   },
-  alertIcon: { 
-    padding: 8, 
-    backgroundColor: '#ffedd5', 
-    borderRadius: radius.md 
+  summaryLabel: {
+    ...typography.caption,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '700',
   },
-  alertTextContent: { 
-    flex: 1, 
-    marginLeft: spacing.md 
+  summaryValue: {
+    ...typography.h1,
+    color: colors.white,
   },
-  alertTitle: { 
-    ...typography.body, 
-    fontWeight: '700', 
-    color: '#9a3412' 
+  summaryMeta: {
+    ...typography.body,
+    color: colors.white,
   },
-  alertSubtitle: { 
-    ...typography.caption, 
-    color: '#c2410c' 
+  actionsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
   },
-  alertAction: { 
-    paddingHorizontal: spacing.md, 
-    paddingVertical: 6, 
-    backgroundColor: '#f97316', 
-    borderRadius: radius.pill 
+  primaryAction: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
-  alertActionText: { 
-    ...typography.caption, 
-    color: colors.white, 
-    fontWeight: '700' 
+  primaryActionText: {
+    ...typography.body,
+    color: colors.white,
+    fontWeight: '700',
   },
-  sectionLabel: { 
-    ...typography.body, 
-    fontWeight: '700', 
-    color: colors.textPrimary, 
-    marginBottom: spacing.md 
+  secondaryAction: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
-  cardWrapper: { 
-    marginBottom: spacing.xl 
+  secondaryActionText: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  section: {
+    gap: spacing.sm,
+  },
+  sectionTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
+  },
+  chipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  filterChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  filterChipActive: {
+    backgroundColor: '#DBEAFE',
+    borderColor: colors.primary,
+  },
+  filterChipText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  filterChipTextActive: {
+    color: colors.primary,
   },
   cardVisual: {
-    height: 190, 
-    borderRadius: 24, 
-    padding: 24, 
-    overflow: 'hidden',
-    elevation: 8, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, 
-    shadowRadius: 8,
+    borderRadius: 24,
+    padding: spacing.lg,
+    gap: spacing.lg,
   },
-  cardDecorator1: {
-    position: 'absolute', 
-    top: -20, 
-    right: -20, 
-    width: 120, 
-    height: 120,
-    borderRadius: 60, 
-    backgroundColor: 'rgba(255,255,255,0.08)'
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  cardDecorator2: {
-    position: 'absolute', 
-    bottom: 20, 
-    right: 10, 
-    width: 80, 
-    height: 80,
-    borderRadius: 40, 
-    backgroundColor: 'rgba(255,255,255,0.05)'
+  cardInstitution: {
+    ...typography.caption,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '700',
   },
-  cardHeader: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    marginBottom: 30 
+  cardName: {
+    ...typography.h2,
+    color: colors.white,
+    marginTop: spacing.xs,
   },
-  cardInst: { 
-    ...typography.caption, 
-    color: colors.white, 
-    opacity: 0.7, 
-    fontSize: 10, 
-    fontWeight: '600'
+  cardDigits: {
+    ...typography.body,
+    color: colors.white,
+    letterSpacing: 2,
+    fontWeight: '700',
   },
-  cardName: { 
-    ...typography.h2, 
-    color: colors.white, 
-    fontSize: 19, 
-    fontWeight: '600', 
-    marginTop: 2
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  cardNetwork: { 
-    ...typography.caption, 
-    color: colors.white, 
-    fontSize: 15, 
-    fontWeight: '600', 
-    fontStyle: 'italic' 
+  cardFooterRight: {
+    alignItems: 'flex-end',
   },
-  cardDigits: { 
-    ...typography.body, 
-    color: colors.white, 
-    fontSize: 16, 
-    letterSpacing: 2.5, 
-    opacity: 0.8 
+  cardFooterLabel: {
+    ...typography.caption,
+    color: 'rgba(255,255,255,0.8)',
   },
-  cardFooter: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'flex-end'
+  cardFooterValue: {
+    ...typography.body,
+    color: colors.white,
+    fontWeight: '700',
+    marginTop: spacing.xs,
   },
-  cardLabel: { 
-    ...typography.caption, 
-    color: 'rgba(255,255,255,0.5)', 
-    fontSize: 10 
-  },
-  cardInfo: { 
-    ...typography.body, 
-    color: colors.white, 
-    fontSize: 15, 
-    fontWeight: '600'
-  },
-  cardStatsRow: {
-    flexDirection: 'row', 
+  listCard: {
     backgroundColor: colors.surface,
-    marginTop: -15, 
-    marginHorizontal: 15, 
-    borderRadius: radius.md,
-    borderWidth: 1, 
-    borderColor: colors.border, 
-    padding: 12,
-    zIndex: -1, 
-    paddingTop: 25
-  },
-  cardMiniStat: { 
-    flex: 1, 
-    alignItems: 'center' 
-  },
-  miniStatLabel: { 
-    ...typography.caption, 
-    color: colors.textSecondary, 
-    fontSize: 10 
-  },
-  miniStatValue: { 
-    ...typography.body, 
-    fontWeight: '700', 
-    color: colors.textPrimary, 
-    fontSize: 12 
-  },
-  miniStatDivider: { 
-    width: 1, 
-    backgroundColor: colors.border, 
-    height: '100%' 
-  },
-  progressContainer: { 
-    width: '80%', 
-    height: 4, 
-    backgroundColor: colors.border, 
-    borderRadius: 2, 
-    marginTop: 6 
-  },
-  progressBar: { 
-    height: '100%', 
-    backgroundColor: colors.primary, 
-    borderRadius: 2 
-  },
-  quickAddExpense: {
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    gap: 8, 
-    padding: spacing.lg, 
     borderRadius: radius.lg,
-    borderWidth: 2, 
-    borderColor: colors.primary, 
-    borderStyle: 'dashed',
-    marginTop: spacing.sm,
-    marginBottom: spacing.xl
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.md,
   },
-  quickAddText: { 
-    ...typography.body, 
-    color: colors.primary, 
-    fontWeight: '600' 
-  }
+  invoiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  invoiceLeft: {
+    flex: 1,
+  },
+  invoiceTitle: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  invoiceMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  payButton: {
+    minWidth: 84,
+    minHeight: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  payButtonDisabled: {
+    opacity: 0.6,
+  },
+  payButtonText: {
+    ...typography.caption,
+    color: colors.white,
+    fontWeight: '700',
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
 });

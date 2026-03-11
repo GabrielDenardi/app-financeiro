@@ -17,6 +17,7 @@ import {
   LogOut 
 } from 'lucide-react-native';
 import { useProfile } from '../features/profile/hooks/useProfile';
+import { registerLoginEvent } from '../features/preferences/services/preferencesService';
 import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
 import type { AuthenticatedUserSummary } from '../types/auth';
@@ -48,6 +49,12 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
   const parentNavigation = navigation?.getParent?.();
 
   const handleLogout = async () => {
+    try {
+      await registerLoginEvent('sign_out');
+    } catch {
+      // Ignore logging failures on sign out.
+    }
+
     const { error } = await supabase.auth.signOut();
 
     if (error) {
