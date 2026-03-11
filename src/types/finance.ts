@@ -1,58 +1,49 @@
-import { LucideIcon } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 
-export type EntryType = 'income' | 'expense';
+export type { AccountType } from '../features/accounts/types';
+export type { BudgetProgress } from '../features/budgets/types';
+export type { CreditCard } from '../features/cards/types';
+export type { DashboardData as HomeDashboardData, WeeklyFlowPoint } from '../features/dashboard/types';
+export type { FinancialGoal } from '../features/goals/types';
+export type { ImportBatch, ImportPreviewRow } from '../features/imports/types';
+export type { ReportCategoryStat, ReportsSummary } from '../features/reports/types';
+export type {
+  CreateTransactionInput,
+  EntryType,
+  FinanceCategory,
+  PaymentMethod,
+  TransactionFeedItem as RecentTransaction,
+  TransactionFeedItem as Transaction,
+  TransactionSection as DailyTransactions,
+} from '../features/transactions/types';
 
 export interface SummaryStats {
   monthLabel: string;
   balance: number;
   income: number;
   expense: number;
-  updatedAtLabel: string;
+  updatedAtLabel?: string;
 }
 
-export interface WeeklyFlowPoint {
-  weekLabel: 'S1' | 'S2' | 'S3' | 'S4' | 'S5';
-  income: number;
-  expense: number;
+export interface AccountConfig {
+  label: string;
+  icon: LucideIcon;
+  gradient: string[];
+  light: string;
 }
 
-export interface RecentTransaction {
+export interface Account {
   id: string;
-  title: string;
-  date: string;
-  dateISO: string;
-  amount: number;
-  category: string;
-  paymentMethod: string;
-  type: EntryType;
-}
-
-export interface HomeDashboardData {
-  summary: SummaryStats;
-  weeklyFlow: WeeklyFlowPoint[];
-  recentTransactions: RecentTransaction[];
-}
-
-export type TransactionType = 'income' | 'expense';
-
-export interface Transaction {
-  id: string;
-  title: string;
-  date: string;
-  dateISO: string;
-  amount: number;
-  category: string;
-  paymentMethod: string;
-  type: 'income' | 'expense';
-}
-
-export interface DailyTransactions {
-  date: string;
-  data: Transaction[];
+  name: string;
+  type: import('../features/accounts/types').AccountType;
+  balance: number;
+  institution?: string;
+  color?: string;
+  is_active: boolean;
 }
 
 export interface MenuItem {
-  icon: any;
+  icon: LucideIcon;
   label: string;
   page?: string;
   toggle?: boolean;
@@ -63,31 +54,6 @@ export interface MenuItem {
 export interface MenuSections {
   title: string;
   items: MenuItem[];
-}
-
-export type AccountType =
-  | 'checking'
-  | 'savings'
-  | 'credit_card'
-  | 'investment'
-  | 'cash'
-  | 'other';
-
-export interface Account {
-  id: string;
-  name: string;
-  type: AccountType;
-  balance: number;
-  institution?: string;
-  color?: string;
-  is_active: boolean;
-}
-
-export interface AccountConfig {
-  label: string;
-  icon: LucideIcon;
-  gradient: string[];
-  light: string;
 }
 
 export interface ExpenseData {
@@ -106,14 +72,22 @@ export interface Props {
 }
 
 export type HelpCategory =
+  | 'Transacoes'
   | 'Transações'
+  | 'TransaÃ§Ãµes'
+  | 'Cartoes'
   | 'Cartões'
+  | 'CartÃµes'
   | 'Metas'
   | 'Grupos'
+  | 'Orcamentos'
   | 'Orçamentos'
+  | 'OrÃ§amentos'
   | 'Contas'
   | 'Voz'
-  | 'Relatórios';
+  | 'Relatorios'
+  | 'Relatórios'
+  | 'RelatÃ³rios';
 
 export interface ArticleHelp {
   id: string;

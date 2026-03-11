@@ -1,140 +1,156 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   View,
-  TouchableOpacity,
-  SafeAreaView,
-  ScrollView,
-  Modal,
-  Dimensions,
-  ActivityIndicator,
 } from 'react-native';
-import { ChevronLeft, FileSpreadsheet, Upload, CheckCircle2, X } from 'lucide-react-native';
-import * as DocumentPicker from 'expo-document-picker'; //
+import * as DocumentPicker from 'expo-document-picker';
+import { ArrowLeft, CheckCircle2, FileSpreadsheet, Upload, X } from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
+import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import { useImportBatches, useImportTransactionsMutation } from '../features/imports/hooks/useImports';
+import { colors, radius, spacing, typography } from '../theme';
 
 export default function ImportScreen({ navigation }: any) {
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const currentUser = useAuthenticatedUser();
+  const importBatchesQuery = useImportBatches(currentUser?.id);
+  const importMutation = useImportTransactionsMutation(currentUser?.id);
+  const [selectedAsset, setSelectedAsset] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [resultVisible, setResultVisible] = useState(false);
+  const [lastImportSummary, setLastImportSummary] = useState<{ accepted: number; duplicate: number; failed: number } | null>(null);
 
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          'text/csv',
-          'application/vnd.ms-excel',
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ],
-      });
+  const handlePickDocument = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: [
+        'text/csv',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ],
+      copyToCacheDirectory: true,
+    });
 
-      // Correção do erro de tipagem assets[0]
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setFileName(result.assets[0].name);
-      }
-    } catch (err) {
-      console.error("Erro ao selecionar arquivo:", err);
+    if (!result.canceled) {
+      setSelectedAsset(result.assets[0]);
     }
   };
 
-  const handleImportAction = () => {
-    if (!fileName) return;
-    setLoading(true);
-    
-    // Simula processamento antes do modal
-    setTimeout(() => {
-      setLoading(false);
-      setIsModalVisible(true);
-    }, 1200);
+  const handleImport = async () => {
+    if (!selectedAsset) {
+      return;
+    }
+
+    try {
+      const result = await importMutation.mutateAsync({
+        uri: selectedAsset.uri,
+        name: selectedAsset.name,
+        mimeType: selectedAsset.mimeType,
+      });
+
+      const accepted = result.previewRows.filter((row) => row.status === 'accepted').length;
+      const duplicate = result.previewRows.filter((row) => row.status === 'duplicate').length;
+      const failed = result.previewRows.filter((row) => row.status === 'failed').length;
+
+      setLastImportSummary({ accepted, duplicate, failed });
+      setResultVisible(true);
+      setSelectedAsset(null);
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel importar o arquivo.');
+    }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header idêntico ao design */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backButton}>
-          <ChevronLeft color="#1E293B" size={24} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Importar Dados</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+            <ArrowLeft size={22} color={colors.textPrimary} />
+          </Pressable>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>Importar dados</Text>
+            <Text style={styles.subtitle}>CSV e XLSX com batch, deduplicacao e auditoria.</Text>
+          </View>
+        </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.mainCard}>
           <View style={styles.iconCircle}>
-            <FileSpreadsheet color="#10B981" size={32} />
+            <FileSpreadsheet color={colors.success} size={28} />
           </View>
-          
-          <Text style={styles.cardTitle}>Importar Transações</Text>
-          <Text style={styles.cardSubtitle}>Envie um arquivo CSV ou Excel com suas transações</Text>
+          <Text style={styles.cardTitle}>Importar transacoes</Text>
+          <Text style={styles.cardSubtitle}>
+            Campos esperados: description, amount, type, category, payment_method e date.
+          </Text>
 
-          {/* Área de Seleção Dinâmica */}
-          <TouchableOpacity 
-            style={[styles.dropzone, fileName ? styles.dropzoneActive : styles.dropzoneInactive]} 
-            onPress={pickDocument}
-          >
-            {fileName ? (
-              <View style={styles.selectedContainer}>
-                <FileSpreadsheet color="#10B981" size={32} />
-                <Text style={styles.fileNameText} numberOfLines={1}>{fileName}</Text>
-                <TouchableOpacity onPress={() => setFileName(null)} style={styles.removeBtn}>
-                  <X size={14} color="#EF4444" />
-                  <Text style={styles.removeText}>Remover</Text>
-                </TouchableOpacity>
+          <Pressable style={styles.dropzone} onPress={handlePickDocument}>
+            {selectedAsset ? (
+              <View style={styles.selectedFile}>
+                <Text style={styles.fileName}>{selectedAsset.name}</Text>
+                <Pressable onPress={() => setSelectedAsset(null)} style={styles.removeButton}>
+                  <X size={14} color={colors.danger} />
+                  <Text style={styles.removeButtonText}>Remover</Text>
+                </Pressable>
               </View>
             ) : (
               <>
-                <Upload color="#94A3B8" size={32} />
-                <Text style={styles.dropzoneText}>Clique para selecionar</Text>
-                <Text style={styles.dropzoneSubtext}>CSV, XLS ou XLSX</Text>
+                <Upload color={colors.textSecondary} size={28} />
+                <Text style={styles.dropzoneText}>Selecionar arquivo</Text>
+                <Text style={styles.dropzoneHint}>CSV, XLS ou XLSX</Text>
               </>
             )}
-          </TouchableOpacity>
+          </Pressable>
 
-          {/* Botão que "acende" ao importar */}
-          <TouchableOpacity 
-            style={[styles.importBtn, fileName ? styles.btnActive : styles.btnDisabled]} 
-            onPress={handleImportAction}
-            disabled={!fileName || loading}
+          <Pressable
+            style={[styles.importButton, (!selectedAsset || importMutation.isPending) && styles.importButtonDisabled]}
+            onPress={handleImport}
+            disabled={!selectedAsset || importMutation.isPending}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFF" />
+            {importMutation.isPending ? (
+              <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.importBtnText}>
-                {fileName ? "Confirmar Importação" : "Importar Transações"}
-              </Text>
+              <Text style={styles.importButtonText}>Confirmar importacao</Text>
             )}
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
-        {/* Seção de Formato Esperado */}
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Formato esperado</Text>
-          <Text style={styles.infoDesc}>O arquivo deve conter colunas com informações das transações:</Text>
-          
-          <View style={styles.list}>
-            <Text style={styles.listItem}>• <Text style={styles.bold}>description</Text> - Descrição da transação</Text>
-            <Text style={styles.listItem}>• <Text style={styles.bold}>amount</Text> - Valor (número)</Text>
-            <Text style={styles.listItem}>• <Text style={styles.bold}>type</Text> - income ou expense</Text>
-            <Text style={styles.listItem}>• <Text style={styles.bold}>category</Text> - Categoria</Text>
-            <Text style={styles.listItem}>• <Text style={styles.bold}>date</Text> - Data (YYYY-MM-DD)</Text>
-          </View>
+        <View style={styles.historyCard}>
+          <Text style={styles.historyTitle}>Ultimos lotes</Text>
+          {importBatchesQuery.data?.length ? (
+            importBatchesQuery.data.map((batch) => (
+              <View key={batch.id} style={styles.batchRow}>
+                <View style={styles.batchLeft}>
+                  <Text style={styles.batchFile}>{batch.fileName}</Text>
+                  <Text style={styles.batchMeta}>
+                    {batch.importedCount} importadas • {batch.duplicateCount} duplicadas • {batch.failedCount} falhas
+                  </Text>
+                </View>
+                <Text style={styles.batchStatus}>{batch.status}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>Nenhum arquivo importado ainda.</Text>
+          )}
         </View>
       </ScrollView>
 
-      {/* Modal de Sucesso Estilizado */}
-      <Modal visible={isModalVisible} transparent animationType="fade">
+      <Modal visible={resultVisible} transparent animationType="fade" onRequestClose={() => setResultVisible(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalIconBox}>
-              <CheckCircle2 size={40} color="#FFF" />
+          <View style={styles.modalCard}>
+            <View style={styles.successIcon}>
+              <CheckCircle2 size={36} color={colors.white} />
             </View>
-            <Text style={styles.modalTitle}>Concluído</Text>
-            <Text style={styles.modalMsg}>Seu arquivo foi importado com sucesso para o sistema!</Text>
-            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setIsModalVisible(false)}>
-              <Text style={styles.modalCloseText}>OK</Text>
-            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Importacao concluida</Text>
+            <Text style={styles.modalText}>
+              {lastImportSummary?.accepted ?? 0} aceitas, {lastImportSummary?.duplicate ?? 0} duplicadas e{' '}
+              {lastImportSummary?.failed ?? 0} com falha.
+            </Text>
+            <Pressable style={styles.importButton} onPress={() => setResultVisible(false)}>
+              <Text style={styles.importButtonText}>Fechar</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -143,39 +159,198 @@ export default function ImportScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 20, gap: 10 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B' },
-  backButton: { padding: 5 },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 30 },
-  mainCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 24, alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOpacity: 0.05, marginBottom: 20 },
-  iconCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#DCFCE7', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
-  cardSubtitle: { fontSize: 13, color: '#64748B', textAlign: 'center', marginTop: 5, marginBottom: 20 },
-  dropzone: { width: '100%', height: 140, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  dropzoneInactive: { borderColor: '#CBD5E1', backgroundColor: '#F8FAFC' },
-  dropzoneActive: { borderColor: '#10B981', backgroundColor: '#F0FDF4' },
-  dropzoneText: { fontSize: 14, fontWeight: '600', color: '#475569', marginTop: 10 },
-  dropzoneSubtext: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-  selectedContainer: { alignItems: 'center' },
-  fileNameText: { fontSize: 13, fontWeight: '700', color: '#1E293B', marginTop: 5 },
-  removeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
-  removeText: { fontSize: 12, fontWeight: '600', color: '#EF4444' },
-  importBtn: { width: '100%', height: 50, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  btnDisabled: { backgroundColor: '#94A3B880' },
-  btnActive: { backgroundColor: '#10B981', elevation: 4, shadowColor: '#10B981', shadowOpacity: 0.3, shadowRadius: 5 },
-  importBtnText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
-  infoCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 24 },
-  infoTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 10 },
-  infoDesc: { fontSize: 13, color: '#64748B', marginBottom: 15 },
-  list: { gap: 8 },
-  listItem: { fontSize: 13, color: '#64748B' },
-  bold: { fontWeight: '700', color: '#475569' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: width * 0.8, backgroundColor: '#FFF', borderRadius: 25, padding: 30, alignItems: 'center' },
-  modalIconBox: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#10B981', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B' },
-  modalMsg: { fontSize: 14, color: '#64748B', textAlign: 'center', marginVertical: 12, lineHeight: 20 },
-  modalCloseBtn: { backgroundColor: '#1E293B', width: '100%', height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 5 },
-  modalCloseText: { color: '#FFF', fontWeight: '700' },
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    padding: spacing.lg,
+    gap: spacing.lg,
+    paddingBottom: 80,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.xl,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerText: {
+    flex: 1,
+  },
+  title: {
+    ...typography.h1,
+    color: colors.textPrimary,
+  },
+  subtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  mainCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.md,
+    alignItems: 'center',
+  },
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
+  },
+  cardSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  dropzone: {
+    width: '100%',
+    minHeight: 160,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  selectedFile: {
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  fileName: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  removeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  removeButtonText: {
+    ...typography.caption,
+    color: colors.danger,
+    fontWeight: '700',
+  },
+  dropzoneText: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  dropzoneHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  importButton: {
+    width: '100%',
+    minHeight: 48,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  importButtonDisabled: {
+    opacity: 0.6,
+  },
+  importButtonText: {
+    ...typography.body,
+    color: colors.white,
+    fontWeight: '700',
+  },
+  historyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  historyTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
+  },
+  batchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  batchLeft: {
+    flex: 1,
+  },
+  batchFile: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  batchMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  batchStatus: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  successIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
+  },
+  modalText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
 });
