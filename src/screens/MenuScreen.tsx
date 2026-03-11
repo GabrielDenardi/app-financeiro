@@ -28,6 +28,8 @@ type MenuScreenProps = {
 };
 
 const IMPLEMENTED_ROUTES = new Set([
+  'Accounts',
+  'Cards',
   'Goals',
   'Help',
   'Privacy',

@@ -15,6 +15,8 @@ export type AppStackParamList = {
   About: undefined;
   Budgets: undefined;
   Reports: undefined;
+  Accounts: undefined;
+  Cards: undefined;
   Groups: undefined;
   GroupDetails: { groupId: string };
 };
