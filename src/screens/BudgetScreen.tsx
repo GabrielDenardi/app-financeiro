@@ -1,289 +1,420 @@
-import React, { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  SafeAreaView,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
+  ActivityIndicator,
   Alert,
+  Modal,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import { Plus, Trash2, X, Pencil, PiggyBank } from 'lucide-react-native';
+import { Plus, Trash2, X } from 'lucide-react-native';
 
-// --- DESIGN SYSTEM ---
-const COLORS = {
-  primary: '#1E3A8A',
-  primaryLight: '#2563EB',
-  success: '#16A34A',
-  danger: '#DC2626',
-  background: '#F8FAFC',
-  surface: '#FFFFFF',
-  textPrimary: '#0F172A',
-  textSecondary: '#64748B',
-  border: '#E2E8F0',
-  modalOverlay: 'rgba(15, 23, 42, 0.5)',
-};
+import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import { useBudgets, useDeleteBudgetMutation, useUpsertBudgetMutation } from '../features/budgets/hooks/useBudgets';
+import { formatMonthDate, monthLabel } from '../features/finance/utils';
+import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
+import { formatCurrencyBRL } from '../utils/format';
+import { colors, radius, spacing, typography } from '../theme';
 
-interface Budget {
-  id: string;
-  category: string;
-  spent: number;
-  limit: number;
-}
+export default function BudgetsScreen() {
+  const currentUser = useAuthenticatedUser();
+  const monthDate = formatMonthDate();
+  const budgetsQuery = useBudgets(currentUser?.id, monthDate);
+  const categoriesQuery = useFinanceCategories(currentUser?.id);
+  const upsertBudgetMutation = useUpsertBudgetMutation(currentUser?.id);
+  const deleteBudgetMutation = useDeleteBudgetMutation(currentUser?.id);
 
-const BudgetsScreen = () => {
-  // --- 1. ESTADOS (STATES) ---
-  const [budgets, setBudgets] = useState<Budget[]>([
-    { id: '1', category: 'Streaming', spent: 0, limit: 5000 },
-    { id: '2', category: 'Supermercado', spent: 1000, limit: 1500 },
-  ]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [limitAmount, setLimitAmount] = useState('');
 
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [newCategory, setNewCategory] = useState('');
-  const [newLimit, setNewLimit] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null); // Estado para controlar edição
-
-  // --- 2. CÁLCULOS ---
-  const totals = useMemo(() => {
-    const budgeted = budgets.reduce((acc, curr) => acc + curr.limit, 0);
-    const spent = budgets.reduce((acc, curr) => acc + curr.spent, 0);
-    return { budgeted, spent };
-  }, [budgets]);
-
-  // --- 3. FUNÇÕES DE AÇÃO ---
-
-  // Prepara o modal para edição
-  const handleEditPress = (item: Budget) => {
-    setEditingId(item.id);
-    setNewCategory(item.category);
-    setNewLimit(item.limit.toString().replace('.', ',')); 
-    setIsModalVisible(true);
-  };
-
-  // Salva (Cria ou Edita)
-  const handleSaveBudget = () => {
-    if (!newCategory || !newLimit) {
-      Alert.alert('Erro', 'Preencha todos os campos');
-      return;
-    }
-
-    const value = parseFloat(newLimit.replace(',', '.'));
-    if (isNaN(value)) {
-      Alert.alert('Erro', 'Valor inválido');
-      return;
-    }
-
-    if (editingId) {
-      // Lógica de Edição
-      setBudgets(prev => prev.map(item => 
-        item.id === editingId 
-          ? { ...item, category: newCategory, limit: value } 
-          : item
-      ));
-    } else {
-      // Lógica de Criação
-      const newItem: Budget = {
-        id: Math.random().toString(),
-        category: newCategory,
-        spent: 0,
-        limit: value,
-      };
-      setBudgets([...budgets, newItem]);
-    }
-    closeModal();
-  };
-
-  const deleteBudget = (id: string) => {
-    const performDelete = () => setBudgets(prev => prev.filter(b => b.id !== id));
-    
-    if (Platform.OS === 'web') {
-      if (window.confirm("Deseja excluir este orçamento?")) performDelete();
-    } else {
-      Alert.alert('Excluir', 'Deseja remover este orçamento?', [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: performDelete },
-      ]);
-    }
-  };
-
-  const closeModal = () => {
-    setIsModalVisible(false);
-    setNewCategory('');
-    setNewLimit('');
-    setEditingId(null); // Reseta o ID de edição ao fechar
-  };
-
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  };
-
-  // --- 4. RENDERIZAÇÃO ---
-  const renderBudgetItem = ({ item }: { item: Budget }) => {
-  const percentage = Math.min((item.spent / item.limit) * 100, 100);
-  const isOverLimit = item.spent > item.limit;
-
-  return (
-    // Mudamos de TouchableOpacity para View para o card não ser mais clicável
-    <View style={styles.card}> 
-      <View style={styles.cardHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.h2}>{item.category}</Text>
-          <Text style={styles.bodyText}>
-            <Text style={{ fontWeight: '700', color: isOverLimit ? COLORS.danger : COLORS.textPrimary }}>
-              {formatCurrency(item.spent)}
-            </Text>
-            {' / '}{formatCurrency(item.limit)}
-          </Text>
-        </View>
-
-        <View style={styles.actionButtons}>
-          {/* O CLIQUE DE EDITAR FICA APENAS AQUI */}
-          <TouchableOpacity 
-            onPress={() => handleEditPress(item)} 
-            style={styles.iconButton}
-          >
-            <Pencil size={18} color={COLORS.primaryLight} />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            onPress={() => deleteBudget(item.id)} 
-            style={styles.iconButton}
-          >
-            <Trash2 size={18} color={COLORS.danger} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.progressBarBg}>
-        <View 
-          style={[
-            styles.progressBarFill, 
-            { width: `${percentage}%`, backgroundColor: isOverLimit ? COLORS.danger : COLORS.primary }
-          ]} 
-        />
-      </View>
-
-      <View style={styles.cardFooter}>
-        <Text style={styles.caption}>{Math.round(percentage)}% usado</Text>
-        <Text style={[
-          styles.caption, 
-          { 
-            color: percentage >= 80 ? COLORS.danger : COLORS.success,
-            fontWeight: '600' // Opcional: deixa um pouco mais negrito para destacar
-          }
-        ]}>
-          Restam {formatCurrency(item.limit - item.spent)}
-        </Text>
-      </View>
-    </View>
+  const expenseCategories = useMemo(
+    () => (categoriesQuery.data ?? []).filter((category) => category.kind !== 'income'),
+    [categoriesQuery.data],
   );
-};
+
+  const totals = useMemo(() => {
+    return (budgetsQuery.data ?? []).reduce(
+      (accumulator, item) => {
+        accumulator.limit += item.limitAmount;
+        accumulator.spent += item.spentAmount;
+        return accumulator;
+      },
+      { limit: 0, spent: 0 },
+    );
+  }, [budgetsQuery.data]);
+
+  const handleSave = async () => {
+    if (!selectedCategoryId) {
+      Alert.alert('Categoria necessaria', 'Selecione uma categoria para o orcamento.');
+      return;
+    }
+
+    try {
+      await upsertBudgetMutation.mutateAsync({
+        categoryId: selectedCategoryId,
+        limitAmount: Number(limitAmount.replace(/\./g, '').replace(',', '.') || 0),
+        monthDate,
+      });
+      setModalVisible(false);
+      setSelectedCategoryId(null);
+      setLimitAmount('');
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel salvar o orcamento.');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteBudgetMutation.mutateAsync(id);
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel excluir o orcamento.');
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.h2}>Orçamentos</Text>
-          <Text style={styles.caption}>fevereiro de 2026</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Orcamentos</Text>
+            <Text style={styles.subtitle}>{monthLabel(monthDate)}</Text>
+          </View>
+          <Pressable style={styles.addButton} onPress={() => setModalVisible(true)}>
+            <Plus color={colors.white} size={18} />
+            <Text style={styles.addButtonText}>Novo</Text>
+          </Pressable>
         </View>
-        <TouchableOpacity style={styles.btnHeader} onPress={() => setIsModalVisible(true)}>
-          <Plus size={18} color="#FFF" />
-          <Text style={styles.btnHeaderText}>Novo</Text>
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.summaryBox}>
-        <View style={styles.summaryItem}>
-          <Text style={styles.caption}>Total Orçado</Text>
-          <Text style={styles.h1}>{formatCurrency(totals.budgeted)}</Text>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Total orcado</Text>
+            <Text style={styles.summaryValue}>{formatCurrencyBRL(totals.limit)}</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Total gasto</Text>
+            <Text style={[styles.summaryValue, totals.spent > totals.limit && styles.dangerText]}>
+              {formatCurrencyBRL(totals.spent)}
+            </Text>
+          </View>
         </View>
-        <View style={styles.summaryItem}>
-          <Text style={styles.caption}>Total Gasto</Text>
-          <Text style={[styles.h1, { color: totals.spent > totals.budgeted ? COLORS.danger : COLORS.success }]}>
-            {formatCurrency(totals.spent)}
-          </Text>
+
+        <View style={styles.listCard}>
+          {budgetsQuery.isLoading ? (
+            <ActivityIndicator />
+          ) : budgetsQuery.data?.length ? (
+            budgetsQuery.data.map((budget) => (
+              <View key={budget.id} style={styles.budgetRow}>
+                <View style={styles.budgetHeader}>
+                  <View style={styles.budgetTitleRow}>
+                    <View style={[styles.categoryDot, { backgroundColor: budget.categoryColor }]} />
+                    <Text style={styles.budgetTitle}>{budget.categoryLabel}</Text>
+                  </View>
+                  <Pressable onPress={() => handleDelete(budget.id)}>
+                    <Trash2 size={18} color={colors.danger} />
+                  </Pressable>
+                </View>
+                <Text style={styles.budgetText}>
+                  {formatCurrencyBRL(budget.spentAmount)} de {formatCurrencyBRL(budget.limitAmount)}
+                </Text>
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        width: `${Math.min(budget.progressPercent, 100)}%`,
+                        backgroundColor: budget.progressPercent > 100 ? colors.danger : budget.categoryColor,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.budgetMeta}>
+                  Restam {formatCurrencyBRL(budget.remainingAmount)} • {budget.progressPercent.toFixed(1)}%
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>Crie o primeiro limite mensal por categoria.</Text>
+          )}
         </View>
-      </View>
+      </ScrollView>
 
-      <FlatList
-        data={budgets}
-        keyExtractor={(item) => item.id}
-        renderItem={renderBudgetItem}
-        contentContainerStyle={styles.listContainer}
-        ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
-      />
-
-      <Modal visible={isModalVisible} transparent animationType="slide">
+      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContent}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setModalVisible(false)} />
+          <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.h2}>{editingId ? 'Editar Orçamento' : 'Novo Orçamento'}</Text>
-              <TouchableOpacity onPress={closeModal}><X size={24} color={COLORS.textPrimary} /></TouchableOpacity>
+              <Text style={styles.modalTitle}>Novo orcamento</Text>
+              <Pressable onPress={() => setModalVisible(false)}>
+                <X size={22} color={colors.textPrimary} />
+              </Pressable>
             </View>
 
-            <Text style={styles.inputLabel}>Categoria</Text>
-            <TextInput style={styles.input} placeholder="Ex: Supermercado" value={newCategory} onChangeText={setNewCategory} />
+            <TextInput
+              placeholder="Limite mensal"
+              value={limitAmount}
+              onChangeText={setLimitAmount}
+              keyboardType="decimal-pad"
+              style={styles.modalInput}
+              placeholderTextColor={colors.textSecondary}
+            />
 
-            <Text style={styles.inputLabel}>Limite Mensal</Text>
-            <TextInput style={styles.input} placeholder="R$ 0,00" keyboardType="numeric" value={newLimit} onChangeText={setNewLimit} />
+            <Text style={styles.modalLabel}>Categoria</Text>
+            <View style={styles.chipsWrap}>
+              {expenseCategories.map((category) => (
+                <Pressable
+                  key={category.id}
+                  onPress={() => setSelectedCategoryId(category.id)}
+                  style={[styles.filterChip, selectedCategoryId === category.id && styles.filterChipActive]}
+                >
+                  <Text style={[styles.filterChipText, selectedCategoryId === category.id && styles.filterChipTextActive]}>
+                    {category.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.btnBase, styles.btnCancel]} onPress={closeModal}>
-                <Text style={styles.btnTextCancel}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.btnBase, styles.btnCreate]} onPress={handleSaveBudget}>
-                <Text style={styles.btnTextCreate}>{editingId ? 'Salvar' : 'Criar'}</Text>
-              </TouchableOpacity>
+              <Pressable style={styles.secondaryButton} onPress={() => setModalVisible(false)}>
+                <Text style={styles.secondaryButtonText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.primaryButton, (!selectedCategoryId || upsertBudgetMutation.isPending) && styles.primaryButtonDisabled]}
+                onPress={handleSave}
+                disabled={!selectedCategoryId || upsertBudgetMutation.isPending}
+              >
+                {upsertBudgetMutation.isPending ? (
+                  <ActivityIndicator color={colors.white} />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Salvar</Text>
+                )}
+              </Pressable>
             </View>
-          </KeyboardAvoidingView>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24 },
-  btnHeader: { flexDirection: 'row', backgroundColor: COLORS.textPrimary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, alignItems: 'center', gap: 8 },
-  btnHeaderText: { color: '#FFF', fontWeight: 'bold' },
-  summaryBox: { flexDirection: 'row', backgroundColor: COLORS.surface, marginHorizontal: 24, padding: 20, borderRadius: 16, marginBottom: 24 },
-  summaryItem: { flex: 1, alignItems: 'center' },
-  h1: { fontSize: 24, fontWeight: '700', color: COLORS.textPrimary },
-  h2: { fontSize: 18, fontWeight: '600', color: COLORS.textPrimary },
-  caption: { fontSize: 12, color: COLORS.textSecondary },
-  bodyText: { fontSize: 14, color: COLORS.textSecondary, marginTop: 4 },
-  listContainer: { paddingHorizontal: 24, paddingBottom: 40 },
-  card: { backgroundColor: COLORS.surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between' },
-  progressBarBg: { height: 6, backgroundColor: COLORS.border, borderRadius: 3, overflow: 'hidden', marginVertical: 12 },
-  progressBarFill: { height: '100%' },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between' },
-  modalOverlay: { flex: 1, backgroundColor: COLORS.modalOverlay, justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
-  inputLabel: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 8 },
-  input: { height: 48, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 16, marginBottom: 16 },
-  modalActions: { flexDirection: 'row', gap: 12 },
-  btnBase: { flex: 1, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  btnCreate: { backgroundColor: '#10B981' },
-  btnCancel: { borderWidth: 1, borderColor: COLORS.border },
-  btnTextCreate: { color: '#FFF', fontWeight: 'bold' },
-  btnTextCancel: { color: COLORS.textPrimary, fontWeight: 'bold' },
-  actionButtons: {
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    padding: spacing.lg,
+    gap: spacing.lg,
+    paddingBottom: 80,
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8, // Espaço entre os ícones
+    justifyContent: 'space-between',
+    marginTop: spacing.xl,
   },
-  iconButton: {
-    padding: 8,
-    backgroundColor: '#F1F5F9', // Um fundo cinza bem clarinho para dar destaque
-    borderRadius: 8,
+  title: {
+    ...typography.h1,
+    color: colors.textPrimary,
+  },
+  subtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  addButton: {
+    minHeight: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  addButtonText: {
+    ...typography.body,
+    color: colors.white,
+    fontWeight: '700',
+  },
+  summaryCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    flexDirection: 'row',
+  },
+  summaryItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  summaryValue: {
+    ...typography.h2,
+    color: colors.textPrimary,
+    marginTop: spacing.xs,
+  },
+  listCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  budgetRow: {
+    gap: spacing.sm,
+  },
+  budgetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  budgetTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  categoryDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  budgetTitle: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  budgetText: {
+    ...typography.body,
+    color: colors.textPrimary,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    backgroundColor: colors.mutedSurface,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  budgetMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  dangerText: {
+    color: colors.danger,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+  },
+  modalBackdrop: {
+    flex: 1,
+  },
+  modalSheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
+  },
+  modalLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '700',
+  },
+  modalInput: {
+    minHeight: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    color: colors.textPrimary,
+  },
+  chipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  filterChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  filterChipActive: {
+    backgroundColor: '#DBEAFE',
+    borderColor: colors.primary,
+  },
+  filterChipText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  filterChipTextActive: {
+    color: colors.primary,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  secondaryButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButtonText: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  primaryButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
+  },
+  primaryButtonText: {
+    ...typography.body,
+    color: colors.white,
+    fontWeight: '700',
   },
 });
-
-export default BudgetsScreen;

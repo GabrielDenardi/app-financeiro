@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
 
@@ -10,6 +10,11 @@ import {
   isAuthCallbackUrl,
   type AuthCallbackOutcome,
 } from '../lib/authRedirect';
+import {
+  authenticateWithBiometrics,
+  isBiometricLockEnabledLocally,
+} from '../features/preferences/services/biometricService';
+import { getPreferences, registerLoginEvent } from '../features/preferences/services/preferencesService';
 import { supabase } from '../lib/supabase';
 import type { AuthSessionState, AuthenticatedUserSummary } from '../types/auth';
 import { AppStack } from './AppStack';
@@ -53,6 +58,10 @@ export function RootNavigator() {
   const [sessionState, setSessionState] = useState<AuthSessionState>('loading');
   const [callbackNotice, setCallbackNotice] = useState<CallbackNotice | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthenticatedUserSummary | null>(null);
+  const [isBiometricChecking, setIsBiometricChecking] = useState(false);
+  const [isBiometricLocked, setIsBiometricLocked] = useState(false);
+  const lastLoggedUserIdRef = useRef<string | null>(null);
+  const appStateRef = useRef(AppState.currentState);
 
   useEffect(() => {
     let isMounted = true;
@@ -90,9 +99,71 @@ export function RootNavigator() {
       });
     };
 
+    const maybeRegisterLogin = async (session: Session | null) => {
+      const userId = session?.user?.id ?? null;
+      if (!userId || lastLoggedUserIdRef.current === userId) {
+        return;
+      }
+
+      lastLoggedUserIdRef.current = userId;
+
+      try {
+        await registerLoginEvent('sign_in');
+      } catch {
+        // Ignore telemetry failures during boot.
+      }
+    };
+
+    const maybeRunBiometricCheck = async (session: Session | null) => {
+      if (!session?.user) {
+        if (isMounted) {
+          setIsBiometricLocked(false);
+          setIsBiometricChecking(false);
+        }
+        return;
+      }
+
+      try {
+        const [preferences, biometricEnabledLocally] = await Promise.all([
+          getPreferences(),
+          isBiometricLockEnabledLocally(),
+        ]);
+
+        if (!preferences.biometricEnabled || !biometricEnabledLocally) {
+          if (isMounted) {
+            setIsBiometricLocked(false);
+            setIsBiometricChecking(false);
+          }
+          return;
+        }
+
+        if (isMounted) {
+          setIsBiometricChecking(true);
+        }
+
+        const result = await authenticateWithBiometrics('Desbloqueie o app');
+
+        if (!isMounted) {
+          return;
+        }
+
+        setIsBiometricLocked(!result.success);
+      } catch {
+        if (isMounted) {
+          setIsBiometricLocked(false);
+        }
+      } finally {
+        if (isMounted) {
+          setIsBiometricChecking(false);
+        }
+      }
+    };
+
     const syncSessionState = async () => {
       const { data } = await supabase.auth.getSession();
       await loadCurrentUser(data.session);
+      await maybeRegisterLogin(data.session);
+      await maybeRunBiometricCheck(data.session);
       if (isMounted) {
         setSessionState(data.session ? 'authenticated' : 'unauthenticated');
       }
@@ -155,13 +226,39 @@ export function RootNavigator() {
           setCurrentUser(null);
         }
       });
+      if (_event === 'SIGNED_IN') {
+        maybeRegisterLogin(session).catch(() => undefined);
+      }
+      if (_event === 'SIGNED_IN' || _event === 'USER_UPDATED') {
+        maybeRunBiometricCheck(session).catch(() => undefined);
+      }
+      if (!session) {
+        lastLoggedUserIdRef.current = null;
+        setIsBiometricLocked(false);
+      }
       setSessionState(session ? 'authenticated' : 'unauthenticated');
+    });
+
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      const previousState = appStateRef.current;
+      appStateRef.current = nextState;
+
+      const becameActive = previousState.match(/inactive|background/) && nextState === 'active';
+      if (!becameActive) {
+        return;
+      }
+
+      supabase.auth
+        .getSession()
+        .then(({ data: sessionData }) => maybeRunBiometricCheck(sessionData.session))
+        .catch(() => undefined);
     });
 
     return () => {
       isMounted = false;
       urlSubscription.remove();
       data.subscription.unsubscribe();
+      appStateSubscription.remove();
     };
   }, []);
 
@@ -186,6 +283,48 @@ export function RootNavigator() {
   }
 
   if (sessionState === 'authenticated') {
+    if (isBiometricChecking) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" />
+        </View>
+      );
+    }
+
+    if (isBiometricLocked) {
+      return (
+        <View style={styles.lockContainer}>
+          <Text style={styles.lockTitle}>App bloqueado</Text>
+          <Text style={styles.lockMessage}>
+            A biometria esta habilitada para esta conta. Use o botao abaixo para desbloquear.
+          </Text>
+          <Pressable
+            style={({ pressed }) => [styles.unlockButton, pressed && styles.pressed]}
+            onPress={async () => {
+              const { data } = await supabase.auth.getSession();
+              if (!data.session) {
+                return;
+              }
+
+              setIsBiometricChecking(true);
+              const result = await authenticateWithBiometrics('Desbloqueie o app');
+              setIsBiometricChecking(false);
+              setIsBiometricLocked(!result.success);
+            }}
+          >
+            <Text style={styles.unlockButtonText}>Desbloquear</Text>
+          </Pressable>
+          <Pressable
+            onPress={async () => {
+              await supabase.auth.signOut();
+            }}
+          >
+            <Text style={styles.signOutText}>Sair da conta</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
     return <AppStack currentUser={currentUser} />;
   }
 
@@ -201,6 +340,42 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  lockContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  lockTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  lockMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#64748B',
+  },
+  unlockButton: {
+    minWidth: 180,
+    minHeight: 48,
+    borderRadius: 12,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  unlockButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  signOutText: {
+    color: '#DC2626',
+    fontWeight: '600',
+  },
+  pressed: {
+    opacity: 0.85,
   },
 });
 
