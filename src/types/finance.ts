@@ -1,3 +1,5 @@
+import { LucideIcon } from 'lucide-react-native';
+
 export type EntryType = 'income' | 'expense';
 
 export interface SummaryStats {
@@ -36,8 +38,8 @@ export type TransactionType = 'income' | 'expense';
 export interface Transaction {
   id: string;
   title: string;
-  date: string; // Ex: "17 fev"
-  dateISO: string; // Ex: "2026-02-17T00:00:00Z"
+  date: string;
+  dateISO: string;
   amount: number;
   category: string;
   paymentMethod: string;
@@ -63,7 +65,55 @@ export interface MenuSections {
   items: MenuItem[];
 }
 
-export type HelpCategory = 'Transações' | 'Cartões' | 'Metas' | 'Grupos' | 'Orçamentos' | 'Contas' | 'Voz' | 'Relatórios';
+export type AccountType =
+  | 'checking'
+  | 'savings'
+  | 'credit_card'
+  | 'investment'
+  | 'cash'
+  | 'other';
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  balance: number;
+  institution?: string;
+  color?: string;
+  is_active: boolean;
+}
+
+export interface AccountConfig {
+  label: string;
+  icon: LucideIcon;
+  gradient: string[];
+  light: string;
+}
+
+export interface ExpenseData {
+  description: string;
+  card: string;
+  category: string;
+  amount: number;
+  installments: string;
+  date: string;
+}
+
+export interface Props {
+  visible: boolean;
+  onClose: () => void;
+  onSave?: (data: ExpenseData) => void;
+}
+
+export type HelpCategory =
+  | 'Transações'
+  | 'Cartões'
+  | 'Metas'
+  | 'Grupos'
+  | 'Orçamentos'
+  | 'Contas'
+  | 'Voz'
+  | 'Relatórios';
 
 export interface ArticleHelp {
   id: string;

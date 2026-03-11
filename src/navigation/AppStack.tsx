@@ -4,7 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { EditProfileScreen } from '../features/profile/screens/EditProfileScreen';
 import { GroupDetailsScreen } from '../features/groups/screens/GroupDetailsScreen';
 import { GroupsScreen } from '../features/groups/screens/GroupsScreen';
+import { AccountsScreen } from '../screens/AccountsScreen';
 import BudgetsScreen from '../screens/BudgetScreen';
+import CardsScreen from '../screens/CardsScreen';
 import { HelpScreen } from '../screens/HelpScreen';
 import ImportScreen from '../screens/ImportScreen';
 import { PrivacySecurityScreen } from '../screens/PrivacySecurityScreen';
@@ -35,6 +37,8 @@ export function AppStack({ currentUser }: AppStackProps) {
       <Stack.Screen name="About" component={SobreScreen} />
       <Stack.Screen name="Budgets" component={BudgetsScreen} />
       <Stack.Screen name="Reports" component={ReportsScreen} />
+      <Stack.Screen name="Accounts" component={AccountsScreen} />
+      <Stack.Screen name="Cards" component={CardsScreen} />
       <Stack.Screen name="Groups">
         {() => <GroupsScreen currentUser={currentUser} />}
       </Stack.Screen>

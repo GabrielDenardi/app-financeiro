@@ -21,7 +21,7 @@ export const menuMock: MenuSections[] = [
     title: 'Finanças',
     items: [
       { icon: Landmark, label: 'Minhas Contas', page: 'Accounts' },
-      { icon: CreditCard, label: 'Cartões de Crédito', page: 'CreditCards' },
+      { icon: CreditCard, label: 'Cartões de Crédito', page: 'Cards' },
       { icon: Target, label: 'Metas Financeiras', page: 'Goals' },
       { icon: PiggyBank, label: 'Orçamentos', page: 'Budgets' },
       { icon: Users, label: 'Grupos', page: 'Groups' },
