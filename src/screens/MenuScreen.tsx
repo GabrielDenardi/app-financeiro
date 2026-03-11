@@ -39,6 +39,7 @@ const IMPLEMENTED_ROUTES = new Set([
   'Budgets',
   'Reports',
   'Groups',
+  'RecurringTransactions',
 ]);
 
 export function MenuScreen({ navigation, user }: MenuScreenProps) {
