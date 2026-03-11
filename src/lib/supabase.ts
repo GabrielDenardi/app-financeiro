@@ -1,5 +1,7 @@
 import 'react-native-url-polyfill/auto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 
 import { appEnv, hasSupabaseEnv } from '../config/env';
 
@@ -28,6 +30,14 @@ function getWebStorage(): Storage | null {
 
 const safeStorage = {
   async getItem(key: string): Promise<string | null> {
+    if (Platform.OS !== 'web') {
+      try {
+        return await AsyncStorage.getItem(key);
+      } catch {
+        return inMemoryStorage.get(key) ?? null;
+      }
+    }
+
     const webStorage = getWebStorage();
     if (webStorage) {
       const webValue = webStorage.getItem(key);
@@ -39,6 +49,16 @@ const safeStorage = {
     return inMemoryStorage.get(key) ?? null;
   },
   async setItem(key: string, value: string): Promise<void> {
+    if (Platform.OS !== 'web') {
+      try {
+        await AsyncStorage.setItem(key, value);
+        return;
+      } catch {
+        inMemoryStorage.set(key, value);
+        return;
+      }
+    }
+
     const webStorage = getWebStorage();
     if (webStorage) {
       webStorage.setItem(key, value);
@@ -48,6 +68,15 @@ const safeStorage = {
     inMemoryStorage.set(key, value);
   },
   async removeItem(key: string): Promise<void> {
+    if (Platform.OS !== 'web') {
+      try {
+        await AsyncStorage.removeItem(key);
+      } finally {
+        inMemoryStorage.delete(key);
+      }
+      return;
+    }
+
     const webStorage = getWebStorage();
     if (webStorage) {
       webStorage.removeItem(key);

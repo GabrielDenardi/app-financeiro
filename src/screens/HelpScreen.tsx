@@ -35,7 +35,7 @@ import { colors } from '../theme';
 
 const { width } = Dimensions.get('window');
 
-const CATEGORY_CONFIG: Record<HelpCategory, { color: string, bgColor: string, icon: any }> = {
+const CATEGORY_CONFIG: Record<string, { color: string, bgColor: string, icon: any }> = {
   'Transações': { color: '#10b981', bgColor: '#ecfdf5', icon: ArrowLeftRight },
   'Cartões': { color: colors.primaryLight, bgColor: '#eff6ff', icon: CreditCard },
   'Metas': { color: '#f59e0b', bgColor: '#fffbeb', icon: PiggyBank },

@@ -43,7 +43,7 @@ export function TransactionListItem({
               <Text style={styles.categoryChip} numberOfLines={1}>
                 {item.category}
               </Text>
-              <Text style={styles.dateText}>{formatShortDate(item.dateISO)}</Text>
+              <Text style={styles.dateText}>{formatShortDate(item.dateISO ?? item.occurredOn ?? '')}</Text>
             </View>
           </View>
         </View>

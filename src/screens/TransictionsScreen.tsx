@@ -1,224 +1,398 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  View, 
-  Text, 
-  SectionList, 
-  StyleSheet, 
-  SafeAreaView, 
-  TextInput, 
-  TouchableOpacity,
-  Platform,
-  ScrollView
+import { useMemo, useState } from 'react';
+import {
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  SectionList,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import { ArrowLeft, Search, X, SlidersHorizontal } from 'lucide-react-native';
-import { TransactionListItem } from '../components/TransictionListItem';
-import { MOCK_TRANSACTIONS } from '../data/transictionsMock';
-import { colors, radius, spacing, typography } from '../theme';
-import { formatCurrency } from '../utils/format';
+import { ArrowLeft, Search, SlidersHorizontal, X } from 'lucide-react-native';
 
-export function TransactionsScreen ({ navigation }: any) {
+import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import { useTransactionSections } from '../features/transactions/hooks/useTransactions';
+import { formatCurrencyBRL } from '../utils/format';
+import { colors, radius, spacing, typography } from '../theme';
+
+const MONTHS = ['Todos', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const METHODS = ['Todos', 'Pix', 'Transferencia', 'Dinheiro', 'Cartao de credito', 'Cartao de debito', 'Boleto'];
+
+export function TransactionsScreen({ navigation }: any) {
+  const currentUser = useAuthenticatedUser();
   const [searchText, setSearchText] = useState('');
   const [activeType, setActiveType] = useState<'all' | 'income' | 'expense'>('all');
-  const [activeMonth, setActiveMonth] = React.useState<string>('Todos');
-  const [activeMethod, setActiveMethod] = useState('Todos'); 
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [activeMonth, setActiveMonth] = useState('Todos');
+  const [activeMethod, setActiveMethod] = useState('Todos');
+  const [showFilters, setShowFilters] = useState(false);
 
-  const monthMap: Record<string, number> = {
-    jan: 0, fev: 1, mar: 2, abr: 3, mai: 4, jun: 5,
-    jul: 6, ago: 7, set: 8, out: 9, nov: 10, dez: 11
-  };
-  const months = ['Todos', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
-  const methods = ['Todos', 'Dinheiro', 'Débito', 'Crédito', 'PIX', 'Transferência', 'Boleto'];
-
-  const filteredSections = useMemo(() => {
-    return MOCK_TRANSACTIONS.map(section => {
-      const filteredItems = section.data.filter(item => {
-
-        const matchesSearch = item.title.toLowerCase().includes(searchText.toLowerCase()) || 
-                             item.category.toLowerCase().includes(searchText.toLowerCase());
-        
-        const isIncome = item.amount > 0;
-        const matchesType = activeType === 'all' || item.type === activeType;
-
-        const matchesMonth =
-          activeMonth === 'Todos' 
-            ? true 
-            : new Date(item.dateISO).getMonth() === monthMap[activeMonth.toLowerCase()];
-
-        const matchesMethod = activeMethod === 'Todos' ? true : item.paymentMethod === activeMethod;
-
-        return matchesSearch && matchesType && matchesMonth && matchesMethod;
-      });
-
-      return { ...section, data: filteredItems };
-    }).filter(section => section.data.length > 0);
-  }, [searchText, activeType, activeMonth, activeMethod]);
+  const monthIndex = activeMonth === 'Todos' ? null : MONTHS.indexOf(activeMonth) - 1;
+  const sectionsQuery = useTransactionSections(currentUser?.id, {
+    search: searchText,
+    type: activeType,
+    month: monthIndex,
+    paymentMethod: activeMethod === 'Todos' ? null : activeMethod,
+  });
 
   const totals = useMemo(() => {
-    let income = 0;
-    let expense = 0;
+    return (sectionsQuery.data ?? []).reduce(
+      (accumulator, section) => {
+        section.data.forEach((item) => {
+          if (item.type === 'income') {
+            accumulator.income += item.amount;
+          } else {
+            accumulator.expense += item.amount;
+          }
+        });
 
-    filteredSections.forEach(section => {
-      section.data.forEach(item => {
-        if (item.type === 'income') {
-          income += item.amount;
-        } else if (item.type === 'expense') {
-          expense += item.amount;
-        }
-      });
-    });
-
-    return { income, expense, balance: income - expense };
-  }, [filteredSections]);
+        return accumulator;
+      },
+      { income: 0, expense: 0 },
+    );
+  }, [sectionsQuery.data]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack()}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Transações</Text>
-        <View style={{ width: 28 }} /> 
+        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+          <ArrowLeft size={22} color={colors.textPrimary} />
+        </Pressable>
+        <Text style={styles.title}>Transacoes</Text>
+        <Pressable style={styles.filterButton} onPress={() => setShowFilters((current) => !current)}>
+          <SlidersHorizontal size={18} color={colors.textPrimary} />
+        </Pressable>
       </View>
 
-      <View style={styles.searchRow}>
-        <View style={styles.searchContainer}>
-          <Search size={18} color={colors.textSecondary} />
-          <TextInput 
-            style={styles.searchInput} 
-            placeholder="Buscar..." 
-            placeholderTextColor={colors.textSecondary}
-            value={searchText}
-            onChangeText={setSearchText}
-          />
-          {searchText !== '' && (
-            <TouchableOpacity onPress={() => setSearchText('')}><X size={16} color={colors.textSecondary} /></TouchableOpacity>
-          )}
-        </View>
-        <TouchableOpacity 
-          style={[styles.filterToggle, showAdvancedFilters && styles.filterToggleActive]} 
-          onPress={() => setShowAdvancedFilters(!showAdvancedFilters)}
-        >
-          <SlidersHorizontal size={20} color={showAdvancedFilters ? colors.background : colors.textPrimary} />
-        </TouchableOpacity>
+      <View style={styles.searchBox}>
+        <Search size={18} color={colors.textSecondary} />
+        <TextInput
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholder="Buscar por descricao, categoria ou metodo"
+          style={styles.searchInput}
+          placeholderTextColor={colors.textSecondary}
+        />
+        {searchText ? (
+          <Pressable onPress={() => setSearchText('')}>
+            <X size={16} color={colors.textSecondary} />
+          </Pressable>
+        ) : null}
       </View>
 
-      {showAdvancedFilters && (
-        <View style={styles.advancedFilters}>
-          <Text style={styles.filterLabel}>Período</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} >
-            {months.map(m => (
-              <FilterChip key={m} label={m} active={activeMonth === m} onPress={() => setActiveMonth(m)} />
-            ))}
-          </ScrollView>
-
-          <Text style={styles.filterLabel}>Método de Pagamento</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalScroll}>
-            {methods.map(method => (
-              <FilterChip 
-                key={method} 
-                label={method} 
-                active={activeMethod === method} 
-                onPress={() => setActiveMethod(method)} 
+      {showFilters ? (
+        <View style={styles.filtersCard}>
+          <Text style={styles.filterLabel}>Tipo</Text>
+          <View style={styles.chipsWrap}>
+            {[
+              { key: 'all', label: 'Tudo' },
+              { key: 'income', label: 'Entradas' },
+              { key: 'expense', label: 'Saidas' },
+            ].map((item) => (
+              <FilterChip
+                key={item.key}
+                active={activeType === item.key}
+                label={item.label}
+                onPress={() => setActiveType(item.key as 'all' | 'income' | 'expense')}
               />
             ))}
+          </View>
+
+          <Text style={styles.filterLabel}>Mes</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.horizontalChips}>
+              {MONTHS.map((month) => (
+                <FilterChip
+                  key={month}
+                  active={activeMonth === month}
+                  label={month}
+                  onPress={() => setActiveMonth(month)}
+                />
+              ))}
+            </View>
           </ScrollView>
 
-          <Text style={styles.filterLabel}>Tipo</Text>
-          <View style={styles.chipRow}>
-            <FilterChip label="Tudo" active={activeType === 'all'} onPress={() => setActiveType('all')} />
-            <FilterChip label="Entradas" active={activeType === 'income'} onPress={() => setActiveType('income')} />
-            <FilterChip label="Saídas" active={activeType === 'expense'} onPress={() => setActiveType('expense')} />
-          </View>
+          <Text style={styles.filterLabel}>Metodo</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.horizontalChips}>
+              {METHODS.map((method) => (
+                <FilterChip
+                  key={method}
+                  active={activeMethod === method}
+                  label={method}
+                  onPress={() => setActiveMethod(method)}
+                />
+              ))}
+            </View>
+          </ScrollView>
         </View>
-      )}
+      ) : null}
 
       <View style={styles.summaryCard}>
-        <SummaryItem label="Receitas" value={totals.income} color={colors.success} />
-        <View style={styles.divider} />
-        <SummaryItem label="Despesas" value={totals.expense} color={colors.danger} isNegative />
-        <View style={styles.divider} />
-        <SummaryItem label="Saldo" value={totals.balance} color={totals.balance >= 0 ? colors.textPrimary : colors.danger} />
+        <SummaryCell label="Receitas" value={formatCurrencyBRL(totals.income)} tone="success" />
+        <SummaryCell label="Despesas" value={formatCurrencyBRL(totals.expense)} tone="danger" />
+        <SummaryCell label="Saldo" value={formatCurrencyBRL(totals.income - totals.expense)} tone="default" />
       </View>
 
       <SectionList
-        sections={filteredSections}
+        sections={sectionsQuery.data ?? []}
         keyExtractor={(item) => item.id}
-        stickySectionHeadersEnabled={true}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => <TransactionListItem item={item} />}
-        renderSectionHeader={({ section: { date } }) => (
-          <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>{date}</Text></View>
+        stickySectionHeadersEnabled={false}
+        renderSectionHeader={({ section }) => <Text style={styles.sectionTitle}>{section.date}</Text>}
+        renderItem={({ item }) => (
+          <View style={styles.transactionRow}>
+            <View style={styles.transactionLeft}>
+              <Text style={styles.transactionTitle}>{item.title}</Text>
+              <Text style={styles.transactionMeta}>
+                {item.category} • {item.paymentMethod}
+                {item.installmentLabel ? ` • ${item.installmentLabel}` : ''}
+              </Text>
+            </View>
+            <View style={styles.transactionRight}>
+              <Text style={[styles.transactionAmount, item.type === 'income' ? styles.incomeText : styles.expenseText]}>
+                {item.type === 'income' ? '+' : '-'} {formatCurrencyBRL(item.amount)}
+              </Text>
+              <Text style={styles.transactionDate}>{item.dateLabel}</Text>
+            </View>
+          </View>
         )}
-        ListEmptyComponent={() => (
-          <View style={styles.emptyContainer}><Text style={styles.emptyText}>Nenhuma transação para os filtros selecionados.</Text></View>
-        )}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Nenhuma transacao encontrada para os filtros atuais.</Text>
+          </View>
+        }
       />
-
     </SafeAreaView>
   );
-};
+}
 
-const FilterChip = ({ label, active, onPress }: any) => (
-  <TouchableOpacity style={[styles.chip, active && styles.chipActive]} onPress={onPress}>
-    <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-  </TouchableOpacity>
-);
+function FilterChip({
+  active,
+  label,
+  onPress,
+}: {
+  active: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    </Pressable>
+  );
+}
 
-const SummaryItem = ({ label, value, color, isNegative }: any) => (
-  <View style={styles.summaryItem}>
-    <Text style={styles.summaryLabel}>{label}</Text>
-    <Text style={[styles.summaryValue, { color }]}>{isNegative ? '-' : ''}{formatCurrency(value)}</Text>
-  </View>
-);
+function SummaryCell({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'success' | 'danger' | 'default';
+}) {
+  return (
+    <View style={styles.summaryCell}>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text
+        style={[
+          styles.summaryValue,
+          tone === 'success' ? styles.incomeText : tone === 'danger' ? styles.expenseText : null,
+        ]}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    marginTop: spacing.xxl,
-    marginBottom: spacing.xl,
+    paddingTop: spacing.xl,
+    gap: spacing.md,
   },
-  backButton: { padding: spacing.md },
-  headerTitle: { ...typography.h2, color: colors.textPrimary, fontWeight: 'bold' },
-  searchRow: { flexDirection: 'row', paddingHorizontal: spacing.lg, gap: spacing.sm, marginBottom: spacing.md },
-  searchContainer: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
-    borderRadius: radius.md, paddingHorizontal: spacing.md, height: 48, borderWidth: 1, borderColor: colors.border, gap: spacing.sm,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  searchInput: { flex: 1, ...typography.body, color: colors.textPrimary },
-  filterToggle: { 
-    width: 48, height: 48, backgroundColor: colors.surface, borderRadius: radius.md, 
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border 
+  title: {
+    ...typography.h1,
+    color: colors.textPrimary,
+    flex: 1,
   },
-  filterToggleActive: { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
-  advancedFilters: { 
-    backgroundColor: colors.surface, marginHorizontal: spacing.lg, padding: spacing.md, 
-    borderRadius: radius.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border 
+  filterButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  filterLabel: { ...typography.caption, fontWeight: 'bold', color: colors.textSecondary, marginBottom: spacing.xs, marginTop: spacing.sm },
-  horizontalScroll: { gap: spacing.xs, paddingRight: spacing.xl, paddingVertical: spacing.xs },
-  chipRow: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xs },
-  chip: { paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: radius.pill || 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, marginRight: 8 },
-  chipActive: { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
-  chipText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
-  chipTextActive: { color: colors.background },
+  searchBox: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    minHeight: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    ...typography.body,
+    color: colors.textPrimary,
+  },
+  filtersCard: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  filterLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '700',
+    marginTop: spacing.xs,
+  },
+  chipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  horizontalChips: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  chip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  chipActive: {
+    backgroundColor: '#DBEAFE',
+    borderColor: colors.primary,
+  },
+  chipText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: colors.primary,
+  },
   summaryCard: {
-    flexDirection: 'row', backgroundColor: colors.surface, marginHorizontal: spacing.lg, 
-    paddingVertical: spacing.lg, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.lg,
-    ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 }, android: { elevation: 2 } })
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    flexDirection: 'row',
   },
-  summaryItem: { flex: 1, alignItems: 'center' },
-  summaryLabel: { ...typography.caption, color: colors.textSecondary, marginBottom: 4 },
-  summaryValue: { ...typography.body, fontWeight: 'bold', fontSize: 13 },
-  divider: { width: 1, height: '60%', backgroundColor: colors.border, alignSelf: 'center' },
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: 40 },
-  sectionHeader: { backgroundColor: colors.background, paddingVertical: spacing.sm },
-  sectionTitle: { ...typography.caption, fontWeight: 'bold', color: colors.textSecondary, textTransform: 'uppercase' },
-  emptyContainer: { alignItems: 'center', marginTop: 50 },
-  emptyText: { ...typography.body, color: colors.textSecondary }
+  summaryCell: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  summaryValue: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    marginTop: spacing.xs,
+  },
+  listContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 48,
+    paddingTop: spacing.md,
+  },
+  sectionTitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+  },
+  transactionRow: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  transactionLeft: {
+    flex: 1,
+  },
+  transactionTitle: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  transactionMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  transactionRight: {
+    alignItems: 'flex-end',
+  },
+  transactionAmount: {
+    ...typography.body,
+    fontWeight: '700',
+  },
+  transactionDate: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  emptyState: {
+    paddingTop: spacing.xxl,
+    alignItems: 'center',
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  incomeText: {
+    color: colors.success,
+  },
+  expenseText: {
+    color: colors.danger,
+  },
 });

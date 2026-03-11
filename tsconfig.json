@@ -4,5 +4,6 @@
     "strict": true,
     "jsx": "react-jsx",
     "types": ["jest", "node", "react", "react-native"]
-  }
+  },
+  "exclude": ["supabase/functions"]
 }
