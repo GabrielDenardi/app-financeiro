@@ -14,6 +14,16 @@ Aplicativo de gestao financeira pessoal em React Native com Expo.
 npm install
 ```
 
+## Configuracao de ambiente (Supabase)
+
+1. Copie `.env.example` para `.env`.
+2. Preencha:
+   - `EXPO_PUBLIC_SUPABASE_URL`
+   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+   - `EXPO_PUBLIC_PRIVACY_POLICY_URL`
+   - `EXPO_PUBLIC_EMAIL_REDIRECT_URL`
+3. Rode a migration SQL em `supabase/migrations/202602270001_auth_onboarding.sql` no seu projeto Supabase.
+
 ## Como iniciar o projeto
 
 ```bash
@@ -55,6 +65,7 @@ npm run web
 - `npm run android`: abre no Android
 - `npm run ios`: abre no iOS
 - `npm run web`: abre no navegador
+- `npm test`: roda os testes
 
 ## Problemas comuns
 

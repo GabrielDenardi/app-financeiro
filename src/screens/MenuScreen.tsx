@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -15,14 +16,70 @@ import {
   ChevronRight, 
   LogOut 
 } from 'lucide-react-native';
+import { useProfile } from '../features/profile/hooks/useProfile';
+import { supabase } from '../lib/supabase';
 import { colors } from '../theme';
+import type { AuthenticatedUserSummary } from '../types/auth';
 import { menuMock } from '../data/menuMock';
 
-export function MenuScreen({ navigation, user }: any) {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+type MenuScreenProps = {
+  navigation: any;
+  user: AuthenticatedUserSummary | null;
+};
 
-  const handleLogout = () => {
-    console.log("Saindo...");
+const IMPLEMENTED_ROUTES = new Set([
+  'Accounts',
+  'Cards',
+  'Goals',
+  'Help',
+  'Privacy',
+  'Import',
+  'About',
+  'Budgets',
+  'Reports',
+  'Groups',
+]);
+
+export function MenuScreen({ navigation, user }: MenuScreenProps) {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const profileQuery = useProfile(user?.id);
+  const profileName = profileQuery.data?.fullName || user?.fullName || 'Usuario';
+  const profileEmail = profileQuery.data?.email || user?.email || 'usuario@email.com';
+  const parentNavigation = navigation?.getParent?.();
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      Alert.alert('Erro', 'Não foi possível sair agora. Tente novamente.');
+    }
+  };
+
+  const handleNavigate = (page?: string) => {
+    if (!page) {
+      return;
+    }
+
+    if (!IMPLEMENTED_ROUTES.has(page)) {
+      Alert.alert('Em breve', 'Essa tela ainda não está disponível.');
+      return;
+    }
+
+    if (parentNavigation) {
+      parentNavigation.navigate(page);
+      return;
+    }
+
+    navigation?.navigate(page);
+  };
+
+  const handleEditProfile = () => {
+    if (parentNavigation) {
+      parentNavigation.navigate('EditProfile');
+      return;
+    }
+
+    navigation?.navigate('EditProfile');
   };
 
   return (
@@ -48,16 +105,16 @@ export function MenuScreen({ navigation, user }: any) {
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {user?.full_name?.charAt(0) || 'U'}
+              {profileName.charAt(0)?.toUpperCase() || 'U'}
             </Text>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.full_name || 'Usuário'}</Text>
-            <Text style={styles.profileEmail}>{user?.email || 'usuario@email.com'}</Text>
+            <Text style={styles.profileName}>{profileName}</Text>
+            <Text style={styles.profileEmail}>{profileEmail}</Text>
           </View>
           <TouchableOpacity 
             style={styles.editButton}
-            onPress={() => navigation?.navigate('EditProfile')}
+            onPress={handleEditProfile}
           >
             <User size={16} color={colors.textPrimary} />
             <Text style={styles.editButtonText}>Editar</Text>
@@ -77,7 +134,7 @@ export function MenuScreen({ navigation, user }: any) {
                     <TouchableOpacity 
                       style={styles.menuItem}
                       disabled={item.toggle}
-                      onPress={() => item.page && navigation?.navigate(item.page)}
+                      onPress={() => handleNavigate(item.page)}
                     >
                       <View style={styles.menuItemIcon}>
                         <Icon size={20} color={colors.textSecondary} />

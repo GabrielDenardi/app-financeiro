@@ -1,6 +1,5 @@
 import { LucideIcon } from 'lucide-react-native';
 
-//Dashboard
 export type EntryType = 'income' | 'expense';
 
 export interface SummaryStats {
@@ -34,14 +33,13 @@ export interface HomeDashboardData {
   recentTransactions: RecentTransaction[];
 }
 
-//Transaction
 export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
   id: string;
   title: string;
-  date: string;       // Ex: "17 fev"
-  dateISO: string;    // Ex: "2026-02-17T00:00:00Z" 
+  date: string;
+  dateISO: string;
   amount: number;
   category: string;
   paymentMethod: string;
@@ -53,7 +51,6 @@ export interface DailyTransactions {
   data: Transaction[];
 }
 
-//Menu
 export interface MenuItem {
   icon: any;
   label: string;
@@ -68,9 +65,13 @@ export interface MenuSections {
   items: MenuItem[];
 }
 
-
-//Account 
-export type AccountType = 'checking' | 'savings' | 'credit_card' | 'investment' | 'cash' | 'other';
+export type AccountType =
+  | 'checking'
+  | 'savings'
+  | 'credit_card'
+  | 'investment'
+  | 'cash'
+  | 'other';
 
 export interface Account {
   id: string;
@@ -89,7 +90,6 @@ export interface AccountConfig {
   light: string;
 }
 
-//Card 
 export interface ExpenseData {
   description: string;
   card: string;
@@ -103,4 +103,24 @@ export interface Props {
   visible: boolean;
   onClose: () => void;
   onSave?: (data: ExpenseData) => void;
+}
+
+export type HelpCategory =
+  | 'Transações'
+  | 'Cartões'
+  | 'Metas'
+  | 'Grupos'
+  | 'Orçamentos'
+  | 'Contas'
+  | 'Voz'
+  | 'Relatórios';
+
+export interface ArticleHelp {
+  id: string;
+  category: HelpCategory;
+  title: string;
+  level: string;
+  popular: boolean;
+  steps: { id: number; text: string }[];
+  tip: string;
 }

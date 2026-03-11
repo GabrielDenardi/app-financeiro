@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import {
   Animated,
@@ -27,7 +28,9 @@ import { SectionHeader } from '../components/SectionHeader';
 import { SummaryStatCard } from '../components/SummaryStatCard';
 import { TransactionListItem } from '../components/TransactionListItem';
 import { homeDashboardMock } from '../data/homeMock';
+import { useProfile } from '../features/profile/hooks/useProfile';
 import { colors, radius, spacing, typography } from '../theme';
+import type { AuthenticatedUserSummary } from '../types/auth';
 import { formatCurrencyBRL, HIDDEN_CURRENCY_TEXT } from '../utils/format';
 
 const MODAL_SHEET_CLOSED_TRANSLATE_Y = 420;
@@ -45,7 +48,7 @@ const QUICK_ADD_CATEGORY_OPTIONS = [
   'Salario',
   'Freelance',
 ] as const;
-const QUICK_ADD_ACCOUNT_OPTIONS = ['Carteira', 'Nubank', 'Inter', 'Itau'] as const;
+const QUICK_ADD_ACCOUNT_OPTIONS = ['Carteira', 'Conta Principal', 'Banco Digital', 'Banco Local'] as const;
 const QUICK_ADD_PAYMENT_OPTIONS = [
   'Pix',
   'Cartao de credito',
@@ -56,7 +59,7 @@ const QUICK_ADD_PAYMENT_OPTIONS = [
 const HOME_ACCOUNTS = [
   {
     id: 'acc-1',
-    bank: 'Nubank',
+    bank: 'Conta Principal',
     nickname: 'Conta principal',
     typeLabel: 'Conta corrente',
     balance: 2500,
@@ -150,8 +153,30 @@ function buildCategorySpendingDonutSegments(
   };
 }
 
-export function HomeScreen() {
+function getHomeDisplayName(fullName: string | null | undefined, email: string | null | undefined) {
+  if (fullName?.trim()) {
+    return fullName.trim();
+  }
+
+  if (email) {
+    return email.split('@')[0];
+  }
+
+  return 'Usuario';
+}
+
+type HomeScreenProps = {
+  currentUser: AuthenticatedUserSummary | null;
+};
+
+export function HomeScreen({ currentUser }: HomeScreenProps) {
+  const navigation = useNavigation<any>();
   const data = homeDashboardMock;
+  const profileQuery = useProfile(currentUser?.id);
+  const displayName = getHomeDisplayName(
+    profileQuery.data?.fullName ?? currentUser?.fullName,
+    profileQuery.data?.email ?? currentUser?.email,
+  );
   const [isAmountsVisible, setIsAmountsVisible] = useState(true);
   const [isQuickAddModalVisible, setIsQuickAddModalVisible] = useState(false);
   const [isQuickAddModalMounted, setIsQuickAddModalMounted] = useState(false);
@@ -200,6 +225,20 @@ export function HomeScreen() {
     setIsQuickAddDatePickerOpen(false);
     setIsQuickAddNativeDatePickerVisible(false);
     console.log('[Home] add-transaction');
+  };
+
+  const handleHomeMetricPress = (metricId: string) => {
+    if (metricId === 'goals') {
+      navigation.navigate('Goals');
+      return;
+    }
+
+    if (metricId === 'groups') {
+      navigation.getParent?.()?.navigate('Groups');
+      return;
+    }
+
+    console.log(`[Home] open-${metricId}`);
   };
 
   const handleSeeAllPress = () => {
@@ -622,7 +661,7 @@ export function HomeScreen() {
               <View style={styles.headerRow}>
                 <View style={styles.headerTextBlock}>
                   <Text style={styles.headerGreeting}>Boa tarde,</Text>
-                  <Text style={styles.headerName}>João Silva</Text>
+                  <Text style={styles.headerName}>{displayName}</Text>
                 </View>
 
                 <Pressable
@@ -714,14 +753,14 @@ export function HomeScreen() {
                 </Pressable>
               </View>
 
-              <View style={styles.kpiRow}>
-                {HOME_KPI_CARDS.map((metric) => (
-                  <Pressable
-                    key={metric.id}
-                    accessibilityRole="button"
-                    onPress={() => console.log(`[Home] open-${metric.id}`)}
-                    style={({ pressed }) => [styles.kpiCardPressable, pressed && styles.kpiCardPressed]}
-                  >
+                <View style={styles.kpiRow}>
+                  {HOME_KPI_CARDS.map((metric) => (
+                    <Pressable
+                      key={metric.id}
+                      accessibilityRole="button"
+                      onPress={() => handleHomeMetricPress(metric.id)}
+                      style={({ pressed }) => [styles.kpiCardPressable, pressed && styles.kpiCardPressed]}
+                    >
                     <Card style={styles.kpiCard}>
                       <View style={[styles.kpiIconBubble, { backgroundColor: metric.iconSurface }]}>
                         <Ionicons name={metric.icon} size={16} color={metric.iconColor} />
