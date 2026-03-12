@@ -1,7 +1,8 @@
+import { useMemo } from 'react';
 import type { GestureResponderEvent } from 'react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 interface SectionHeaderProps {
   title: string;
@@ -10,6 +11,9 @@ interface SectionHeaderProps {
 }
 
 export function SectionHeader({ title, actionLabel, onActionPress }: SectionHeaderProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
@@ -26,7 +30,7 @@ export function SectionHeader({ title, actionLabel, onActionPress }: SectionHead
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',

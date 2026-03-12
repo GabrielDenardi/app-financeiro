@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -11,15 +12,18 @@ import {
 } from 'react-native';
 import { ArrowLeft, Search, SlidersHorizontal, X } from 'lucide-react-native';
 
+import { TransactionListItem } from '../components/TransactionListItem';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { useTransactionSections } from '../features/transactions/hooks/useTransactions';
 import { formatCurrencyBRL } from '../utils/format';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 const MONTHS = ['Todos', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const METHODS = ['Todos', 'Pix', 'Transferencia', 'Dinheiro', 'Cartao de credito', 'Cartao de debito', 'Boleto'];
 
 export function TransactionsScreen({ navigation }: any) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const currentUser = useAuthenticatedUser();
   const [searchText, setSearchText] = useState('');
   const [activeType, setActiveType] = useState<'all' | 'income' | 'expense'>('all');
@@ -59,107 +63,111 @@ export function TransactionsScreen({ navigation }: any) {
           <ArrowLeft size={22} color={colors.textPrimary} />
         </Pressable>
         <Text style={styles.title}>Transacoes</Text>
-        <Pressable style={styles.filterButton} onPress={() => setShowFilters((current) => !current)}>
-          <SlidersHorizontal size={18} color={colors.textPrimary} />
+        <Pressable
+          style={[styles.filterToggle, showFilters && styles.filterToggleActive]}
+          onPress={() => setShowFilters((current) => !current)}
+        >
+          <SlidersHorizontal
+            size={18}
+            color={showFilters ? colors.background : colors.textPrimary}
+          />
         </Pressable>
       </View>
 
-      <View style={styles.searchBox}>
-        <Search size={18} color={colors.textSecondary} />
-        <TextInput
-          value={searchText}
-          onChangeText={setSearchText}
-          placeholder="Buscar por descricao, categoria ou metodo"
-          style={styles.searchInput}
-          placeholderTextColor={colors.textSecondary}
-        />
-        {searchText ? (
-          <Pressable onPress={() => setSearchText('')}>
-            <X size={16} color={colors.textSecondary} />
-          </Pressable>
-        ) : null}
+      <View style={styles.searchRow}>
+        <View style={styles.searchContainer}>
+          <Search size={18} color={colors.textSecondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar..."
+            placeholderTextColor={colors.textSecondary}
+            value={searchText}
+            onChangeText={setSearchText}
+          />
+          {searchText ? (
+            <Pressable onPress={() => setSearchText('')}>
+              <X size={16} color={colors.textSecondary} />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       {showFilters ? (
-        <View style={styles.filtersCard}>
-          <Text style={styles.filterLabel}>Tipo</Text>
-          <View style={styles.chipsWrap}>
-            {[
-              { key: 'all', label: 'Tudo' },
-              { key: 'income', label: 'Entradas' },
-              { key: 'expense', label: 'Saidas' },
-            ].map((item) => (
+        <View style={styles.advancedFilters}>
+          <Text style={styles.filterLabel}>Periodo</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalScroll}
+          >
+            {MONTHS.map((month) => (
               <FilterChip
-                key={item.key}
-                active={activeType === item.key}
-                label={item.label}
-                onPress={() => setActiveType(item.key as 'all' | 'income' | 'expense')}
+                key={month}
+                label={month}
+                active={activeMonth === month}
+                onPress={() => setActiveMonth(month)}
+                styles={styles}
               />
             ))}
+          </ScrollView>
+
+          <Text style={styles.filterLabel}>Metodo de pagamento</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalScroll}
+          >
+            {METHODS.map((method) => (
+              <FilterChip
+                key={method}
+                label={method}
+                active={activeMethod === method}
+                onPress={() => setActiveMethod(method)}
+                styles={styles}
+              />
+            ))}
+          </ScrollView>
+
+          <Text style={styles.filterLabel}>Tipo</Text>
+          <View style={styles.chipRow}>
+            <FilterChip label="Tudo" active={activeType === 'all'} onPress={() => setActiveType('all')} styles={styles} />
+            <FilterChip label="Entradas" active={activeType === 'income'} onPress={() => setActiveType('income')} styles={styles} />
+            <FilterChip label="Saidas" active={activeType === 'expense'} onPress={() => setActiveType('expense')} styles={styles} />
           </View>
-
-          <Text style={styles.filterLabel}>Mes</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.horizontalChips}>
-              {MONTHS.map((month) => (
-                <FilterChip
-                  key={month}
-                  active={activeMonth === month}
-                  label={month}
-                  onPress={() => setActiveMonth(month)}
-                />
-              ))}
-            </View>
-          </ScrollView>
-
-          <Text style={styles.filterLabel}>Metodo</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.horizontalChips}>
-              {METHODS.map((method) => (
-                <FilterChip
-                  key={method}
-                  active={activeMethod === method}
-                  label={method}
-                  onPress={() => setActiveMethod(method)}
-                />
-              ))}
-            </View>
-          </ScrollView>
         </View>
       ) : null}
 
       <View style={styles.summaryCard}>
-        <SummaryCell label="Receitas" value={formatCurrencyBRL(totals.income)} tone="success" />
-        <SummaryCell label="Despesas" value={formatCurrencyBRL(totals.expense)} tone="danger" />
-        <SummaryCell label="Saldo" value={formatCurrencyBRL(totals.income - totals.expense)} tone="default" />
+        <SummaryItem label="Receitas" value={formatCurrencyBRL(totals.income)} color={colors.success} styles={styles} />
+        <View style={styles.divider} />
+        <SummaryItem label="Despesas" value={formatCurrencyBRL(totals.expense)} color={colors.danger} styles={styles} />
+        <View style={styles.divider} />
+        <SummaryItem
+          label="Saldo"
+          value={formatCurrencyBRL(totals.income - totals.expense)}
+          color={totals.income - totals.expense >= 0 ? colors.textPrimary : colors.danger}
+          styles={styles}
+        />
       </View>
 
       <SectionList
         sections={sectionsQuery.data ?? []}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
         stickySectionHeadersEnabled={false}
+        contentContainerStyle={styles.listContent}
         renderSectionHeader={({ section }) => <Text style={styles.sectionTitle}>{section.date}</Text>}
-        renderItem={({ item }) => (
-          <View style={styles.transactionRow}>
-            <View style={styles.transactionLeft}>
-              <Text style={styles.transactionTitle}>{item.title}</Text>
-              <Text style={styles.transactionMeta}>
-                {item.category} • {item.paymentMethod}
-                {item.installmentLabel ? ` • ${item.installmentLabel}` : ''}
-              </Text>
-            </View>
-            <View style={styles.transactionRight}>
-              <Text style={[styles.transactionAmount, item.type === 'income' ? styles.incomeText : styles.expenseText]}>
-                {item.type === 'income' ? '+' : '-'} {formatCurrencyBRL(item.amount)}
-              </Text>
-              <Text style={styles.transactionDate}>{item.dateLabel}</Text>
-            </View>
+        renderItem={({ item, index, section }) => (
+          <View style={styles.transactionCard}>
+            <TransactionListItem item={item} showDivider={index < section.data.length - 1} />
           </View>
         )}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Nenhuma transacao encontrada para os filtros atuais.</Text>
+          <View style={styles.emptyContainer}>
+            {sectionsQuery.isLoading ? (
+              <ActivityIndicator />
+            ) : (
+              <Text style={styles.emptyText}>Nenhuma transacao para os filtros selecionados.</Text>
+            )}
           </View>
         }
       />
@@ -168,46 +176,43 @@ export function TransactionsScreen({ navigation }: any) {
 }
 
 function FilterChip({
-  active,
   label,
+  active,
   onPress,
+  styles,
 }: {
-  active: boolean;
   label: string;
+  active: boolean;
   onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
-    <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
+    <Pressable style={[styles.chip, active && styles.chipActive]} onPress={onPress}>
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
     </Pressable>
   );
 }
 
-function SummaryCell({
+function SummaryItem({
   label,
   value,
-  tone,
+  color,
+  styles,
 }: {
   label: string;
   value: string;
-  tone: 'success' | 'danger' | 'default';
+  color: string;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
-    <View style={styles.summaryCell}>
+    <View style={styles.summaryItem}>
       <Text style={styles.summaryLabel}>{label}</Text>
-      <Text
-        style={[
-          styles.summaryValue,
-          tone === 'success' ? styles.incomeText : tone === 'danger' ? styles.expenseText : null,
-        ]}
-      >
-        {value}
-      </Text>
+      <Text style={[styles.summaryValue, { color }]}>{value}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
@@ -235,7 +240,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flex: 1,
   },
-  filterButton: {
+  filterToggle: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -245,17 +250,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  searchBox: {
-    marginHorizontal: spacing.lg,
+  filterToggleActive: {
+    backgroundColor: colors.textPrimary,
+    borderColor: colors.textPrimary,
+  },
+  searchRow: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
     marginTop: spacing.md,
-    minHeight: 48,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: colors.border,
     gap: spacing.sm,
   },
   searchInput: {
@@ -263,136 +276,108 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textPrimary,
   },
-  filtersCard: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.md,
+  advancedFilters: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    marginHorizontal: spacing.lg,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.sm,
   },
   filterLabel: {
     ...typography.caption,
-    color: colors.textSecondary,
     fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  horizontalScroll: {
+    gap: spacing.xs,
+    paddingRight: spacing.xl,
+    paddingVertical: spacing.xs,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
     marginTop: spacing.xs,
-  },
-  chipsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  horizontalChips: {
-    flexDirection: 'row',
-    gap: spacing.sm,
   },
   chip: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 6,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.background,
+    marginRight: 8,
   },
   chipActive: {
-    backgroundColor: '#DBEAFE',
-    borderColor: colors.primary,
+    backgroundColor: colors.textPrimary,
+    borderColor: colors.textPrimary,
   },
   chipText: {
     ...typography.caption,
-    color: colors.textPrimary,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   chipTextActive: {
-    color: colors.primary,
+    color: colors.background,
   },
   summaryCard: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.md,
+    flexDirection: 'row',
     backgroundColor: colors.surface,
+    marginHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
-    flexDirection: 'row',
+    marginBottom: spacing.lg,
   },
-  summaryCell: {
+  summaryItem: {
     flex: 1,
     alignItems: 'center',
   },
   summaryLabel: {
     ...typography.caption,
     color: colors.textSecondary,
+    marginBottom: 4,
   },
   summaryValue: {
     ...typography.body,
-    color: colors.textPrimary,
     fontWeight: '700',
-    marginTop: spacing.xs,
+    fontSize: 13,
+  },
+  divider: {
+    width: 1,
+    height: '60%',
+    backgroundColor: colors.border,
+    alignSelf: 'center',
   },
   listContent: {
     paddingHorizontal: spacing.lg,
     paddingBottom: 48,
-    paddingTop: spacing.md,
   },
   sectionTitle: {
     ...typography.caption,
-    color: colors.textSecondary,
     fontWeight: '700',
-    marginBottom: spacing.sm,
+    color: colors.textSecondary,
     textTransform: 'uppercase',
+    marginBottom: spacing.sm,
   },
-  transactionRow: {
+  transactionCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
+    overflow: 'hidden',
     marginBottom: spacing.sm,
-    flexDirection: 'row',
+  },
+  emptyContainer: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  transactionLeft: {
-    flex: 1,
-  },
-  transactionTitle: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: '700',
-  },
-  transactionMeta: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  transactionRight: {
-    alignItems: 'flex-end',
-  },
-  transactionAmount: {
-    ...typography.body,
-    fontWeight: '700',
-  },
-  transactionDate: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  emptyState: {
-    paddingTop: spacing.xxl,
-    alignItems: 'center',
+    marginTop: 50,
   },
   emptyText: {
     ...typography.body,
     color: colors.textSecondary,
-  },
-  incomeText: {
-    color: colors.success,
-  },
-  expenseText: {
-    color: colors.danger,
   },
 });

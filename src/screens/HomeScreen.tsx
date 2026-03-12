@@ -11,27 +11,49 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { ArrowDownRight, ArrowUpRight, Eye, EyeOff, Landmark, Plus, Target, Users } from 'lucide-react-native';
+import { Eye, EyeOff, Landmark, Target, Users } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 
-import { useFinanceCategories, useCreateTransactionMutation } from '../features/transactions/hooks/useTransactions';
-import { useHomeDashboard } from '../features/dashboard/hooks/useDashboard';
+import { BalanceCard } from '../components/BalanceCard';
+import { BOTTOM_TAB_BAR_HEIGHT } from '../components/BottomTabBarMock';
+import { Card } from '../components/Card';
+import { FloatingActionButton } from '../components/FloatingActionButton';
+import { MonthlyBarChart } from '../components/MonthlyBarChart';
+import { SectionHeader } from '../components/SectionHeader';
+import { SummaryStatCard } from '../components/SummaryStatCard';
+import { TransactionListItem } from '../components/TransactionListItem';
 import { useAccounts } from '../features/accounts/hooks/useAccounts';
+import { useHomeDashboard } from '../features/dashboard/hooks/useDashboard';
 import { usePreferences } from '../features/preferences/hooks/usePreferences';
 import { useProfile } from '../features/profile/hooks/useProfile';
-import { formatCurrencyBRL, HIDDEN_CURRENCY_TEXT } from '../utils/format';
-import { colors, radius, spacing, typography } from '../theme';
+import { useCreateTransactionMutation, useFinanceCategories } from '../features/transactions/hooks/useTransactions';
+import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import type { AuthenticatedUserSummary } from '../types/auth';
+import { HIDDEN_CURRENCY_TEXT, formatCurrencyBRL } from '../utils/format';
 
 type HomeScreenProps = {
   currentUser: AuthenticatedUserSummary | null;
 };
 
-function displayCurrency(value: number, visible: boolean) {
+function getDisplayName(fullName?: string | null, email?: string | null) {
+  if (fullName?.trim()) {
+    return fullName.trim();
+  }
+
+  if (email?.includes('@')) {
+    return email.split('@')[0];
+  }
+
+  return 'Usuario';
+}
+
+function formatVisibleCurrency(value: number, visible: boolean) {
   return visible ? formatCurrencyBRL(value) : HIDDEN_CURRENCY_TEXT;
 }
 
 export function HomeScreen({ currentUser }: HomeScreenProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const profileQuery = useProfile(currentUser?.id);
   const dashboardQuery = useHomeDashboard(currentUser?.id);
@@ -53,11 +75,15 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
 
   const dashboard = dashboardQuery.data;
   const accounts = accountsQuery.data ?? [];
-  const categories = categoriesQuery.data?.filter((category) => category.kind !== 'income') ?? [];
   const categorySpending = dashboard?.categorySpending ?? [];
   const recentTransactions = dashboard?.recentTransactions ?? [];
-  const displayName =
-    profileQuery.data?.fullName?.trim() || currentUser?.fullName?.trim() || currentUser?.email?.split('@')[0] || 'Usuario';
+  const weeklyFlow = dashboard?.weeklyFlow ?? [];
+  const summary = dashboard?.summary;
+  const displayName = getDisplayName(
+    profileQuery.data?.fullName ?? currentUser?.fullName,
+    profileQuery.data?.email ?? currentUser?.email,
+  );
+  const primaryAccount = accounts.find((account) => account.isActive) ?? accounts[0] ?? null;
 
   const quickAddCategories = useMemo(
     () =>
@@ -76,7 +102,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
   const handleOpenQuickAdd = () => {
     setQuickAddVisible(true);
     setCategoryId(quickAddCategories[0]?.id ?? null);
-    setAccountId(accounts[0]?.id ?? '');
+    setAccountId(primaryAccount?.id ?? '');
   };
 
   const handleSubmitQuickAdd = async () => {
@@ -101,137 +127,169 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Ola, {displayName}</Text>
-            <Text style={styles.subtitle}>Seu resumo financeiro agora vem do Supabase.</Text>
-          </View>
-          <Pressable style={styles.visibilityButton} onPress={() => setShowValues((current) => !current)}>
-            {showValues ? <Eye color={colors.textPrimary} size={18} /> : <EyeOff color={colors.textPrimary} size={18} />}
-          </Pressable>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Ola, {displayName}</Text>
+          <Text style={styles.subtitle}>Seu resumo financeiro com dados reais.</Text>
         </View>
+        <Pressable style={styles.visibilityButton} onPress={() => setShowValues((current) => !current)}>
+          {showValues ? <Eye color={colors.textPrimary} size={18} /> : <EyeOff color={colors.textPrimary} size={18} />}
+        </Pressable>
+      </View>
 
-        <View style={styles.heroCard}>
-          {dashboardQuery.isLoading ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <>
-              <Text style={styles.heroLabel}>{dashboard?.summary.monthLabel ?? 'Resumo mensal'}</Text>
-              <Text style={styles.heroValue}>{displayCurrency(dashboard?.summary.balance ?? 0, showValues)}</Text>
-              <View style={styles.heroStats}>
-                <View style={styles.heroStat}>
-                  <ArrowUpRight size={16} color="#86EFAC" />
-                  <Text style={styles.heroStatText}>{displayCurrency(dashboard?.summary.income ?? 0, showValues)}</Text>
-                </View>
-                <View style={styles.heroStat}>
-                  <ArrowDownRight size={16} color="#FCA5A5" />
-                  <Text style={styles.heroStatText}>{displayCurrency(dashboard?.summary.expense ?? 0, showValues)}</Text>
-                </View>
-              </View>
-            </>
-          )}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <BalanceCard
+          summary={{
+            monthLabel: summary?.monthLabel ?? 'Mes atual',
+            balance: summary?.balance ?? 0,
+            income: summary?.income ?? 0,
+            expense: summary?.expense ?? 0,
+            updatedAtLabel: summary?.updatedAtLabel ?? 'Atualizado em tempo real',
+          }}
+          variationLabel={summary?.monthLabel}
+          hideAmounts={!showValues}
+        />
+
+        <View style={styles.summaryRow}>
+          <SummaryStatCard
+            label="Entradas"
+            amount={summary?.income ?? 0}
+            type="income"
+            style={styles.summaryStatCard}
+            hideAmounts={!showValues}
+          />
+          <SummaryStatCard
+            label="Saidas"
+            amount={summary?.expense ?? 0}
+            type="expense"
+            style={styles.summaryStatCard}
+            hideAmounts={!showValues}
+          />
         </View>
 
         <View style={styles.kpiRow}>
-          <Pressable style={styles.kpiCard} onPress={() => navigation.navigate('Accounts')}>
-            <Landmark color={colors.primary} size={18} />
-            <Text style={styles.kpiValue}>{dashboard?.summary.accountsCount ?? 0}</Text>
-            <Text style={styles.kpiLabel}>Contas</Text>
-          </Pressable>
           <Pressable style={styles.kpiCard} onPress={() => navigation.navigate('Goals')}>
             <Target color={colors.primary} size={18} />
-            <Text style={styles.kpiValue}>{dashboard?.summary.goalsCount ?? 0}</Text>
+            <Text style={styles.kpiValue}>{summary?.goalsCount ?? 0}</Text>
             <Text style={styles.kpiLabel}>Metas</Text>
           </Pressable>
           <Pressable style={styles.kpiCard} onPress={() => navigation.getParent()?.navigate('Groups')}>
             <Users color={colors.primary} size={18} />
-            <Text style={styles.kpiValue}>{dashboard?.summary.groupsCount ?? 0}</Text>
+            <Text style={styles.kpiValue}>{summary?.groupsCount ?? 0}</Text>
             <Text style={styles.kpiLabel}>Grupos</Text>
+          </Pressable>
+          <Pressable style={styles.kpiCard} onPress={() => navigation.navigate('Accounts')}>
+            <Landmark color={colors.primary} size={18} />
+            <Text style={styles.kpiValue}>{summary?.accountsCount ?? accounts.length}</Text>
+            <Text style={styles.kpiLabel}>Contas</Text>
           </Pressable>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Categorias do mes</Text>
-            <Pressable onPress={() => navigation.navigate('Reports')}>
-              <Text style={styles.sectionAction}>Relatorios</Text>
-            </Pressable>
-          </View>
-          <View style={styles.sectionCard}>
-            {categorySpending.length ? (
-              categorySpending.map((item) => (
-                <View key={item.category} style={styles.categoryRow}>
-                  <View style={styles.categoryLabelRow}>
-                    <View style={[styles.categoryDot, { backgroundColor: item.color }]} />
-                    <Text style={styles.categoryLabel}>{item.category}</Text>
-                  </View>
-                  <View style={styles.categoryValueRow}>
-                    <Text style={styles.categoryShare}>{item.share.toFixed(1)}%</Text>
-                    <Text style={styles.categoryAmount}>{displayCurrency(item.amount, showValues)}</Text>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.emptyText}>Nenhum gasto reportavel neste periodo.</Text>
-            )}
-          </View>
-        </View>
+        {primaryAccount ? (
+          <Card style={styles.accountHeroCard}>
+            <SectionHeader
+              title="Conta principal"
+              actionLabel="Ver contas"
+              onActionPress={() => navigation.navigate('Accounts')}
+            />
+            <View style={styles.accountRow}>
+              <View>
+                <Text style={styles.accountName}>{primaryAccount.name}</Text>
+                <Text style={styles.accountMeta}>
+                  {primaryAccount.institution || 'Instituicao nao informada'}
+                </Text>
+              </View>
+              <Text style={styles.accountAmount}>
+                {formatVisibleCurrency(primaryAccount.currentBalance, showValues)}
+              </Text>
+            </View>
+          </Card>
+        ) : null}
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Ultimas movimentacoes</Text>
-            <Pressable onPress={() => navigation.navigate('Transactions')}>
-              <Text style={styles.sectionAction}>Ver todas</Text>
-            </Pressable>
-          </View>
-          <View style={styles.sectionCard}>
-            {recentTransactions.length ? (
-              recentTransactions.map((item) => (
-                <View key={item.id} style={styles.transactionRow}>
-                  <View style={styles.transactionLeft}>
-                    <Text style={styles.transactionTitle}>{item.title}</Text>
-                    <Text style={styles.transactionMeta}>
-                      {item.category} • {item.paymentMethod}
-                    </Text>
-                  </View>
-                  <View style={styles.transactionRight}>
-                    <Text style={[styles.transactionAmount, item.type === 'income' ? styles.transactionIncome : styles.transactionExpense]}>
-                      {item.type === 'income' ? '+' : '-'} {displayCurrency(item.amount, showValues)}
-                    </Text>
-                    <Text style={styles.transactionDate}>{item.dateLabel}</Text>
-                  </View>
+        <MonthlyBarChart data={weeklyFlow} hideValues={!showValues} />
+
+        <Card style={styles.sectionCard}>
+          <SectionHeader
+            title="Categorias do mes"
+            actionLabel="Relatorios"
+            onActionPress={() => navigation.navigate('Reports')}
+          />
+          {dashboardQuery.isLoading ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator />
+            </View>
+          ) : categorySpending.length ? (
+            categorySpending.map((item) => (
+              <View key={item.category} style={styles.categoryRow}>
+                <View style={styles.categoryLabelRow}>
+                  <View style={[styles.categoryDot, { backgroundColor: item.color }]} />
+                  <Text style={styles.categoryLabel}>{item.category}</Text>
                 </View>
-              ))
-            ) : (
+                <View style={styles.categoryValueBlock}>
+                  <Text style={styles.categoryShare}>{item.share.toFixed(1)}%</Text>
+                  <Text style={styles.categoryAmount}>
+                    {formatVisibleCurrency(item.amount, showValues)}
+                  </Text>
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>Nenhum gasto reportavel neste periodo.</Text>
+          )}
+        </Card>
+
+        <Card noPadding style={styles.sectionCard}>
+          <View style={styles.sectionInner}>
+            <SectionHeader
+              title="Ultimas movimentacoes"
+              actionLabel="Ver todas"
+              onActionPress={() => navigation.navigate('Transactions')}
+            />
+          </View>
+          {dashboardQuery.isLoading ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator />
+            </View>
+          ) : recentTransactions.length ? (
+            recentTransactions.map((transaction, index) => (
+              <TransactionListItem
+                key={transaction.id}
+                item={transaction}
+                hideAmounts={!showValues}
+                showDivider={index < recentTransactions.length - 1}
+              />
+            ))
+          ) : (
+            <View style={styles.sectionInner}>
               <Text style={styles.emptyText}>As novas transacoes vao aparecer aqui.</Text>
-            )}
-          </View>
-        </View>
-
-        <Pressable style={styles.quickAddButton} onPress={handleOpenQuickAdd}>
-          <Plus color={colors.white} size={18} />
-          <Text style={styles.quickAddButtonText}>Adicionar lancamento</Text>
-        </Pressable>
+            </View>
+          )}
+        </Card>
       </ScrollView>
+
+      <FloatingActionButton style={styles.fab} onPress={handleOpenQuickAdd} />
 
       <Modal visible={quickAddVisible} transparent animationType="slide" onRequestClose={() => setQuickAddVisible(false)}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setQuickAddVisible(false)} />
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>Lancamento rapido</Text>
+
             <View style={styles.typeRow}>
               <Pressable
                 onPress={() => setType('expense')}
-                style={[styles.typeChip, type === 'expense' && styles.typeChipActive]}
+                style={[styles.typeChip, type === 'expense' && styles.typeChipExpense]}
               >
-                <Text style={[styles.typeChipText, type === 'expense' && styles.typeChipTextActive]}>Despesa</Text>
+                <Text style={[styles.typeChipText, type === 'expense' && styles.typeChipTextExpense]}>Despesa</Text>
               </Pressable>
               <Pressable
                 onPress={() => setType('income')}
-                style={[styles.typeChip, type === 'income' && styles.typeChipActive]}
+                style={[styles.typeChip, type === 'income' && styles.typeChipIncome]}
               >
-                <Text style={[styles.typeChipText, type === 'income' && styles.typeChipTextActive]}>Receita</Text>
+                <Text style={[styles.typeChipText, type === 'income' && styles.typeChipTextIncome]}>Receita</Text>
               </Pressable>
             </View>
 
@@ -247,13 +305,6 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
               value={amount}
               onChangeText={setAmount}
               keyboardType="decimal-pad"
-              style={styles.modalInput}
-              placeholderTextColor={colors.textSecondary}
-            />
-            <TextInput
-              placeholder="Observacoes"
-              value={notes}
-              onChangeText={setNotes}
               style={styles.modalInput}
               placeholderTextColor={colors.textSecondary}
             />
@@ -303,10 +354,18 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
               ))}
             </View>
 
+            <TextInput
+              placeholder="Observacoes"
+              value={notes}
+              onChangeText={setNotes}
+              style={styles.modalInput}
+              placeholderTextColor={colors.textSecondary}
+            />
+
             <View style={styles.recurringRow}>
               <View>
                 <Text style={styles.recurringTitle}>Criar regra recorrente</Text>
-                <Text style={styles.recurringSubtitle}>Mensal, mesma conta, categoria e valor.</Text>
+                <Text style={styles.recurringSubtitle}>Mesma conta, categoria e valor.</Text>
               </View>
               <Switch value={recurring} onValueChange={setRecurring} />
             </View>
@@ -334,21 +393,22 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.lg,
-    gap: spacing.lg,
-    paddingBottom: 120,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+  },
+  content: {
+    padding: spacing.lg,
+    gap: spacing.lg,
+    paddingBottom: BOTTOM_TAB_BAR_HEIGHT + 72,
   },
   greeting: {
     ...typography.h1,
@@ -369,34 +429,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroCard: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
+  summaryRow: {
+    flexDirection: 'row',
     gap: spacing.md,
   },
-  heroLabel: {
-    ...typography.caption,
-    color: 'rgba(255,255,255,0.85)',
-    fontWeight: '700',
-  },
-  heroValue: {
-    ...typography.h1,
-    color: colors.white,
-  },
-  heroStats: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-  },
-  heroStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  heroStatText: {
-    ...typography.body,
-    color: colors.white,
-    fontWeight: '700',
+  summaryStatCard: {
+    flex: 1,
   },
   kpiRow: {
     flexDirection: 'row',
@@ -408,7 +446,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
+    paddingVertical: spacing.md,
     alignItems: 'center',
     gap: spacing.xs,
   },
@@ -419,31 +457,37 @@ const styles = StyleSheet.create({
   kpiLabel: {
     ...typography.caption,
     color: colors.textSecondary,
+    fontWeight: '600',
   },
-  section: {
-    gap: spacing.sm,
+  accountHeroCard: {
+    gap: spacing.md,
   },
-  sectionHeader: {
+  accountRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.md,
   },
-  sectionTitle: {
+  accountName: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  accountMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  accountAmount: {
     ...typography.h2,
     color: colors.textPrimary,
   },
-  sectionAction: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '700',
-  },
   sectionCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
     gap: spacing.md,
+  },
+  sectionInner: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
   },
   categoryRow: {
     flexDirection: 'row',
@@ -467,7 +511,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontWeight: '600',
   },
-  categoryValueRow: {
+  categoryValueBlock: {
     alignItems: 'flex-end',
   },
   categoryShare: {
@@ -478,61 +522,20 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textPrimary,
     fontWeight: '700',
-  },
-  transactionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  transactionLeft: {
-    flex: 1,
-  },
-  transactionRight: {
-    alignItems: 'flex-end',
-  },
-  transactionTitle: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: '700',
-  },
-  transactionMeta: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  transactionAmount: {
-    ...typography.body,
-    fontWeight: '700',
-  },
-  transactionIncome: {
-    color: colors.success,
-  },
-  transactionExpense: {
-    color: colors.danger,
-  },
-  transactionDate: {
-    ...typography.caption,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   emptyText: {
     ...typography.body,
     color: colors.textSecondary,
   },
-  quickAddButton: {
-    minHeight: 52,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
+  loadingWrap: {
+    paddingVertical: spacing.xl,
     alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
   },
-  quickAddButtonText: {
-    ...typography.body,
-    color: colors.white,
-    fontWeight: '700',
+  fab: {
+    position: 'absolute',
+    right: spacing.lg,
+    bottom: BOTTOM_TAB_BAR_HEIGHT + 10,
   },
   modalOverlay: {
     flex: 1,
@@ -571,17 +574,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  typeChipActive: {
-    borderColor: colors.primary,
-    backgroundColor: '#DBEAFE',
+  typeChipExpense: {
+    backgroundColor: 'rgba(220, 38, 38, 0.08)',
+    borderColor: 'rgba(220, 38, 38, 0.24)',
+  },
+  typeChipIncome: {
+    backgroundColor: 'rgba(22, 163, 74, 0.08)',
+    borderColor: 'rgba(22, 163, 74, 0.24)',
   },
   typeChipText: {
     ...typography.body,
     color: colors.textPrimary,
     fontWeight: '600',
   },
-  typeChipTextActive: {
-    color: colors.primary,
+  typeChipTextExpense: {
+    color: colors.danger,
+  },
+  typeChipTextIncome: {
+    color: colors.success,
   },
   modalInput: {
     minHeight: 48,
@@ -622,7 +632,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.md,
-    paddingVertical: spacing.xs,
   },
   recurringTitle: {
     ...typography.body,
@@ -637,7 +646,6 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginTop: spacing.sm,
   },
   secondaryButton: {
     flex: 1,

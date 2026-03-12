@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -9,12 +10,13 @@ import {
   Text,
   View,
 } from 'react-native';
-import { ArrowLeft, CreditCard, Plus, Receipt } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { AlertTriangle, ChevronLeft, Plus, Receipt } from 'lucide-react-native';
 
 import { AddCardBillsModal } from '../components/AddCardBillsModal';
 import { AddCardModal } from '../components/AddCardModal';
-import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { useAccounts } from '../features/accounts/hooks/useAccounts';
+import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import {
   useCardInvoices,
   useCards,
@@ -23,8 +25,16 @@ import {
   useRecordCardChargeMutation,
 } from '../features/cards/hooks/useCards';
 import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
-import { formatCurrencyBRL } from '../utils/format';
 import { colors, radius, spacing, typography } from '../theme';
+import { formatCurrencyBRL } from '../utils/format';
+
+function getGradient(color: string): [string, string] {
+  if (color === '#0F172A') {
+    return ['#334155', '#0F172A'];
+  }
+
+  return [color, `${color}CC`];
+}
 
 export default function CardsScreen({ navigation }: any) {
   const currentUser = useAuthenticatedUser();
@@ -44,11 +54,16 @@ export default function CardsScreen({ navigation }: any) {
   const invoices = invoicesQuery.data ?? [];
   const activeAccounts = (accountsQuery.data ?? []).filter((account) => account.isActive);
   const totalOpenInvoices = invoices.reduce((sum, invoice) => sum + invoice.openAmount, 0);
-  const urgentAlerts = invoices.filter((invoice) => invoice.isDueSoon).length;
+  const urgentAlerts = invoices.filter((invoice) => invoice.isDueSoon);
 
   useEffect(() => {
     setPaymentAccountId((current) => current || activeAccounts[0]?.id || '');
   }, [activeAccounts]);
+
+  const paymentAccountName = useMemo(
+    () => activeAccounts.find((account) => account.id === paymentAccountId)?.name ?? 'Selecione uma conta',
+    [activeAccounts, paymentAccountId],
+  );
 
   const handleCreateCard = async (input: any) => {
     try {
@@ -86,108 +101,189 @@ export default function CardsScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <View style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-            <ArrowLeft size={22} color={colors.textPrimary} />
-          </Pressable>
-          <View style={styles.headerText}>
-            <Text style={styles.title}>Meus cartoes</Text>
-            <Text style={styles.subtitle}>Limite, compras parceladas e pagamento de fatura reais.</Text>
-          </View>
-        </View>
+          <LinearGradient
+            colors={[colors.primary, colors.primary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.headerGradient}
+          >
+            <SafeAreaView style={styles.safeArea}>
+              <View style={styles.headerContent}>
+                <View style={styles.headerTop}>
+                  <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <ChevronLeft color={colors.white} size={24} />
+                  </Pressable>
 
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Faturas em aberto</Text>
-          <Text style={styles.summaryValue}>{formatCurrencyBRL(totalOpenInvoices)}</Text>
-          <Text style={styles.summaryMeta}>{urgentAlerts} alerta(s) de vencimento nos proximos dias.</Text>
-        </View>
+                  <Text style={styles.headerTitle}>Meus Cartoes</Text>
 
-        <View style={styles.actionsRow}>
-          <Pressable style={styles.primaryAction} onPress={() => setCardModalVisible(true)}>
-            <Plus color={colors.white} size={18} />
-            <Text style={styles.primaryActionText}>Novo cartao</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryAction} onPress={() => setChargeModalVisible(true)}>
-            <Receipt color={colors.primary} size={18} />
-            <Text style={styles.secondaryActionText}>Lancar compra</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Conta usada para pagar a fatura</Text>
-          <View style={styles.chipsWrap}>
-            {activeAccounts.map((account) => (
-              <Pressable
-                key={account.id}
-                onPress={() => setPaymentAccountId(account.id)}
-                style={[styles.filterChip, paymentAccountId === account.id && styles.filterChipActive]}
-              >
-                <Text style={[styles.filterChipText, paymentAccountId === account.id && styles.filterChipTextActive]}>
-                  {account.name}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Cartoes ativos</Text>
-          {cardsQuery.isLoading ? (
-            <ActivityIndicator />
-          ) : cards.length ? (
-            cards.map((card) => (
-              <View key={card.id} style={[styles.cardVisual, { backgroundColor: card.color }]}>
-                <View style={styles.cardHeader}>
-                  <View>
-                    <Text style={styles.cardInstitution}>{card.institution || 'Cartao'}</Text>
-                    <Text style={styles.cardName}>{card.name}</Text>
-                  </View>
-                  <CreditCard color={colors.white} size={20} />
+                  <Pressable style={styles.addButton} onPress={() => setCardModalVisible(true)}>
+                    <Plus color={colors.white} size={20} />
+                    <Text style={styles.addButtonText}>Novo</Text>
+                  </Pressable>
                 </View>
-                <Text style={styles.cardDigits}>•••• {card.lastDigits}</Text>
-                <View style={styles.cardFooter}>
-                  <View>
-                    <Text style={styles.cardFooterLabel}>Limite usado</Text>
-                    <Text style={styles.cardFooterValue}>{formatCurrencyBRL(card.usedLimitAmount)}</Text>
+
+                <View style={styles.statsRow}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Total Faturas</Text>
+                    <Text style={styles.statValue}>{formatCurrencyBRL(totalOpenInvoices)}</Text>
                   </View>
-                  <View style={styles.cardFooterRight}>
-                    <Text style={styles.cardFooterLabel}>Disponivel</Text>
-                    <Text style={styles.cardFooterValue}>{formatCurrencyBRL(card.availableLimitAmount)}</Text>
+
+                  <View style={styles.statDivider} />
+
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Alertas</Text>
+                    <Text style={[styles.statValue, styles.alertValue]}>{urgentAlerts.length}</Text>
                   </View>
                 </View>
               </View>
-            ))
-          ) : (
-            <Text style={styles.emptyText}>Cadastre seu primeiro cartao para gerar parcelas e faturas.</Text>
-          )}
+            </SafeAreaView>
+          </LinearGradient>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Faturas</Text>
-          <View style={styles.listCard}>
+        <View style={styles.mainContent}>
+          {urgentAlerts.length ? (
+            <View style={styles.alertCard}>
+              <View style={styles.alertIcon}>
+                <AlertTriangle color="#D97706" size={20} />
+              </View>
+              <View style={styles.alertTextContent}>
+                <Text style={styles.alertTitle}>{urgentAlerts[0].cardName}</Text>
+                <Text style={styles.alertSubtitle}>
+                  {urgentAlerts[0].invoiceMonth} • {formatCurrencyBRL(urgentAlerts[0].openAmount)}
+                </Text>
+              </View>
+              <Pressable
+                style={styles.alertAction}
+                onPress={() => handlePayInvoice(urgentAlerts[0].cardId, urgentAlerts[0].invoiceMonth)}
+                disabled={payInvoiceMutation.isPending}
+              >
+                {payInvoiceMutation.isPending ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Text style={styles.alertActionText}>Pagar</Text>
+                )}
+              </Pressable>
+            </View>
+          ) : null}
+
+          <View style={styles.paymentAccountCard}>
+            <Text style={styles.paymentTitle}>Conta usada para pagar a fatura</Text>
+            <View style={styles.paymentChips}>
+              {activeAccounts.map((account) => (
+                <Pressable
+                  key={account.id}
+                  onPress={() => setPaymentAccountId(account.id)}
+                  style={[
+                    styles.paymentChip,
+                    paymentAccountId === account.id && styles.paymentChipActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.paymentChipText,
+                      paymentAccountId === account.id && styles.paymentChipTextActive,
+                    ]}
+                  >
+                    {account.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            {!activeAccounts.length ? (
+              <Text style={styles.paymentHint}>Cadastre uma conta para pagar faturas.</Text>
+            ) : (
+              <Text style={styles.paymentHint}>Selecionada: {paymentAccountName}</Text>
+            )}
+          </View>
+
+          <Text style={styles.sectionLabel}>Cartoes Ativos</Text>
+
+          {cardsQuery.isLoading ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator />
+            </View>
+          ) : cards.length ? (
+            cards.map((card) => {
+              const limitProgress = card.limitAmount > 0 ? (card.usedLimitAmount / card.limitAmount) * 100 : 0;
+
+              return (
+                <View key={card.id} style={styles.cardWrapper}>
+                  <Pressable>
+                    <LinearGradient
+                      colors={getGradient(card.color)}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.cardVisual}
+                    >
+                      <View style={styles.cardDecorator1} />
+                      <View style={styles.cardDecorator2} />
+                      <View style={styles.cardHeader}>
+                        <View>
+                          <Text style={styles.cardInst}>{card.institution || 'Cartao'}</Text>
+                          <Text style={styles.cardName}>{card.name}</Text>
+                        </View>
+                        <Text style={styles.cardNetwork}>{card.network}</Text>
+                      </View>
+                      <Text style={styles.cardDigits}>•••• •••• •••• {card.lastDigits}</Text>
+                      <View style={styles.cardFooter}>
+                        <View>
+                          <Text style={styles.cardLabel}>Vencimento</Text>
+                          <Text style={styles.cardInfo}>Dia {card.dueDay}</Text>
+                        </View>
+                        <View style={styles.cardFooterRight}>
+                          <Text style={styles.cardLabel}>Limite Disp.</Text>
+                          <Text style={styles.cardInfo}>{formatCurrencyBRL(card.availableLimitAmount)}</Text>
+                        </View>
+                      </View>
+                    </LinearGradient>
+                  </Pressable>
+
+                  <View style={styles.cardStatsRow}>
+                    <View style={styles.cardMiniStat}>
+                      <Text style={styles.miniStatLabel}>Fatura Atual</Text>
+                      <Text style={styles.miniStatValue}>{formatCurrencyBRL(card.openAmount)}</Text>
+                    </View>
+                    <View style={styles.miniStatDivider} />
+                    <View style={styles.cardMiniStat}>
+                      <Text style={styles.miniStatLabel}>Limite Usado</Text>
+                      <View style={styles.progressContainer}>
+                        <View style={[styles.progressBar, { width: `${Math.min(limitProgress, 100)}%` }]} />
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>Nenhum cartao cadastrado</Text>
+              <Text style={styles.emptyText}>Cadastre seu primeiro cartao para gerar compras parceladas e faturas reais.</Text>
+            </View>
+          )}
+
+          <View style={styles.invoiceCard}>
+            <Text style={styles.invoiceCardTitle}>Faturas abertas</Text>
             {invoices.length ? (
               invoices.map((invoice) => (
                 <View key={`${invoice.cardId}-${invoice.invoiceMonth}`} style={styles.invoiceRow}>
                   <View style={styles.invoiceLeft}>
                     <Text style={styles.invoiceTitle}>{invoice.cardName}</Text>
                     <Text style={styles.invoiceMeta}>
-                      {invoice.invoiceMonth} • vence {invoice.dueDate ? invoice.dueDate.split('-').reverse().join('/') : '--'}
-                    </Text>
-                    <Text style={styles.invoiceMeta}>
-                      Aberto {formatCurrencyBRL(invoice.openAmount)} de {formatCurrencyBRL(invoice.invoiceAmount)}
+                      {invoice.invoiceMonth} • aberto {formatCurrencyBRL(invoice.openAmount)}
                     </Text>
                   </View>
                   <Pressable
-                    style={[styles.payButton, payInvoiceMutation.isPending && styles.payButtonDisabled]}
+                    style={[styles.invoicePayButton, (payInvoiceMutation.isPending || invoice.openAmount <= 0) && styles.disabledButton]}
                     onPress={() => handlePayInvoice(invoice.cardId, invoice.invoiceMonth)}
                     disabled={payInvoiceMutation.isPending || invoice.openAmount <= 0}
                   >
                     {payInvoiceMutation.isPending ? (
-                      <ActivityIndicator color={colors.white} />
+                      <ActivityIndicator size="small" color={colors.white} />
                     ) : (
-                      <Text style={styles.payButtonText}>Pagar</Text>
+                      <Text style={styles.invoicePayText}>Pagar</Text>
                     )}
                   </Pressable>
                 </View>
@@ -196,6 +292,11 @@ export default function CardsScreen({ navigation }: any) {
               <Text style={styles.emptyText}>As faturas geradas pelas compras vao aparecer aqui.</Text>
             )}
           </View>
+
+          <Pressable style={styles.quickAddExpense} onPress={() => setChargeModalVisible(true)}>
+            <Receipt size={20} color={colors.primary} />
+            <Text style={styles.quickAddText}>Lancar compra</Text>
+          </Pressable>
         </View>
       </ScrollView>
 
@@ -205,6 +306,7 @@ export default function CardsScreen({ navigation }: any) {
         onClose={() => setCardModalVisible(false)}
         onSubmit={handleCreateCard}
       />
+
       <AddCardBillsModal
         visible={chargeModalVisible}
         cards={cards}
@@ -213,185 +315,317 @@ export default function CardsScreen({ navigation }: any) {
         onClose={() => setChargeModalVisible(false)}
         onSubmit={handleCreateCharge}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
-    padding: spacing.lg,
-    gap: spacing.lg,
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
+    minHeight: 220,
+    width: '100%',
+    backgroundColor: 'transparent',
+  },
+  headerGradient: {
+    flex: 1,
+    paddingTop: Platform.OS === 'ios' ? 0 : spacing.md,
+    paddingBottom: spacing.xl + 10,
+    borderBottomLeftRadius: radius.lg * 1.5,
+    borderBottomRightRadius: radius.lg * 1.5,
+  },
+  headerContent: {
+    paddingHorizontal: spacing.xl,
+  },
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginTop: spacing.xl,
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  headerTitle: {
+    ...typography.h2,
+    color: colors.white,
   },
   backButton: {
+    padding: 8,
+    marginLeft: -8,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+  },
+  addButtonText: {
+    ...typography.caption,
+    color: colors.white,
+    fontWeight: '700',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+  },
+  statItem: {
+    flex: 1,
+  },
+  statLabel: {
+    ...typography.caption,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  statValue: {
+    ...typography.h2,
+    color: colors.white,
+    marginTop: spacing.xs,
+  },
+  alertValue: {
+    color: '#FCD34D',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginHorizontal: spacing.md,
+  },
+  mainContent: {
+    paddingHorizontal: spacing.xl,
+    marginTop: -28,
+    gap: spacing.md,
+  },
+  alertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  alertIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: '#FFEDD5',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: spacing.md,
   },
-  headerText: {
+  alertTextContent: {
     flex: 1,
   },
-  title: {
-    ...typography.h1,
+  alertTitle: {
+    ...typography.body,
     color: colors.textPrimary,
+    fontWeight: '700',
   },
-  subtitle: {
+  alertSubtitle: {
     ...typography.caption,
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
-  summaryCard: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.xs,
-  },
-  summaryLabel: {
-    ...typography.caption,
-    color: 'rgba(255,255,255,0.85)',
-    fontWeight: '700',
-  },
-  summaryValue: {
-    ...typography.h1,
-    color: colors.white,
-  },
-  summaryMeta: {
-    ...typography.body,
-    color: colors.white,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  primaryAction: {
-    flex: 1,
-    minHeight: 48,
+  alertAction: {
+    minWidth: 64,
+    minHeight: 36,
     borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  primaryActionText: {
-    ...typography.body,
-    color: colors.white,
-    fontWeight: '700',
-  },
-  secondaryAction: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: '#EFF6FF',
+    borderColor: '#FDBA74',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
-  secondaryActionText: {
-    ...typography.body,
+  alertActionText: {
+    ...typography.caption,
     color: colors.primary,
     fontWeight: '700',
   },
-  section: {
+  paymentAccountCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
     gap: spacing.sm,
   },
-  sectionTitle: {
-    ...typography.h2,
+  paymentTitle: {
+    ...typography.body,
     color: colors.textPrimary,
+    fontWeight: '700',
   },
-  chipsWrap: {
+  paymentChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  filterChip: {
+  paymentChip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
   },
-  filterChipActive: {
-    backgroundColor: '#DBEAFE',
+  paymentChipActive: {
+    backgroundColor: '#EFF6FF',
     borderColor: colors.primary,
   },
-  filterChipText: {
+  paymentChipText: {
     ...typography.caption,
     color: colors.textPrimary,
     fontWeight: '600',
   },
-  filterChipTextActive: {
+  paymentChipTextActive: {
     color: colors.primary,
   },
+  paymentHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  sectionLabel: {
+    ...typography.h2,
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
+  },
+  loadingWrap: {
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+  },
+  cardWrapper: {
+    gap: spacing.sm,
+  },
   cardVisual: {
-    borderRadius: 24,
+    borderRadius: 28,
     padding: spacing.lg,
-    gap: spacing.lg,
+    minHeight: 210,
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  cardDecorator1: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    top: -70,
+    right: -35,
+  },
+  cardDecorator2: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    bottom: -45,
+    left: -15,
   },
   cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  cardInstitution: {
+  cardInst: {
     ...typography.caption,
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.8)',
     fontWeight: '700',
   },
   cardName: {
     ...typography.h2,
     color: colors.white,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  cardNetwork: {
+    ...typography.body,
+    color: colors.white,
+    fontWeight: '700',
   },
   cardDigits: {
     ...typography.body,
     color: colors.white,
-    letterSpacing: 2,
     fontWeight: '700',
+    letterSpacing: 2,
   },
   cardFooter: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'flex-end',
   },
   cardFooterRight: {
     alignItems: 'flex-end',
   },
-  cardFooterLabel: {
+  cardLabel: {
     ...typography.caption,
     color: 'rgba(255,255,255,0.8)',
+    fontWeight: '700',
   },
-  cardFooterValue: {
+  cardInfo: {
     ...typography.body,
     color: colors.white,
     fontWeight: '700',
     marginTop: spacing.xs,
   },
-  listCard: {
+  cardStatsRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  cardMiniStat: {
+    flex: 1,
+  },
+  miniStatLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  miniStatValue: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    marginTop: spacing.xs,
+  },
+  miniStatDivider: {
+    width: 1,
+    height: '100%',
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.md,
+  },
+  progressContainer: {
+    marginTop: spacing.sm,
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    backgroundColor: colors.mutedSurface,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: colors.primary,
+  },
+  invoiceCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
     gap: spacing.md,
+  },
+  invoiceCardTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
   },
   invoiceRow: {
     flexDirection: 'row',
@@ -412,25 +646,54 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
-  payButton: {
-    minWidth: 84,
-    minHeight: 40,
+  invoicePayButton: {
+    minWidth: 76,
+    minHeight: 38,
     borderRadius: radius.md,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
   },
-  payButtonDisabled: {
-    opacity: 0.6,
-  },
-  payButtonText: {
+  invoicePayText: {
     ...typography.caption,
     color: colors.white,
     fontWeight: '700',
   },
+  quickAddExpense: {
+    minHeight: 52,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  quickAddText: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+  },
+  emptyTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
+  },
   emptyText: {
     ...typography.body,
     color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });

@@ -1,10 +1,11 @@
+import { useMemo } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Card } from './Card';
 import type { EntryType } from '../types/finance';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { formatCurrencyBRL, HIDDEN_CURRENCY_TEXT } from '../utils/format';
 
 interface SummaryStatCardProps {
@@ -22,6 +23,8 @@ export function SummaryStatCard({
   style,
   hideAmounts = false,
 }: SummaryStatCardProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isIncome = type === 'income';
   const toneColor = isIncome ? colors.success : colors.danger;
   const iconName = isIncome ? 'trending-up' : 'trending-down';
@@ -44,7 +47,7 @@ export function SummaryStatCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
