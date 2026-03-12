@@ -95,16 +95,12 @@ export default function RecurringTransactionsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.textPrimary} />
+          <ArrowLeft size={25} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.headerTitle}>Transações Recorrentes</Text>
           <Text style={styles.headerSubtitle}>Gerencie suas contas fixas</Text>
         </View>
-        <TouchableOpacity style={styles.newButton} onPress={() => setMainModalVisible(true)}>
-          <Plus size={20} color={colors.white} />
-          <Text style={styles.newButtonText}>Nova</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -123,9 +119,16 @@ export default function RecurringTransactionsScreen() {
           </View>
         </View>
 
+        <View style={styles.buttonCard}> 
+          <TouchableOpacity style={styles.newButton} onPress={() => setMainModalVisible(true)}>
+            <Plus size={20} color={colors.white} />
+            <Text style={styles.newButtonText}>Adicionar Transação</Text>
+          </TouchableOpacity>
+        </View>
+
         {transactions.map(item => (
-          <View key={item.id} style={[styles.card, !item.isActive && { opacity: 0.5 }]}>
-            <View style={styles.cardInfo}>
+          <View key={item.id} style={styles.card}>
+            <View style={[styles.cardInfo, !item.isActive && { opacity: 0.5 }]}>
               <View style={[styles.iconBox, item.type === 'income' ? { backgroundColor: '#DCFCE7' } : { backgroundColor: '#F1F5F9' }]}>
                 {item.type === 'income' ? <Briefcase size={20} color={colors.success} /> : <Home size={20} color={colors.textSecondary} />}
               </View>
@@ -158,7 +161,7 @@ export default function RecurringTransactionsScreen() {
                 <Text style={styles.actionBtnText}>{item.isActive ? "Pausar" : "Retomar"}</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity style={styles.actionBtn} onPress={() => {
+              <TouchableOpacity style={[styles.actionBtn, !item.isActive && { opacity: 0.5 }]} onPress={() => {
                 setEditingId(item.id);
                 setTitle(item.title);
                 setAmount(item.value);
@@ -170,7 +173,7 @@ export default function RecurringTransactionsScreen() {
                 <Text style={styles.actionBtnText}>Editar</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => deleteTransaction(item.id)}>
+              <TouchableOpacity onPress={() => deleteTransaction(item.id)} style={[!item.isActive && { opacity: 0.5 }]}>
                 <Trash2 size={16} color={colors.danger} />
               </TouchableOpacity>
             </View>
@@ -182,7 +185,10 @@ export default function RecurringTransactionsScreen() {
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView behavior="padding" style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editingId ? "Editar Conta" : "Nova Transação Recorrente"}</Text>
+              <View>
+                <Text style={styles.modalTitle}>{editingId ? "Editar Conta" : "Nova Transação Recorrente"}</Text>
+                <Text style={styles.modalSubTitle}>{editingId ? "Edite sua transação recorrente" : "Crie uma nova transição recorrente"}</Text>
+              </View>
               <TouchableOpacity onPress={closeMainModal}><X size={24} color={colors.textPrimary} /></TouchableOpacity>
             </View>
 
@@ -207,11 +213,14 @@ export default function RecurringTransactionsScreen() {
                   <Text style={styles.label}>Valor Variável?</Text>
                   <Text style={styles.inputSubtitle}>O valor muda todo mês (ex: energia)</Text>
                 </View>
-                <Switch value={isVariable} onValueChange={setIsVariable} trackColor={{ true: colors.primary }} />
+                <Switch value={isVariable} onValueChange={setIsVariable} trackColor={{ true: colors.primary, false: colors.mutedSurface}}  />
               </View>
             </View>
 
             <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={closeMainModal}>
+                <Text style={styles.cancelBtnText}>Cencelar</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
                 <Text style={styles.saveBtnText}>Salvar Recorrência</Text>
               </TouchableOpacity>
@@ -238,7 +247,7 @@ export default function RecurringTransactionsScreen() {
               />
             </View>
 
-            <View style={styles.modalActions}>
+            <View style={styles.miniModalActions}>
               <TouchableOpacity style={styles.cancelMiniBtn} onPress={() => setConfirmModalVisible(false)}>
                 <Text>Cancelar</Text>
               </TouchableOpacity>
@@ -255,22 +264,24 @@ export default function RecurringTransactionsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20, backgroundColor: colors.white },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
-  headerSubtitle: { fontSize: 12, color: colors.textSecondary },
-  newButton: { backgroundColor: '#10B981', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 4 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 25, paddingBottom: 10 },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
+  headerSubtitle: { fontSize: 14, color: colors.textSecondary },
+  newButton: { backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 4, height: 50},
   newButtonText: { color: colors.white, fontWeight: '600' },
-  backButton: { padding: 4 },
+  backButton: { padding: 4, backgroundColor: colors.white, borderRadius: 30, borderWidth: 1, borderColor: colors.border},
   content: { padding: 20 },
 
   // Summary
-  summaryCard: { backgroundColor: colors.white, borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: colors.border },
-  summaryTitle: { fontSize: 12, color: colors.textSecondary, marginBottom: 12 },
+  summaryCard: { backgroundColor: colors.white, borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
+  summaryTitle: { fontSize: 14, color: colors.textSecondary, marginBottom: 12 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-around' },
   summaryItem: { alignItems: 'center' },
-  summaryLabel: { fontSize: 10, color: colors.textSecondary, textTransform: 'uppercase' },
+  summaryLabel: { fontSize: 12, color: colors.textSecondary },
   summaryValue: { fontSize: 18, fontWeight: '700', marginTop: 4 },
   vDivider: { width: 1, backgroundColor: colors.border },
+
+  buttonCard: { flex: 1, marginBottom: 10, padding: 10},
 
   // Cards
   card: { backgroundColor: colors.white, borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
@@ -293,6 +304,7 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, height: '80%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontWeight: '700' },
+  modalSubTitle: { fontSize: 13, fontWeight: '400' },
   typeToggle: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   typeBtn: { flex: 1, height: 45, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   typeBtnActiveIncome: { backgroundColor: '#DCFCE7', borderColor: colors.success },
@@ -302,19 +314,24 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
   input: { height: 50, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 16 },
   inputSubtitle: { fontSize: 11, color: colors.textSecondary },
-  switchRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border },
-  modalActions: { marginTop: 20, flexDirection: 'row', gap: 12 },
+  switchRow: { flexDirection: 'row', alignItems: 'center',  marginTop: 10 },
+
+  modalActions: { flexDirection: 'row', gap: 12, minWidth: 200, borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: 30, position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.white, padding: 20 },
+
   saveBtn: { flex: 1, height: 55, backgroundColor: colors.primary, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  saveBtnText: { color: colors.white, fontWeight: '700', fontSize: 16 },
+  saveBtnText: { color: colors.white, fontWeight: '600', fontSize: 14 },
+  cancelBtn: { flex: 1, height: 55, backgroundColor: colors.mutedSurface, borderRadius: 14, alignItems: 'center', justifyContent: 'center'},
+  cancelBtnText: { fontWeight: '600', fontSize: 14},
 
   // Mini Modal
   miniModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+  miniModalActions: { flexDirection: 'row', gap: 12, minWidth: 200, borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: 30, flex: 1},
   miniModalContent: { width: '85%', backgroundColor: colors.white, borderRadius: 24, padding: 24, alignItems: 'center' },
   miniModalTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
   miniModalSubtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: 20 },
   miniInputContainer: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: colors.primary, paddingBottom: 8 },
   currencyPrefix: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginRight: 8 },
-  miniInput: { fontSize: 32, fontWeight: '800', color: colors.textPrimary, minWidth: 100 },
-  cancelMiniBtn: { flex: 1, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' },
-  confirmMiniBtn: { flex: 2, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
+  miniInput: { fontSize: 32, fontWeight: '600', color: colors.textPrimary, maxWidth: 100, flex: 1 },
+  cancelMiniBtn: { flex: 1, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.mutedSurface },
+  confirmMiniBtn: { flex: 1, height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
 });
