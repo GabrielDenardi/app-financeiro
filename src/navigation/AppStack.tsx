@@ -8,6 +8,7 @@ import { AccountsScreen } from '../screens/AccountsScreen';
 import BudgetsScreen from '../screens/BudgetScreen';
 import CardsScreen from '../screens/CardsScreen';
 import { HelpScreen } from '../screens/HelpScreen';
+import ListChatScreen from '../screens/ListChatScreen';
 import ImportScreen from '../screens/ImportScreen';
 import { PrivacySecurityScreen } from '../screens/PrivacySecurityScreen';
 import ReportsScreen from '../screens/ReportScreen';
@@ -39,6 +40,7 @@ export function AppStack({ currentUser }: AppStackProps) {
       <Stack.Screen name="Reports" component={ReportsScreen} />
       <Stack.Screen name="Accounts" component={AccountsScreen} />
       <Stack.Screen name="Cards" component={CardsScreen} />
+      <Stack.Screen name="ListChat" component={ListChatScreen} />
       <Stack.Screen name="Groups">
         {() => <GroupsScreen currentUser={currentUser} />}
       </Stack.Screen>

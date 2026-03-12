@@ -18,6 +18,7 @@ export type AppStackParamList = {
   Accounts: undefined;
   Cards: undefined;
   Groups: undefined;
+  ListChat: undefined;
   GroupDetails: { groupId: string };
 };
 
