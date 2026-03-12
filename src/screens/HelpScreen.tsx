@@ -33,6 +33,7 @@ import { helpMock } from '../data/helpMock';
 import { ArticleHelp, HelpCategory } from '../types/finance';
 import { colors } from '../theme';
 
+
 const { width } = Dimensions.get('window');
 
 const CATEGORY_CONFIG: Record<string, { color: string, bgColor: string, icon: any }> = {
@@ -269,7 +270,7 @@ export function HelpScreen({ navigation }: any) {
                 <Text style={styles.contactSub}>Nossa equipe de suporte está sempre disponível para ajudar.</Text>
                 
                 <View style={styles.contactActions}>
-                    <TouchableOpacity style={styles.contactButton}>
+                    <TouchableOpacity style={styles.contactButton} onPress={() => navigation.navigate('ListChat')}>
                         <View style={styles.contactIconWrapper}>
                             <MessageCircle size={20} color={colors.primaryLight} />
                         </View>
