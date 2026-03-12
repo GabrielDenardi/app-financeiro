@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 export const BOTTOM_TAB_BAR_HEIGHT = 78;
 
 export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBarProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       {state.routes.map((route, index) => {
@@ -80,7 +83,7 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     height: BOTTOM_TAB_BAR_HEIGHT,
     backgroundColor: colors.surface,
@@ -107,7 +110,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   tabButtonActive: {
-    backgroundColor: 'rgba(37, 99, 235, 0.04)',
+    backgroundColor: `${colors.primaryLight}14`,
   },
   iconWrap: {
     width: 30,
@@ -117,9 +120,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconWrapActive: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: colors.mutedSurface,
     borderWidth: 1,
-    borderColor: 'rgba(37, 99, 235, 0.14)',
+    borderColor: `${colors.primaryLight}40`,
   },
   pressed: {
     opacity: 0.75,

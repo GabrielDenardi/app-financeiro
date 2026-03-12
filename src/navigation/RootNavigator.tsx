@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
@@ -16,6 +16,7 @@ import {
 } from '../features/preferences/services/biometricService';
 import { getPreferences, registerLoginEvent } from '../features/preferences/services/preferencesService';
 import { supabase } from '../lib/supabase';
+import { type AppColors, useThemeColors } from '../theme';
 import type { AuthSessionState, AuthenticatedUserSummary } from '../types/auth';
 import { AppStack } from './AppStack';
 import { AuthStack } from './AuthStack';
@@ -55,6 +56,8 @@ function getSuccessNotice(type: AuthCallbackOutcome['type']): CallbackNotice {
 }
 
 export function RootNavigator() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [sessionState, setSessionState] = useState<AuthSessionState>('loading');
   const [callbackNotice, setCallbackNotice] = useState<CallbackNotice | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthenticatedUserSummary | null>(null);
@@ -265,7 +268,7 @@ export function RootNavigator() {
   if (sessionState === 'loading') {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primaryLight} />
       </View>
     );
   }
@@ -286,7 +289,7 @@ export function RootNavigator() {
     if (isBiometricChecking) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={colors.primaryLight} />
         </View>
       );
     }
@@ -335,11 +338,12 @@ export function RootNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.background,
   },
   lockContainer: {
     flex: 1,
@@ -347,21 +351,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
     gap: 16,
+    backgroundColor: colors.background,
   },
   lockTitle: {
     fontSize: 24,
     fontWeight: '700',
+    color: colors.textPrimary,
   },
   lockMessage: {
     fontSize: 14,
     textAlign: 'center',
-    color: '#64748B',
+    color: colors.textSecondary,
   },
   unlockButton: {
     minWidth: 180,
     minHeight: 48,
     borderRadius: 12,
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
@@ -371,7 +377,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   signOutText: {
-    color: '#DC2626',
+    color: colors.danger,
     fontWeight: '600',
   },
   pressed: {

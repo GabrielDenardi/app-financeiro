@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   Alert,
   View,
@@ -19,7 +19,7 @@ import {
 import { useProfile } from '../features/profile/hooks/useProfile';
 import { registerLoginEvent } from '../features/preferences/services/preferencesService';
 import { supabase } from '../lib/supabase';
-import { colors } from '../theme';
+import { type AppColors, useAppTheme } from '../theme';
 import type { AuthenticatedUserSummary } from '../types/auth';
 import { menuMock } from '../data/menuMock';
 
@@ -42,7 +42,8 @@ const IMPLEMENTED_ROUTES = new Set([
 ]);
 
 export function MenuScreen({ navigation, user }: MenuScreenProps) {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { colors, isDarkMode, setDarkMode } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const profileQuery = useProfile(user?.id);
   const profileName = profileQuery.data?.fullName || user?.fullName || 'Usuario';
   const profileEmail = profileQuery.data?.email || user?.email || 'usuario@email.com';
@@ -91,7 +92,7 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={colors.surface} />
 
       <SafeAreaView style={styles.header}>
         <View style={styles.headerContent}>
@@ -150,14 +151,16 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
                       <Text style={styles.menuItemLabel}>{item.label}</Text>
 
                       {item.toggle ? (
-                        <Switch 
+                        <Switch
                         value={item.label === 'Modo Escuro' ? isDarkMode : false}
                         onValueChange={(val) => {
                             if (item.label === 'Modo Escuro') {
-                            setIsDarkMode(val);
+                            setDarkMode(val);
                             }
                         }}
                         disabled={item.disabled}
+                        thumbColor={isDarkMode ? colors.primaryLight : colors.white}
+                        trackColor={{ false: colors.border, true: `${colors.primaryLight}66` }}
                         />
                       ) : item.value ? (
                         <Text style={styles.menuItemValue}>{item.value}</Text>
@@ -183,12 +186,12 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' }, 
+const createStyles = (colors: AppColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   header: { 
-    backgroundColor: colors.white, 
+    backgroundColor: colors.surface, 
     borderBottomWidth: 1, 
-    borderBottomColor: '#F1F5F9' 
+    borderBottomColor: colors.border,
   },
   headerContent: {
     flexDirection: 'row',
@@ -204,19 +207,19 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1E293B', 
+    color: colors.textPrimary,
   },
   scrollPadding: { padding: 20, paddingBottom: 40 },
   
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     padding: 16,
     borderRadius: 20,
     marginBottom: 24,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOpacity: 0.05,
     shadowRadius: 10,
   },
@@ -230,8 +233,8 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: colors.white, fontSize: 20, fontWeight: 'bold' },
   profileInfo: { flex: 1, marginLeft: 16 },
-  profileName: { fontSize: 18, fontWeight: 'bold', color: '#1E293B' },
-  profileEmail: { fontSize: 14, color: '#64748B' }, // slate-500
+  profileName: { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary },
+  profileEmail: { fontSize: 14, color: colors.textSecondary },
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -239,25 +242,25 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     gap: 6,
   },
-  editButtonText: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
+  editButtonText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
 
   section: { marginBottom: 24 },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#64748B',
+    color: colors.textSecondary,
     marginBottom: 10,
     marginLeft: 4,
   },
   menuGroup: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     overflow: 'hidden',
     elevation: 1,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOpacity: 0.03,
   },
   menuItem: {
@@ -269,14 +272,14 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  menuItemLabel: { flex: 1, fontSize: 16, fontWeight: '500', color: '#1E293B' },
-  menuItemValue: { fontSize: 14, color: '#64748B' },
-  separator: { height: 1, backgroundColor: '#F1F5F9', marginLeft: 64 },
+  menuItemLabel: { flex: 1, fontSize: 16, fontWeight: '500', color: colors.textPrimary },
+  menuItemValue: { fontSize: 14, color: colors.textSecondary },
+  separator: { height: 1, backgroundColor: colors.border, marginLeft: 64 },
 
   logoutButton: {
     flexDirection: 'row',
@@ -285,20 +288,20 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FECDD3',
-    backgroundColor: colors.background, 
+    borderColor: `${colors.danger}33`,
+    backgroundColor: colors.surface,
     gap: 8,
     marginTop: 8,
   },
-  logoutButtonText: { color: '#E11D48', fontWeight: 'normal', fontSize: 16 },
+  logoutButtonText: { color: colors.danger, fontWeight: 'normal', fontSize: 16 },
 
   footerNote: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 16,
     paddingHorizontal: 20,
   },
   appInfo: { marginTop: 32, alignItems: 'center' },
-  appInfoText: { fontSize: 13, color: '#94A3B8' },
+  appInfoText: { fontSize: 13, color: colors.textSecondary },
 });

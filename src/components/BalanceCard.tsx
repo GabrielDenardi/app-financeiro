@@ -1,7 +1,8 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { SummaryStats } from '../types/finance';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { formatCurrencyBRL, HIDDEN_CURRENCY_TEXT } from '../utils/format';
 
 interface BalanceCardProps {
@@ -15,6 +16,8 @@ export function BalanceCard({
   variationLabel,
   hideAmounts = false,
 }: BalanceCardProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const balanceText = hideAmounts ? HIDDEN_CURRENCY_TEXT : formatCurrencyBRL(summary.balance);
   const badgeText = hideAmounts ? 'Oculto' : variationLabel;
 
@@ -35,7 +38,7 @@ export function BalanceCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   card: {
     backgroundColor: colors.primary,
     borderRadius: radius.lg,

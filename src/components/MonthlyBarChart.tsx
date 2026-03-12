@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from './Card';
 import type { WeeklyFlowPoint } from '../types/finance';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { formatCurrencyBRL, HIDDEN_CURRENCY_TEXT } from '../utils/format';
 
 interface MonthlyBarChartProps {
@@ -28,7 +28,7 @@ function getBarHeight(value: number, maxValue: number): number {
   return Math.max(MIN_BAR_HEIGHT, Math.round(scaled));
 }
 
-function getSeriesMeta(series: FlowSeries) {
+function getSeriesMeta(series: FlowSeries, colors: AppColors) {
   if (series === 'income') {
     return {
       label: 'Entradas',
@@ -63,12 +63,14 @@ function formatBarMarkerValue(value: number): string {
 }
 
 export function MonthlyBarChart({ data, hideValues = false }: MonthlyBarChartProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [activeSeries, setActiveSeries] = useState<FlowSeries>('income');
 
   const seriesValues = data.map((point) => (activeSeries === 'income' ? point.income : point.expense));
   const maxValue = Math.max(...seriesValues, 1);
   const totalValue = seriesValues.reduce((sum, value) => sum + value, 0);
-  const seriesMeta = getSeriesMeta(activeSeries);
+  const seriesMeta = getSeriesMeta(activeSeries, colors);
   const totalText = hideValues ? HIDDEN_CURRENCY_TEXT : formatCurrencyBRL(totalValue);
 
   return (
@@ -169,7 +171,7 @@ export function MonthlyBarChart({ data, hideValues = false }: MonthlyBarChartPro
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -269,7 +271,7 @@ const styles = StyleSheet.create({
     left: -2,
     right: -2,
     bottom: -2,
-    backgroundColor: 'rgba(248, 250, 252, 0.9)',
+    backgroundColor: `${colors.background}E6`,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Pressable, StyleSheet } from 'react-native';
 
-import { colors } from '../theme';
+import { type AppColors, useThemeColors } from '../theme';
 
 interface FloatingActionButtonProps {
   onPress?: () => void;
@@ -12,6 +13,9 @@ interface FloatingActionButtonProps {
 export const FAB_SIZE = 56;
 
 export function FloatingActionButton({ onPress, style }: FloatingActionButtonProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -24,7 +28,7 @@ export function FloatingActionButton({ onPress, style }: FloatingActionButtonPro
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   fab: {
     width: FAB_SIZE,
     height: FAB_SIZE,

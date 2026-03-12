@@ -1,13 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
+import { Fuel, HeartPulse, HelpCircle, ShoppingBag, Utensils, Wallet, Zap } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { RecentTransaction } from '../types/finance';
-import { colors, radius, spacing, typography } from '../theme';
-import {
-  formatHiddenSignedCurrencyBRL,
-  formatShortDate,
-  formatSignedCurrencyBRL,
-} from '../utils/format';
+import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
+import { formatHiddenSignedCurrencyBRL, formatShortDate, formatSignedCurrencyBRL } from '../utils/format';
 
 interface TransactionListItemProps {
   item: RecentTransaction;
@@ -15,42 +12,76 @@ interface TransactionListItemProps {
   hideAmounts?: boolean;
 }
 
+function getCategoryIcon(category: string, colors: AppColors) {
+  const normalized = category.toLowerCase();
+
+  if (normalized.includes('combustivel') || normalized.includes('transporte')) {
+    return <Fuel size={20} color={colors.textSecondary} />;
+  }
+
+  if (normalized.includes('alimenta') || normalized.includes('restaurante')) {
+    return <Utensils size={20} color={colors.textSecondary} />;
+  }
+
+  if (normalized.includes('compras') || normalized.includes('mercado')) {
+    return <ShoppingBag size={20} color={colors.textSecondary} />;
+  }
+
+  if (normalized.includes('conta') || normalized.includes('luz')) {
+    return <Zap size={20} color={colors.textSecondary} />;
+  }
+
+  if (normalized.includes('saude') || normalized.includes('farmacia')) {
+    return <HeartPulse size={20} color={colors.textSecondary} />;
+  }
+
+  if (normalized.includes('salario') || normalized.includes('receita')) {
+    return <Wallet size={20} color={colors.textSecondary} />;
+  }
+
+  return <HelpCircle size={20} color={colors.textSecondary} />;
+}
+
 export function TransactionListItem({
   item,
   showDivider = false,
   hideAmounts = false,
 }: TransactionListItemProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isIncome = item.type === 'income';
-  const toneColor = isIncome ? colors.success : colors.danger;
-  const iconName = isIncome ? 'trending-up-outline' : 'trending-down-outline';
   const amountText = hideAmounts
     ? formatHiddenSignedCurrencyBRL(item.type)
     : formatSignedCurrencyBRL(item.amount, item.type);
+  const dateText = item.dateLabel || item.date || formatShortDate(item.dateISO ?? item.occurredOn ?? '');
 
   return (
     <View>
-      <View style={styles.row}>
-        <View style={styles.leftBlock}>
-          <View style={[styles.iconContainer, { backgroundColor: `${toneColor}14` }]}>
-            <Ionicons name={iconName} size={16} color={toneColor} />
-          </View>
+      <View style={styles.container}>
+        <View style={styles.iconContainer}>{getCategoryIcon(item.category, colors)}</View>
 
-          <View style={styles.texts}>
-            <Text style={styles.title} numberOfLines={1}>
-              {item.title}
-            </Text>
-            <View style={styles.metaRow}>
-              <Text style={styles.categoryChip} numberOfLines={1}>
-                {item.category}
+        <View style={styles.details}>
+          <Text style={styles.title} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <View style={styles.subtitleContainer}>
+            <Text style={styles.subtitle}>{dateText}</Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText} numberOfLines={1}>
+                {item.paymentMethod}
               </Text>
-              <Text style={styles.dateText}>{formatShortDate(item.dateISO ?? item.occurredOn ?? '')}</Text>
             </View>
           </View>
         </View>
 
-        <Text style={[styles.amountText, { color: toneColor }]} numberOfLines={1}>
-          {amountText}
-        </Text>
+        <View style={styles.amountContainer}>
+          <Text style={[styles.amount, { color: isIncome ? colors.success : colors.danger }]} numberOfLines={1}>
+            {amountText}
+          </Text>
+          <Text style={styles.category} numberOfLines={1}>
+            {item.category}
+          </Text>
+        </View>
       </View>
 
       {showDivider ? <View style={styles.divider} /> : null}
@@ -58,63 +89,67 @@ export function TransactionListItem({
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
+const createStyles = (colors: AppColors) => StyleSheet.create({
+  container: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-  },
-  leftBlock: {
-    flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    minWidth: 0,
   },
   iconContainer: {
-    width: 34,
-    height: 34,
+    width: 48,
+    height: 48,
     borderRadius: radius.md,
-    alignItems: 'center',
+    backgroundColor: colors.mutedSurface,
     justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
   },
-  texts: {
+  details: {
     flex: 1,
     minWidth: 0,
   },
   title: {
     ...typography.body,
-    color: colors.textPrimary,
     fontWeight: '600',
+    color: colors.textPrimary,
   },
-  metaRow: {
+  subtitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
     marginTop: spacing.xs,
+    gap: spacing.sm,
   },
-  categoryChip: {
+  subtitle: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  badge: {
     backgroundColor: colors.mutedSurface,
-    borderRadius: radius.pill,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    overflow: 'hidden',
-    maxWidth: 110,
+    borderRadius: radius.sm,
   },
-  dateText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '500',
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    maxWidth: 88,
   },
-  amountText: {
+  amountContainer: {
+    alignItems: 'flex-end',
+    flexShrink: 0,
+    maxWidth: 120,
+  },
+  amount: {
     ...typography.body,
     fontWeight: '700',
-    flexShrink: 0,
+  },
+  category: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   divider: {
     height: 1,
