@@ -31,6 +31,30 @@ export default function ListChatScreen () {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
 
+    const chatList = [
+    {
+        id: '1',
+        title: 'Bug Meta',
+        lastMessage: 'Eu tentei acessar...',
+        unreadCount: 1,
+        isMe: true,
+    },
+    {
+        id: '2',
+        title: 'Suporte Técnico',
+        lastMessage: 'Pode enviar o print do erro?',
+        unreadCount: 3,
+        isMe: false,
+    },
+    {
+        id: '3',
+        title: 'Projeto Mobile',
+        lastMessage: 'A API já está disponível.',
+        unreadCount: 0,
+        isMe: true,
+    },
+    ];
+
 
     return (
         <SafeAreaView style={styles.container}>
@@ -67,20 +91,29 @@ export default function ListChatScreen () {
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
             >
-                <Card style={styles.conversationCard}>
-                    <View style={styles.conversationInner}>
-                        <View style={styles.conversationText}>
-                            <Ionicons name='person-circle-outline' size={30} />
-                            <View>
-                                <Text style={styles.conversationTitle}>Bug Meta</Text>
-                                <Text style={styles.conversationSubtitle}>me: Eu tentei acessar...</Text>
+                {chatList.length ? (
+                    chatList.map((item) => (
+                    <Card key={item.id} style={styles.conversationCard}>
+                        <View style={styles.conversationInner}>
+                            <View style={styles.conversationText}>
+                                <Ionicons name='person-circle-outline' size={25} />
+                                <View>
+                                    <Text style={styles.conversationTitle}>{item.title}</Text>
+                                    <Text style={styles.conversationSubtitle}>{item.isMe ? 'me: ' : '' }{item.lastMessage}</Text>
+                                </View>
                             </View>
+
+                            {item.unreadCount > 0 && (
+                                <View style={styles.conversationNotification}>
+                                    <Text style={styles.notificationText}>{item.unreadCount}</Text>
+                                </View>
+                            )}
                         </View>
-                        <View style={styles.conversationNotification}>
-                            <Text style={styles.notificationText}>1</Text>
-                        </View>
-                    </View>
-                </Card>
+                    </Card>
+                    ))
+                ) : (
+                    <Text style={styles.emptyText}>Nada Encontrado.</Text>
+                )}
             </ScrollView>
             
             {!addTalkVisible && (
@@ -330,8 +363,8 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     conversationNotification: {
         backgroundColor: colors.primary,
         borderRadius: radius.pill,
-        height: 25,
-        width: 25,
+        height: 20,
+        width: 20,
         justifyContent: 'center',
         alignItems: 'center',
         position: 'absolute',
@@ -339,7 +372,12 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
         bottom: 8,
     },
     notificationText: {
-        color: colors.white
+        color: colors.white,
+        fontSize: 10,
+    },
+    emptyText: {
+        ...typography.body,
+        color: colors.textSecondary
     }
 })
 
