@@ -16,7 +16,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
-import { AlignJustify, FileInput } from 'lucide-react-native';
+import { AlignJustify, FileInput, HeartIcon } from 'lucide-react-native';
 import { Card } from '../components/Card';
 import { timeoutManager } from '@tanstack/react-query';
 
@@ -116,6 +116,8 @@ export default function ChatScreen () {
     const route = useRoute();
     const params = route.params as ChatRouteParams
 
+    const [settingsMenu, setSettingsMenu] = useState(false);
+
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -132,9 +134,18 @@ export default function ChatScreen () {
                             <Ionicons name='people-outline' size={30}/>
                             <Text style={styles.headerTitle}>{params.chatTitle}</Text>
                         </View>
-                        <Ionicons name='ellipsis-vertical-circle-outline' size={30} />
+
+                        <TouchableOpacity onPress={() => setSettingsMenu(!settingsMenu)}>
+                            <Ionicons name='ellipsis-vertical-circle-outline' size={30} />
+                        </TouchableOpacity>
                     </View>
                 </View>
+
+                {settingsMenu && (
+                    <View style={styles.settingsModal}>
+                        <Ionicons name='cog-outline' />
+                    </View>
+                )}
 
                 <ScrollView>
                     {chatMessages.map((item) => (
@@ -229,7 +240,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
         padding: 10
     },
     cardMessage: {
-        maxWidth: '85%',
+        maxWidth: '80%',
         minWidth: '50%',
         minHeight: 30,
         maxHeight: 300,
@@ -269,7 +280,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
         paddingHorizontal: 15,
         gap: 10,
         marginTop: 10,
-        marginBottom: 10,
+        marginBottom: 5,
     },
     textInput: {
         flex: 1,
@@ -290,5 +301,11 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 2,
     },
+
+    //Modal
+    settingsModal: {
+        height: 10,
+        width: 10
+    }
 })
 
