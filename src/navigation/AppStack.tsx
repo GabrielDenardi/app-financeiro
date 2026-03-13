@@ -10,6 +10,7 @@ import CardsScreen from '../screens/CardsScreen';
 import { HelpScreen } from '../screens/HelpScreen';
 import ImportScreen from '../screens/ImportScreen';
 import { PrivacySecurityScreen } from '../screens/PrivacySecurityScreen';
+import RecurringTransactionsScreen from '../screens/RecurringTransactionsScreen';
 import ReportsScreen from '../screens/ReportScreen';
 import SobreScreen from '../screens/SobreScreen';
 import type { AuthenticatedUserSummary } from '../types/auth';
@@ -39,6 +40,7 @@ export function AppStack({ currentUser }: AppStackProps) {
       <Stack.Screen name="Reports" component={ReportsScreen} />
       <Stack.Screen name="Accounts" component={AccountsScreen} />
       <Stack.Screen name="Cards" component={CardsScreen} />
+      <Stack.Screen name="RecurringTransactions" component={RecurringTransactionsScreen} />
       <Stack.Screen name="Groups">
         {() => <GroupsScreen currentUser={currentUser} />}
       </Stack.Screen>
