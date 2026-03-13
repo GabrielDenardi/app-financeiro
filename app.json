@@ -35,7 +35,8 @@
           "faceIDPermission": "Permita o uso da biometria para proteger seus dados financeiros."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-router"
     ]
   }
 }

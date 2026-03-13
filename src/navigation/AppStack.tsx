@@ -9,6 +9,7 @@ import BudgetsScreen from '../screens/BudgetScreen';
 import CardsScreen from '../screens/CardsScreen';
 import { HelpScreen } from '../screens/HelpScreen';
 import ListChatScreen from '../screens/ListChatScreen';
+import ChatScreen from '../screens/ChatScreen';
 import ImportScreen from '../screens/ImportScreen';
 import { PrivacySecurityScreen } from '../screens/PrivacySecurityScreen';
 import ReportsScreen from '../screens/ReportScreen';
