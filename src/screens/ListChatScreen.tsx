@@ -18,7 +18,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../components/Card';
 import { FloatingActionButton } from '../components/FloatingActionButton';
 import { BOTTOM_TAB_BAR_HEIGHT } from '../components/BottomTabBarMock';
-import { useRouter } from 'expo-router';
 
     type DetailsTab = 'all' | 'active' | 'working' | 'done';
 
@@ -41,8 +40,6 @@ export default function ListChatScreen () {
     const [description, setDescription] = useState('');
     //Tabs
     const [activeTab, setActiveTab] = useState<DetailsTab>('all');
-
-    const router = useRouter();
 
     const chatList = [
     {
@@ -78,6 +75,10 @@ export default function ListChatScreen () {
             return matchesTab && matchesSearch
         });
     }, [searchText, activeTab]);
+
+    const openChat = (id: any, title: string) => (
+        navigation.navigate('Chat', { chatId: id, chatTitle: title})
+    )
 
 
     return (
@@ -133,25 +134,27 @@ export default function ListChatScreen () {
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
             >
-                {chatList.length ? (
+                {filteredData.length > 0 ? (
                     filteredData.map((item) => (
-                    <Card key={item.id} style={styles.conversationCard}>
-                        <View style={styles.conversationInner} >
-                            <View style={styles.conversationText}>
-                                <Ionicons name='person-circle-outline' size={25} />
-                                <View>
-                                    <Text style={styles.conversationTitle}>{item.title}</Text>
-                                    <Text style={styles.conversationSubtitle}>{item.isMe ? 'me: ' : '' }{item.lastMessage}</Text>
+                    <TouchableOpacity key={item.id} onPress={() => openChat(item.id, item.title)} activeOpacity={0.7}>
+                        <Card style={styles.conversationCard}>
+                            <View style={styles.conversationInner}>
+                                <View style={styles.conversationText}>
+                                    <Ionicons name='person-circle-outline' size={25} />
+                                    <View>
+                                        <Text style={styles.conversationTitle}>{item.title}</Text>
+                                        <Text style={styles.conversationSubtitle}>{item.isMe ? 'me: ' : '' }{item.lastMessage}</Text>
+                                    </View>
                                 </View>
-                            </View>
 
-                            {item.unreadCount > 0 && (
-                                <View style={styles.conversationNotification}>
-                                    <Text style={styles.notificationText}>{item.unreadCount}</Text>
-                                </View>
-                            )}
-                        </View>
-                    </Card>
+                                {item.unreadCount > 0 && (
+                                    <View style={styles.conversationNotification}>
+                                        <Text style={styles.notificationText}>{item.unreadCount}</Text>
+                                    </View>
+                                )}
+                            </View>
+                        </Card>
+                    </TouchableOpacity>
                     ))
                 ) : (
                     <Text style={styles.emptyText}>Nada Encontrado.</Text>
@@ -419,7 +422,8 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     },
     emptyText: {
         ...typography.body,
-        color: colors.textSecondary
+        color: colors.textSecondary,
+        fontSize: 10
     },
     tabsRow: {
         flexDirection: 'row',

@@ -12,30 +12,33 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, Stack } from 'expo-router';
+
+interface ChatRouteParams {
+    chatId: string;
+    chatTitle: string;
+}
 
 export default function ChatScreen () {
     const colors = useThemeColors();
     const styles = useMemo(() => createStyles(colors), [colors]);
     const navigation = useNavigation<any>();
 
-    const { id, name } = useLocalSearchParams();
-
+    const route = useRoute();
+    const params = route.params as ChatRouteParams
 
     return (
         <SafeAreaView style={styles.container}>
-            <Stack.Screen options={{ title: name || `Chat ${id}`}} />
             <View style={styles.header}>
                 <Pressable onPress={() => navigation.goBack()} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
                     <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
                 </Pressable>
 
                 <View style={styles.headerCopy}>
-                    <Text style={styles.headerTitle}>Pessoa? {id}</Text>
-                    <Text style={styles.headerSubtitle}>Conversa com o {name}...</Text>
+                    <Text style={styles.headerTitle}>Pessoa? {params.chatId}</Text>
+                    <Text style={styles.headerSubtitle}>Conversa com o {params.chatTitle}...</Text>
                 </View>
             </View>
         </SafeAreaView>
