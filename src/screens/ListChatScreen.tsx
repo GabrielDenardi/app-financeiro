@@ -18,7 +18,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../components/Card';
 import { FloatingActionButton } from '../components/FloatingActionButton';
 import { BOTTOM_TAB_BAR_HEIGHT } from '../components/BottomTabBarMock';
-import { SecondaryButton } from '../features/auth/components/AuthButton';
+import { useRouter } from 'expo-router';
+
+    type DetailsTab = 'all' | 'active' | 'working' | 'done';
+
+    const TABS: Array<{ key: DetailsTab; label: string }> = [
+        { key: 'all', label: 'Todos' },
+        { key: 'active', label: 'Ativo' },
+        { key: 'working', label: 'Em andamento' },
+        { key: 'done', label: 'Encerrado' },
+    ];
 
 export default function ListChatScreen () {
     const colors = useThemeColors();
@@ -30,6 +39,10 @@ export default function ListChatScreen () {
     const [addTalkVisible, setAddTalkVisible] = useState(false);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    //Tabs
+    const [activeTab, setActiveTab] = useState<DetailsTab>('all');
+
+    const router = useRouter();
 
     const chatList = [
     {
@@ -38,6 +51,7 @@ export default function ListChatScreen () {
         lastMessage: 'Eu tentei acessar...',
         unreadCount: 1,
         isMe: true,
+        status: 'active',
     },
     {
         id: '2',
@@ -45,6 +59,7 @@ export default function ListChatScreen () {
         lastMessage: 'Pode enviar o print do erro?',
         unreadCount: 3,
         isMe: false,
+        status: 'working',
     },
     {
         id: '3',
@@ -52,8 +67,17 @@ export default function ListChatScreen () {
         lastMessage: 'A API já está disponível.',
         unreadCount: 0,
         isMe: true,
+        status: 'done',
     },
     ];
+
+    const filteredData = useMemo(() => {
+        return chatList.filter(item => {
+            const matchesTab = activeTab === 'all' || item.status === activeTab;
+            const matchesSearch = item.title.toLowerCase().includes(searchText.toLowerCase());
+            return matchesTab && matchesSearch
+        });
+    }, [searchText, activeTab]);
 
 
     return (
@@ -87,14 +111,32 @@ export default function ListChatScreen () {
                 </View>
             </View>
 
+            <View style={styles.tabsRow}>
+                {TABS.map((tab) => (
+                    <Pressable
+                        key={tab.key}
+                        onPress={() => setActiveTab(tab.key)}
+                        style={({ pressed }) => [
+                            styles.tabButton,
+                            activeTab === tab.key && styles.tabButtonActive,
+                            pressed && styles.pressed,
+                        ]}
+                    >
+                        <Text style={[styles.tabButtonText, activeTab === tab.key && styles.tabButtonTextActive]}>
+                            {tab.label}
+                        </Text>
+                    </Pressable>
+                ))}
+            </View>
+
             <ScrollView
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
             >
                 {chatList.length ? (
-                    chatList.map((item) => (
+                    filteredData.map((item) => (
                     <Card key={item.id} style={styles.conversationCard}>
-                        <View style={styles.conversationInner}>
+                        <View style={styles.conversationInner} >
                             <View style={styles.conversationText}>
                                 <Ionicons name='person-circle-outline' size={25} />
                                 <View>
@@ -237,7 +279,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     fab: {
         position: 'absolute',
         right: spacing.lg,
-        bottom: BOTTOM_TAB_BAR_HEIGHT,
+        bottom: BOTTOM_TAB_BAR_HEIGHT - 40,
     },
 
     //Modal
@@ -298,7 +340,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        marginBottom: 20,
+        marginBottom: 10,
         padding: 10
     },
     secondaryButton: {
@@ -378,6 +420,33 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     emptyText: {
         ...typography.body,
         color: colors.textSecondary
-    }
+    },
+    tabsRow: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+        flexWrap: 'wrap',
+        marginTop: spacing.lg,
+        margin: 'auto',
+    },
+    tabButton: {
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.pill,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
+    },
+    tabButtonActive: {
+        backgroundColor: colors.primary,
+        borderColor: colors.primary,
+    },
+    tabButtonText: {
+        ...typography.caption,
+        color: colors.textSecondary,
+        fontWeight: '700'
+    },
+    tabButtonTextActive: {
+        color: colors.white,
+    },
 })
 
