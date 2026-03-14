@@ -1,6 +1,24 @@
 # App Financeiro
 
-Aplicativo de gestao financeira pessoal em React Native com Expo.
+Aplicativo open-source de gestão financeira pessoal desenvolvido com React Native e Expo.
+
+O objetivo do projeto é ajudar usuários a organizar suas finanças, acompanhar despesas e desenvolver consciência financeira, além de servir como um projeto educacional para desenvolvedores interessados em fintech e aplicações mobile modernas.
+
+## Funcionalidades
+
+- Registro de despesas e receitas
+- Organização financeira pessoal
+- Integração com Supabase
+- Aplicativo multiplataforma (Android, iOS e Web)
+- Base para futuras funcionalidades com IA para insights financeiros
+
+## Tecnologias
+
+- React Native
+- Expo
+- Supabase
+- Node.js
+- JavaScript / TypeScript
 
 ## Requisitos
 
@@ -14,15 +32,25 @@ Aplicativo de gestao financeira pessoal em React Native com Expo.
 npm install
 ```
 
-## Configuracao de ambiente (Supabase)
+## Configuração de ambiente (Supabase)
 
 1. Copie `.env.example` para `.env`.
 2. Preencha:
-   - `EXPO_PUBLIC_SUPABASE_URL`
-   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-   - `EXPO_PUBLIC_PRIVACY_POLICY_URL`
-   - `EXPO_PUBLIC_EMAIL_REDIRECT_URL`
-3. Rode a migration SQL em `supabase/migrations/202602270001_auth_onboarding.sql` no seu projeto Supabase.
+
+```
+EXPO_PUBLIC_SUPABASE_URL
+EXPO_PUBLIC_SUPABASE_ANON_KEY
+EXPO_PUBLIC_PRIVACY_POLICY_URL
+EXPO_PUBLIC_EMAIL_REDIRECT_URL
+```
+
+3. Execute a migration SQL localizada em:
+
+```
+supabase/migrations/202602270001_auth_onboarding.sql
+```
+
+no seu projeto Supabase.
 
 ## Como iniciar o projeto
 
@@ -30,16 +58,21 @@ npm install
 npm start
 ```
 
-Isso abre o Expo Dev Tools no terminal.
+Isso abrirá o Expo Dev Tools no terminal.
 
 ## Rodar no celular
 
-1. Instale o app **Expo Go** no celular.
-2. Conecte celular e computador na mesma rede Wi-Fi.
-3. Rode `npm start`.
-4. Escaneie o QR code exibido no terminal.
+1. Instale o app Expo Go no celular
+2. Conecte celular e computador na mesma rede Wi-Fi
+3. Execute:
 
-## Rodar no Android (emulador/dispositivo)
+```bash
+npm start
+```
+
+4. Escaneie o QR Code exibido no terminal.
+
+## Rodar no Android
 
 ```bash
 npm run android
@@ -51,7 +84,7 @@ npm run android
 npm run ios
 ```
 
-Observacao: no Windows, use Expo Go para iOS (sem build local).
+Observação: no Windows utilize o Expo Go para iOS.
 
 ## Rodar no navegador
 
@@ -59,24 +92,50 @@ Observacao: no Windows, use Expo Go para iOS (sem build local).
 npm run web
 ```
 
+## Testes
+
+```bash
+npm test
+```
+
 ## Comandos principais
 
-- `npm start`: inicia o Metro/Expo
-- `npm run android`: abre no Android
-- `npm run ios`: abre no iOS
-- `npm run web`: abre no navegador
-- `npm test`: roda os testes
+- `npm start` inicia o projeto
+- `npm run android` abre no Android
+- `npm run ios` abre no iOS
+- `npm run web` abre no navegador
+- `npm test` executa testes
 
 ## Problemas comuns
 
-- Limpar cache do Expo:
+Limpar cache do Expo:
 
 ```bash
 npx expo start -c
 ```
 
-- Dependencias quebradas apos troca de branch:
+Dependências quebradas após troca de branch:
 
 ```bash
 npm install
 ```
+
+## Future Features
+
+- AI-powered expense categorization
+- Financial insights using AI
+- Smart budgeting recommendations
+- Automatic expense classification
+- AI-generated financial summaries
+
+## Contribuições
+
+Contribuições são bem-vindas.
+
+1. Fork do repositório
+2. Crie uma branch
+3. Abra um Pull Request
+
+## Licença
+
+Este projeto é open-source e pode ser utilizado para fins educacionais e de desenvolvimento.
