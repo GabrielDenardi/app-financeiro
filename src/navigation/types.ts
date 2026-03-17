@@ -11,6 +11,7 @@ export type AppStackParamList = {
   EditProfile: undefined;
   Help: undefined;
   Privacy: undefined;
+  Notifications: undefined;
   Import: undefined;
   About: undefined;
   Budgets: undefined;

@@ -16,6 +16,7 @@ import SobreScreen from '../screens/SobreScreen';
 import type { AuthenticatedUserSummary } from '../types/auth';
 import type { AppStackParamList } from './types';
 import { AppTabs } from './AppTabs';
+import { NotificationsScreen } from '../screens/NotificationsScreen';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
@@ -47,6 +48,7 @@ export function AppStack({ currentUser }: AppStackProps) {
       <Stack.Screen name="GroupDetails">
         {({ route }) => <GroupDetailsScreen currentUser={currentUser} groupId={route.params.groupId} />}
       </Stack.Screen>
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
 }
