@@ -8,6 +8,7 @@ import { AccountsScreen } from '../screens/AccountsScreen';
 import BudgetsScreen from '../screens/BudgetScreen';
 import CardsScreen from '../screens/CardsScreen';
 import { HelpScreen } from '../screens/HelpScreen';
+import ListChatScreen from '../screens/ListChatScreen';
 import ImportScreen from '../screens/ImportScreen';
 import { PrivacySecurityScreen } from '../screens/PrivacySecurityScreen';
 import RecurringTransactionsScreen from '../screens/RecurringTransactionsScreen';
@@ -17,6 +18,7 @@ import type { AuthenticatedUserSummary } from '../types/auth';
 import type { AppStackParamList } from './types';
 import { AppTabs } from './AppTabs';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
+import ChatScreen from '../screens/ChatScreen';
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
@@ -41,6 +43,8 @@ export function AppStack({ currentUser }: AppStackProps) {
       <Stack.Screen name="Reports" component={ReportsScreen} />
       <Stack.Screen name="Accounts" component={AccountsScreen} />
       <Stack.Screen name="Cards" component={CardsScreen} />
+      <Stack.Screen name="ListChat" component={ListChatScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="RecurringTransactions" component={RecurringTransactionsScreen} />
       <Stack.Screen name="Groups">
         {() => <GroupsScreen currentUser={currentUser} />}
