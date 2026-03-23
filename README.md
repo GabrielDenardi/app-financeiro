@@ -42,9 +42,13 @@ EXPO_PUBLIC_SUPABASE_URL
 EXPO_PUBLIC_SUPABASE_ANON_KEY
 EXPO_PUBLIC_PRIVACY_POLICY_URL
 EXPO_PUBLIC_EMAIL_REDIRECT_URL
+RESEND_API_KEY
+RESEND_FROM_EMAIL
 ```
 
-3. Execute a migration SQL localizada em:
+4. Nunca commite o arquivo `.env`. Apenas o `.env.example` deve ser versionado.
+
+5. Execute a migration SQL localizada em:
 
 ```
 supabase/migrations/202602270001_auth_onboarding.sql
