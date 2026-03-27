@@ -78,7 +78,7 @@ export async function getHomeDashboard(monthDate = formatMonthDate()): Promise<D
   ]);
 
   if (goalsData.error || membershipsData.error) {
-    throw new Error(goalsData.error?.message ?? membershipsData.error?.message ?? 'Nao foi possivel carregar o dashboard.');
+    throw new Error(goalsData.error?.message ?? membershipsData.error?.message ?? 'Não foi possível carregar o dashboard.');
   }
 
   const totals = summarizeTransactions(transactionFeed);

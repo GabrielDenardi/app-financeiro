@@ -41,6 +41,17 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
           iconName = isFocused ? 'settings' : 'settings-outline';
         }
 
+        const tabLabel =
+          route.name === 'Transactions'
+            ? 'Transações'
+            : route.name === 'Goals'
+              ? 'Metas'
+            : route.name === 'Settings'
+              ? 'Configurações'
+              : route.name === 'Budget'
+                ? 'Orçamentos'
+                : route.name;
+
         return (
           <Pressable
             key={route.key}
@@ -74,7 +85,7 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
               ]}
               numberOfLines={1}
             >
-              {route.name === 'Budget' ? 'Orçamentos' : route.name}
+              {tabLabel}
             </Text>
           </Pressable>
         );

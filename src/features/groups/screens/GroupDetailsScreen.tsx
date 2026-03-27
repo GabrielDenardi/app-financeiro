@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 
 import { Card } from '../../../components/Card';
-import { colors, radius, spacing, typography } from '../../../theme';
+import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import type { AuthenticatedUserSummary } from '../../../types/auth';
 import type {
   GroupBalanceRow,
@@ -54,7 +54,11 @@ const TABS: Array<{ key: DetailsTab; label: string }> = [
   { key: 'members', label: 'Membros' },
 ];
 
-const PAYMENT_METHODS: SettlementPaymentMethod[] = ['PIX', 'Dinheiro', 'Transferencia'];
+const PAYMENT_METHODS: Array<{ value: SettlementPaymentMethod; label: string }> = [
+  { value: 'PIX', label: 'PIX' },
+  { value: 'Dinheiro', label: 'Dinheiro' },
+  { value: 'Transferencia', label: 'Transferência' },
+];
 
 function parseDecimal(value: string) {
   const parsed = Number(value.replace(',', '.').trim());
@@ -78,6 +82,8 @@ function sortMembers(members: GroupMember[]) {
 }
 
 export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const currentUserId = currentUser?.id ?? null;
   const groupDetailsQuery = useGroupDetails(currentUserId, groupId);
@@ -124,7 +130,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
   const resolveMemberName = (userId: string) => {
     if (userId === currentUserId) {
-      return 'Voce';
+      return 'Você';
     }
 
     return membersById.get(userId)?.fullName ?? 'Membro';
@@ -168,7 +174,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
     } catch (error) {
       return {
         shares: [],
-        error: error instanceof Error ? error.message : 'Nao foi possivel calcular a divisao.',
+        error: error instanceof Error ? error.message : 'Não foi possível calcular a divisão.',
       };
     }
   }, [customAmountByUserId, percentageByUserId, selectedMemberIds, splitMode, splitTotal]);
@@ -191,10 +197,10 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
     try {
       await Share.share({
-        message: `Entre no grupo "${groupData.group.title}" com o codigo ${groupData.group.shareCode}.`,
+        message: `Entre no grupo "${groupData.group.title}" com o código ${groupData.group.shareCode}.`,
       });
     } catch (_error) {
-      Alert.alert('Compartilhamento', 'Nao foi possivel compartilhar o codigo agora.');
+      Alert.alert('Compartilhamento', 'Não foi possível compartilhar o código agora.');
     }
   };
 
@@ -204,17 +210,17 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
     }
 
     if (!splitTitle.trim()) {
-      Alert.alert('Divisao', 'Informe um titulo.');
+      Alert.alert('Divisão', 'Informe um título.');
       return;
     }
 
     if (!splitOwnerUserId) {
-      Alert.alert('Divisao', 'Selecione quem pagou ou recebeu.');
+      Alert.alert('Divisão', 'Selecione quem pagou ou recebeu.');
       return;
     }
 
     if (splitPreview.error) {
-      Alert.alert('Divisao', splitPreview.error);
+      Alert.alert('Divisão', splitPreview.error);
       return;
     }
 
@@ -233,7 +239,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
       setIsSplitModalVisible(false);
       resetSplitForm();
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel registrar a divisao.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível registrar a divisão.');
     }
   };
 
@@ -252,7 +258,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
     const amount = parseDecimal(settlementAmount);
     if (amount <= 0 || amount > Math.abs(selectedBalance.amount) + 0.009) {
-      Alert.alert('Acerto', 'Informe um valor valido dentro do saldo pendente.');
+      Alert.alert('Acerto', 'Informe um valor válido dentro do saldo pendente.');
       return;
     }
 
@@ -267,7 +273,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
       setIsSettlementModalVisible(false);
       setSelectedBalance(null);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel solicitar o acerto.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível solicitar o acerto.');
     }
   };
 
@@ -285,7 +291,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
             } catch (error) {
               Alert.alert(
                 'Erro',
-                error instanceof Error ? error.message : 'Nao foi possivel confirmar o acerto.',
+                error instanceof Error ? error.message : 'Não foi possível confirmar o acerto.',
               );
             }
           },
@@ -307,7 +313,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
             try {
               await removeMemberMutation.mutateAsync(member.userId);
             } catch (error) {
-              Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel remover o membro.');
+              Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível remover o membro.');
             }
           },
         },
@@ -334,7 +340,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
         <View style={styles.headerCopy}>
           <Text style={styles.headerTitle}>{groupData.group.title}</Text>
-          <Text style={styles.headerSubtitle}>{groupData.group.description || 'Sem descricao.'}</Text>
+          <Text style={styles.headerSubtitle}>{groupData.group.description || 'Sem descrição.'}</Text>
         </View>
 
         <Pressable onPress={handleShareCode} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
@@ -346,20 +352,20 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         <Card style={styles.heroCard}>
           <View style={styles.rowBetween}>
             <View>
-              <Text style={styles.heroMuted}>Codigo</Text>
+              <Text style={styles.heroMuted}>Código</Text>
               <Text style={styles.heroCode}>{groupData.group.shareCode}</Text>
             </View>
 
             <Pressable onPress={handleOpenSplitModal} style={({ pressed }) => [styles.primaryChipButton, pressed && styles.pressed]}>
               <Ionicons name="add" size={16} color={colors.white} />
-              <Text style={styles.primaryChipButtonText}>Nova divisao</Text>
+              <Text style={styles.primaryChipButtonText}>Nova divisão</Text>
             </Pressable>
           </View>
 
           <View style={styles.metricsRow}>
-            <MetricCard label="Total dividido" value={formatCurrencyBRL(groupData.summary.totalDivided)} />
-            <MetricCard label="Acertado" value={formatCurrencyBRL(groupData.summary.settled)} valueColor={colors.success} />
-            <MetricCard label="Pendente" value={formatCurrencyBRL(groupData.summary.pending)} valueColor={colors.danger} />
+            <MetricCard label="Total dividido" value={formatCurrencyBRL(groupData.summary.totalDivided)} styles={styles} />
+            <MetricCard label="Acertado" value={formatCurrencyBRL(groupData.summary.settled)} valueColor={colors.success} styles={styles} />
+            <MetricCard label="Pendente" value={formatCurrencyBRL(groupData.summary.pending)} valueColor={colors.danger} styles={styles} />
           </View>
 
           <View>
@@ -390,9 +396,9 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
         {activeTab === 'balances' ? (
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Saldos entre voce e os outros membros</Text>
+            <Text style={styles.sectionTitle}>Saldos entre você e os outros membros</Text>
             <Text style={styles.sectionDescription}>
-              Positivo indica credito. Negativo indica que voce deve para o membro.
+              Positivo indica crédito. Negativo indica que você deve para o membro.
             </Text>
 
             {groupData.balances.map((balance) => (
@@ -441,7 +447,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
             {groupData.splits.length === 0 ? (
               <Card style={styles.sectionCard}>
-                <Text style={styles.emptyText}>Nenhuma divisao registrada.</Text>
+                <Text style={styles.emptyText}>Nenhuma divisão registrada.</Text>
               </Card>
             ) : null}
           </>
@@ -459,7 +465,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                     <View style={styles.listCopy}>
                       <Text style={styles.listTitle}>
                         {resolveMemberName(settlement.fromUserId)}
-                        {' -> '}
+                        {' → '}
                         {resolveMemberName(settlement.toUserId)}
                       </Text>
                       <Text style={styles.sectionDescription}>
@@ -481,7 +487,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                       </Text>
                     </Pressable>
                   ) : isOutgoing && settlement.status === 'pending' ? (
-                    <Text style={styles.awaitingText}>Aguardando confirmacao do recebedor.</Text>
+                    <Text style={styles.awaitingText}>Aguardando confirmação do recebedor.</Text>
                   ) : null}
                 </Card>
               );
@@ -510,7 +516,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                   </View>
 
                   <View style={styles.listCopy}>
-                    <Text style={styles.listTitle}>{member.userId === currentUserId ? 'Voce' : member.fullName}</Text>
+                    <Text style={styles.listTitle}>{member.userId === currentUserId ? 'Você' : member.fullName}</Text>
                     <Text style={styles.sectionDescription}>
                       {member.role === 'admin' ? 'Administrador' : 'Membro'}
                     </Text>
@@ -537,40 +543,40 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
           <Card style={styles.modalCard}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalContent}>
               <View style={styles.rowBetween}>
-                <Text style={styles.modalTitle}>Registrar divisao</Text>
+                <Text style={styles.modalTitle}>Registrar divisão</Text>
                 <Pressable onPress={() => setIsSplitModalVisible(false)} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
                   <Ionicons name="close-outline" size={20} color={colors.textPrimary} />
                 </Pressable>
               </View>
 
-              <TextInput value={splitTitle} onChangeText={setSplitTitle} placeholder="Titulo" placeholderTextColor={colors.textSecondary} style={styles.input} />
-              <TextInput value={splitDescription} onChangeText={setSplitDescription} placeholder="Descricao (opcional)" placeholderTextColor={colors.textSecondary} style={[styles.input, styles.multilineInput]} multiline />
+              <TextInput value={splitTitle} onChangeText={setSplitTitle} placeholder="Título" placeholderTextColor={colors.textSecondary} style={styles.input} />
+              <TextInput value={splitDescription} onChangeText={setSplitDescription} placeholder="Descrição (opcional)" placeholderTextColor={colors.textSecondary} style={[styles.input, styles.multilineInput]} multiline />
               <TextInput value={splitTotal} onChangeText={setSplitTotal} placeholder="Valor total" placeholderTextColor={colors.textSecondary} style={styles.input} keyboardType="decimal-pad" />
 
               <View style={styles.choiceRow}>
                 {(['expense', 'income'] as GroupSplitKind[]).map((kind) => (
-                  <ChoiceButton key={kind} label={kind === 'expense' ? 'Despesa' : 'Receita'} selected={splitKind === kind} onPress={() => setSplitKind(kind)} />
+                  <ChoiceButton key={kind} label={kind === 'expense' ? 'Despesa' : 'Receita'} selected={splitKind === kind} onPress={() => setSplitKind(kind)} styles={styles} />
                 ))}
               </View>
 
               <Text style={styles.fieldLabel}>{splitKind === 'expense' ? 'Quem pagou?' : 'Quem recebeu?'}</Text>
               <View style={styles.wrapRow}>
                 {members.map((member) => (
-                  <ChoiceButton key={member.userId} label={resolveMemberName(member.userId)} selected={splitOwnerUserId === member.userId} onPress={() => setSplitOwnerUserId(member.userId)} />
+                  <ChoiceButton key={member.userId} label={resolveMemberName(member.userId)} selected={splitOwnerUserId === member.userId} onPress={() => setSplitOwnerUserId(member.userId)} styles={styles} />
                 ))}
               </View>
 
-              <Text style={styles.fieldLabel}>Modo de divisao</Text>
+              <Text style={styles.fieldLabel}>Modo de divisão</Text>
               <View style={styles.wrapRow}>
-                <ChoiceButton label="Igual" selected={splitMode === 'equal'} onPress={() => setSplitMode('equal')} />
-                <ChoiceButton label="Por porcentagem" selected={splitMode === 'percentage'} onPress={() => setSplitMode('percentage')} />
-                <ChoiceButton label="Personalizado" selected={splitMode === 'custom'} onPress={() => setSplitMode('custom')} />
+                <ChoiceButton label="Igual" selected={splitMode === 'equal'} onPress={() => setSplitMode('equal')} styles={styles} />
+                <ChoiceButton label="Por porcentagem" selected={splitMode === 'percentage'} onPress={() => setSplitMode('percentage')} styles={styles} />
+                <ChoiceButton label="Personalizado" selected={splitMode === 'custom'} onPress={() => setSplitMode('custom')} styles={styles} />
               </View>
 
               <Text style={styles.fieldLabel}>Participantes</Text>
               <View style={styles.wrapRow}>
                 {members.map((member) => (
-                  <ChoiceButton key={member.userId} label={resolveMemberName(member.userId)} selected={selectedMemberIds.includes(member.userId)} onPress={() => toggleMember(member.userId)} />
+                  <ChoiceButton key={member.userId} label={resolveMemberName(member.userId)} selected={selectedMemberIds.includes(member.userId)} onPress={() => toggleMember(member.userId)} styles={styles} />
                 ))}
               </View>
 
@@ -619,7 +625,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                   <Text style={styles.secondaryButtonText}>Cancelar</Text>
                 </Pressable>
                 <Pressable onPress={handleSaveSplit} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-                  <Text style={styles.primaryButtonText}>{createSplitMutation.isPending ? 'Salvando...' : 'Salvar divisao'}</Text>
+                  <Text style={styles.primaryButtonText}>{createSplitMutation.isPending ? 'Salvando...' : 'Salvar divisão'}</Text>
                 </Pressable>
               </View>
             </ScrollView>
@@ -645,11 +651,11 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
             <View style={styles.wrapRow}>
               {PAYMENT_METHODS.map((method) => (
-                <ChoiceButton key={method} label={method} selected={settlementMethod === method} onPress={() => setSettlementMethod(method)} />
+                <ChoiceButton key={method.value} label={method.label} selected={settlementMethod === method.value} onPress={() => setSettlementMethod(method.value)} styles={styles} />
               ))}
             </View>
 
-            <TextInput value={settlementNote} onChangeText={setSettlementNote} placeholder="Observacao (opcional)" placeholderTextColor={colors.textSecondary} style={[styles.input, styles.multilineInput]} multiline />
+            <TextInput value={settlementNote} onChangeText={setSettlementNote} placeholder="Observação (opcional)" placeholderTextColor={colors.textSecondary} style={[styles.input, styles.multilineInput]} multiline />
 
             <View style={styles.modalActions}>
               <Pressable onPress={() => setIsSettlementModalVisible(false)} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
@@ -670,10 +676,12 @@ function MetricCard({
   label,
   value,
   valueColor,
+  styles,
 }: {
   label: string;
   value: string;
   valueColor?: string;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <View style={styles.metricCard}>
@@ -687,10 +695,12 @@ function ChoiceButton({
   label,
   selected,
   onPress,
+  styles,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <Pressable
@@ -706,17 +716,17 @@ function ChoiceButton({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.md },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: layout.pageHorizontal, paddingTop: layout.pageHeaderTop, paddingBottom: spacing.md },
   headerCopy: { flex: 1, gap: spacing.xs },
-  headerTitle: { ...typography.h2, color: colors.textPrimary },
+  headerTitle: { ...typography.h1, color: colors.textPrimary },
   headerSubtitle: { ...typography.body, color: colors.textSecondary },
   iconButton: { width: 40, height: 40, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.85 },
-  scrollContent: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
-  heroCard: { backgroundColor: '#0F766E', borderColor: '#0F766E', gap: spacing.md },
+  scrollContent: { padding: layout.pageHorizontal, gap: layout.pageSectionGap, paddingBottom: spacing.xxl },
+  heroCard: { backgroundColor: colors.primary, borderColor: colors.primary, gap: spacing.md },
   heroMuted: { ...typography.caption, color: 'rgba(255,255,255,0.72)' },
   heroCode: { ...typography.h2, color: colors.white, letterSpacing: 1 },
   heroBalance: { ...typography.value, fontWeight: '700' },
@@ -746,12 +756,12 @@ const styles = StyleSheet.create({
   emptyText: { ...typography.body, color: colors.textSecondary },
   awaitingText: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  memberAvatar: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center' },
+  memberAvatar: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   memberAvatarText: { ...typography.body, color: colors.primary, fontWeight: '700' },
   badge: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, backgroundColor: colors.mutedSurface },
   badgeText: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
-  removeButton: { width: 36, height: 36, borderRadius: radius.pill, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', padding: spacing.lg },
+  removeButton: { width: 36, height: 36, borderRadius: radius.pill, backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center' },
+  modalBackdrop: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: spacing.lg },
   modalCard: { maxHeight: '90%', gap: spacing.md },
   modalContent: { gap: spacing.md },
   modalTitle: { ...typography.h2, color: colors.textPrimary },
@@ -761,7 +771,7 @@ const styles = StyleSheet.create({
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   fieldLabel: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
   choiceButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  choiceButtonActive: { borderColor: colors.primary, backgroundColor: '#DBEAFE' },
+  choiceButtonActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   choiceButtonText: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
   choiceButtonTextActive: { color: colors.primary },
   dynamicInputs: { gap: spacing.sm },

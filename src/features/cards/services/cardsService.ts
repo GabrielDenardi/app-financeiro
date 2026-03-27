@@ -59,7 +59,7 @@ export async function listCards(): Promise<CreditCard[]> {
     ]);
 
   if (cardsError || invoicesError) {
-    throw new Error(cardsError?.message ?? invoicesError?.message ?? 'Nao foi possivel carregar os cartoes.');
+    throw new Error(cardsError?.message ?? invoicesError?.message ?? 'Não foi possível carregar os cartões.');
   }
 
   const invoiceByCard = new Map<string, { openAmount: number; usedLimitAmount: number }>();

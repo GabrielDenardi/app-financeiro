@@ -5,6 +5,10 @@ export type AppColors = {
   primaryLight: string;
   success: string;
   danger: string;
+  primarySoft: string;
+  successSoft: string;
+  dangerSoft: string;
+  warningSoft: string;
   background: string;
   surface: string;
   surfaceMuted: string;
@@ -14,6 +18,7 @@ export type AppColors = {
   mutedSurface: string;
   white: string;
   shadow: string;
+  overlay: string;
 };
 
 export const lightColors: AppColors = {
@@ -21,6 +26,10 @@ export const lightColors: AppColors = {
   primaryLight: '#2563EB',
   success: '#16A34A',
   danger: '#DC2626',
+  primarySoft: '#DBEAFE',
+  successSoft: '#DCFCE7',
+  dangerSoft: '#FEE2E2',
+  warningSoft: '#FEF3C7',
   background: '#F8FAFC',
   surface: '#FFFFFF',
   surfaceMuted: '#F1F5F9',
@@ -30,6 +39,7 @@ export const lightColors: AppColors = {
   mutedSurface: '#F1F5F9',
   white: '#FFFFFF',
   shadow: '#0F172A',
+  overlay: 'rgba(15, 23, 42, 0.5)',
 };
 
 export const darkColors: AppColors = {
@@ -37,6 +47,10 @@ export const darkColors: AppColors = {
   primaryLight: '#93C5FD',
   success: '#4ADE80',
   danger: '#F87171',
+  primarySoft: '#172554',
+  successSoft: '#14532D',
+  dangerSoft: '#7F1D1D',
+  warningSoft: '#78350F',
   background: '#020617',
   surface: '#0F172A',
   surfaceMuted: '#172033',
@@ -46,6 +60,7 @@ export const darkColors: AppColors = {
   mutedSurface: '#162235',
   white: '#FFFFFF',
   shadow: '#000000',
+  overlay: 'rgba(2, 6, 23, 0.72)',
 };
 
 export const colors = lightColors;

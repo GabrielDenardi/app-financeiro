@@ -8,7 +8,7 @@ export function GoalsScreen() {
       <View style={styles.container}>
         <Text style={styles.title}>Metas</Text>
         <Text style={styles.description}>
-          Em breve voce podera acompanhar metas de economia e objetivos financeiros por aqui.
+          Em breve você poderá acompanhar metas de economia e objetivos financeiros por aqui.
         </Text>
       </View>
     </SafeAreaView>

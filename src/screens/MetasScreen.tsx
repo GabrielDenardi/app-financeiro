@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Calendar as CalIcon, Car, Home, Landmark, Plane, Plus, Target, Trash2, X } from 'lucide-react-native';
 import { Calendar, CalendarUtils } from 'react-native-calendars';
 
+import { PageHeader } from '../components/PageHeader';
+import { PageShell } from '../components/PageShell';
 import { useAccounts } from '../features/accounts/hooks/useAccounts';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { useCreateGoalMutation, useDeleteGoalMutation, useGoalContributionMutation, useGoals, useUpdateGoalMutation } from '../features/goals/hooks/useGoals';
-import { type AppColors, useThemeColors } from '../theme';
+import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { formatCurrencyBRL } from '../utils/format';
 
 const TODAY = CalendarUtils.getCalendarDateString(new Date());
@@ -87,7 +89,7 @@ export default function MetasScreen() {
 
   const onCreate = async () => {
     if (!title.trim() || !target) {
-      Alert.alert('Atencao', 'Informe nome e valor alvo.');
+      Alert.alert('Atenção', 'Informe nome e valor alvo.');
       return;
     }
     try {
@@ -95,7 +97,7 @@ export default function MetasScreen() {
       setCreateOpen(false);
       resetCreate();
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel criar a meta.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível criar a meta.');
     }
   };
 
@@ -106,14 +108,14 @@ export default function MetasScreen() {
         text: 'Excluir',
         style: 'destructive',
         onPress: async () => {
-          try { await deleteGoal.mutateAsync(id); } catch (error) { Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel excluir a meta.'); }
+          try { await deleteGoal.mutateAsync(id); } catch (error) { Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível excluir a meta.'); }
         },
       },
     ]);
 
   const onContribute = async () => {
     if (!goalId || !accountId || moneyValue(amount) <= 0) {
-      Alert.alert('Atencao', 'Selecione uma conta e informe um aporte valido.');
+      Alert.alert('Atenção', 'Selecione uma conta e informe um aporte válido.');
       return;
     }
     try {
@@ -123,7 +125,7 @@ export default function MetasScreen() {
       setNote('');
       setGoalId(null);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel registrar o aporte.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível registrar o aporte.');
     }
   };
 
@@ -134,25 +136,32 @@ export default function MetasScreen() {
       setDeadlineOpen(false);
       setGoalId(null);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar o prazo.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível atualizar o prazo.');
     }
   };
 
   return (
-    <SafeAreaView style={s.bg}>
-      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-        <View style={s.head}>
-          <View><Text style={s.tt}>Metas Financeiras</Text><Text style={s.sub}>{activeCount} ativa(s)</Text></View>
-          <Pressable style={s.darkBtn} onPress={() => { resetCreate(); setCreateOpen(true); }}><Plus size={16} color="#fff" /><Text style={s.darkBtnText}>Nova Meta</Text></Pressable>
-        </View>
+    <>
+      <PageShell withTabBarInset>
+        <PageHeader
+          title="Metas Financeiras"
+          subtitle={`${activeCount} ativa(s)`}
+          variant="primary"
+          action={
+            <Pressable style={s.darkBtn} onPress={() => { resetCreate(); setCreateOpen(true); }}>
+              <Plus size={16} color={themeColors.white} />
+              <Text style={s.darkBtnText}>Nova Meta</Text>
+            </Pressable>
+          }
+        />
 
         <View style={s.tabs}>
           <Pressable style={[s.tab, tab === 'active' && s.tabOn]} onPress={() => setTab('active')}><Text style={[s.tabText, tab === 'active' && s.tabTextOn]}>Ativas ({activeCount})</Text></Pressable>
-          <Pressable style={[s.tab, tab === 'completed' && s.tabOn]} onPress={() => setTab('completed')}><Text style={[s.tabText, tab === 'completed' && s.tabTextOn]}>Concluidas ({doneCount})</Text></Pressable>
+          <Pressable style={[s.tab, tab === 'completed' && s.tabOn]} onPress={() => setTab('completed')}><Text style={[s.tabText, tab === 'completed' && s.tabTextOn]}>Concluídas ({doneCount})</Text></Pressable>
         </View>
 
         {goalsQuery.isLoading ? <View style={s.card}><ActivityIndicator color={themeColors.primaryLight} /></View> : null}
-        {goalsQuery.isError ? <View style={s.card}><Text style={s.msg}>Nao foi possivel carregar as metas.</Text><Pressable style={s.retry} onPress={() => goalsQuery.refetch()}><Text style={s.retryText}>Tentar novamente</Text></Pressable></View> : null}
+        {goalsQuery.isError ? <View style={s.card}><Text style={s.msg}>Não foi possível carregar as metas.</Text><Pressable style={s.retry} onPress={() => goalsQuery.refetch()}><Text style={s.retryText}>Tentar novamente</Text></Pressable></View> : null}
         {!goalsQuery.isLoading && !goalsQuery.isError && !list.length ? <View style={s.card}><Text style={s.msg}>Nenhuma meta nesta aba.</Text></View> : null}
 
         {list.map((goal) => {
@@ -162,45 +171,42 @@ export default function MetasScreen() {
             <View key={goal.id} style={[s.card, s.goal, { borderTopColor: goal.color, borderTopWidth: 4 }]}>
               <View style={s.row}>
                 <View style={[s.iconBox, { backgroundColor: goal.color }]}><Icon size={20} color="#fff" /></View>
-                <View style={s.flex}><Text style={s.goalTitle}>{goal.title}</Text><Text style={s.goalSub}>{done ? 'Meta concluida' : `Prazo: ${dateBR(goal.targetDate)}`}</Text></View>
+                <View style={s.flex}><Text style={s.goalTitle}>{goal.title}</Text><Text style={s.goalSub}>{done ? 'Meta concluída' : `Prazo: ${dateBR(goal.targetDate)}`}</Text></View>
                 {!done ? <Pressable style={s.iconBtn} onPress={() => { setGoalId(goal.id); setTempDue(goal.targetDate ?? TODAY); setDeadlineOpen(true); }}><CalIcon size={18} color="#6567ef" /></Pressable> : null}
                 <Pressable style={s.iconBtn} onPress={() => onDelete(goal.id)}><Trash2 size={18} color="#ef4444" /></Pressable>
               </View>
               <View style={[s.row, s.between]}><Text style={s.money}>{formatCurrencyBRL(goal.currentAmount)}</Text><Text style={s.money}>{formatCurrencyBRL(goal.targetAmount)}</Text></View>
               <View style={s.track}><View style={[s.fill, { width: `${Math.min(goal.progressPercent, 100)}%`, backgroundColor: done ? themeColors.success : themeColors.textPrimary }]} /></View>
-              <Text style={s.pct}>{goal.progressPercent.toFixed(1)}% alcancado</Text>
-              {!done ? <View style={s.soft}><Text style={s.softText}>Guarde <Text style={s.softStrong}>{formatCurrencyBRL(monthlyNeed(goal.currentAmount, goal.targetAmount, goal.targetDate))}/mes</Text> para concluir no prazo.</Text></View> : null}
+              <Text style={s.pct}>{goal.progressPercent.toFixed(1)}% alcançado</Text>
+              {!done ? <View style={s.soft}><Text style={s.softText}>Guarde <Text style={s.softStrong}>{formatCurrencyBRL(monthlyNeed(goal.currentAmount, goal.targetAmount, goal.targetDate))}/mês</Text> para concluir no prazo.</Text></View> : null}
               {!done ? <Pressable style={s.add} onPress={() => { setGoalId(goal.id); setAccountId(accounts[0]?.id ?? ''); setAmount(''); setNote(''); setAddOpen(true); }}><Plus size={18} color={themeColors.textPrimary} /><Text style={s.addText}>Adicionar</Text></Pressable> : null}
             </View>
           );
         })}
-      </ScrollView>
+      </PageShell>
 
       <Modal visible={createOpen} transparent animationType="slide" onRequestClose={() => setCreateOpen(false)}>
-        <View style={s.overlay}><View style={s.sheet}><View style={s.sheetHead}><Text style={s.sheetTitle}>Nova Meta</Text><Pressable onPress={() => setCreateOpen(false)}><X size={22} color={themeColors.textPrimary} /></Pressable></View><ScrollView showsVerticalScrollIndicator={false}><Text style={s.label}>Nome</Text><TextInput value={title} onChangeText={setTitle} placeholder="Ex: Reserva de emergencia" placeholderTextColor={themeColors.textSecondary} style={s.input} /><Text style={s.label}>Valor alvo</Text><View style={s.moneyRow}><Text style={s.prefix}>R$</Text><TextInput value={target} onChangeText={(v) => setTarget(moneyMask(v))} keyboardType="numeric" placeholder="0,00" placeholderTextColor={themeColors.textSecondary} style={s.moneyInput} /></View><Text style={s.label}>Ja guardado</Text><View style={s.moneyRow}><Text style={s.prefix}>R$</Text><TextInput value={saved} onChangeText={(v) => setSaved(moneyMask(v))} keyboardType="numeric" placeholder="0,00" placeholderTextColor={themeColors.textSecondary} style={s.moneyInput} /></View><Text style={s.label}>Prazo</Text><View style={s.calendar}><Calendar current={due} minDate={TODAY} markedDates={{ [due]: { selected: true, selectedColor: '#6567ef' } }} onDayPress={(day) => setDue(day.dateString)} theme={{ todayTextColor: '#6567ef', selectedDayBackgroundColor: '#6567ef' }} /></View><Text style={s.label}>Icone</Text><View style={s.wrap}>{ICONS.map((item) => <Pressable key={item.id} style={[s.pill, icon === item.id && s.pillOn]} onPress={() => setIcon(item.id)}><Text style={[s.pillText, icon === item.id && s.pillTextOn]}>{item.label}</Text></Pressable>)}</View><Text style={s.label}>Cor</Text><View style={s.colors}>{COLORS.map((item) => <Pressable key={item} style={[s.color, { backgroundColor: item }, color === item && s.colorOn]} onPress={() => setColor(item)} />)}</View><Pressable style={[s.primary, createGoal.isPending && s.dim]} onPress={onCreate} disabled={createGoal.isPending}>{createGoal.isPending ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>Criar Meta</Text>}</Pressable></ScrollView></View></View>
+        <View style={s.overlay}><View style={s.sheet}><View style={s.sheetHead}><Text style={s.sheetTitle}>Nova Meta</Text><Pressable onPress={() => setCreateOpen(false)}><X size={22} color={themeColors.textPrimary} /></Pressable></View><ScrollView showsVerticalScrollIndicator={false}><Text style={s.label}>Nome</Text><TextInput value={title} onChangeText={setTitle} placeholder="Ex: Reserva de emergência" placeholderTextColor={themeColors.textSecondary} style={s.input} /><Text style={s.label}>Valor alvo</Text><View style={s.moneyRow}><Text style={s.prefix}>R$</Text><TextInput value={target} onChangeText={(v) => setTarget(moneyMask(v))} keyboardType="numeric" placeholder="0,00" placeholderTextColor={themeColors.textSecondary} style={s.moneyInput} /></View><Text style={s.label}>Já guardado</Text><View style={s.moneyRow}><Text style={s.prefix}>R$</Text><TextInput value={saved} onChangeText={(v) => setSaved(moneyMask(v))} keyboardType="numeric" placeholder="0,00" placeholderTextColor={themeColors.textSecondary} style={s.moneyInput} /></View><Text style={s.label}>Prazo</Text><View style={s.calendar}><Calendar current={due} minDate={TODAY} markedDates={{ [due]: { selected: true, selectedColor: '#6567ef' } }} onDayPress={(day) => setDue(day.dateString)} theme={{ todayTextColor: '#6567ef', selectedDayBackgroundColor: '#6567ef' }} /></View><Text style={s.label}>Ícone</Text><View style={s.wrap}>{ICONS.map((item) => <Pressable key={item.id} style={[s.pill, icon === item.id && s.pillOn]} onPress={() => setIcon(item.id)}><Text style={[s.pillText, icon === item.id && s.pillTextOn]}>{item.label}</Text></Pressable>)}</View><Text style={s.label}>Cor</Text><View style={s.colors}>{COLORS.map((item) => <Pressable key={item} style={[s.color, { backgroundColor: item }, color === item && s.colorOn]} onPress={() => setColor(item)} />)}</View><Pressable style={[s.primary, createGoal.isPending && s.dim]} onPress={onCreate} disabled={createGoal.isPending}>{createGoal.isPending ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>Criar Meta</Text>}</Pressable></ScrollView></View></View>
       </Modal>
 
       <Modal visible={addOpen} transparent animationType="fade" onRequestClose={() => setAddOpen(false)}>
-        <View style={s.center}><View style={s.modal}><View style={s.row}><Text style={s.modalTitle}>Adicionar Valor</Text><Pressable onPress={() => setAddOpen(false)}><X size={18} color={themeColors.textSecondary} /></Pressable></View><Text style={s.modalSub}>Adicionando a <Text style={s.softStrong}>{selectedGoal?.title ?? 'Meta'}</Text></Text><View style={s.wrap}>{accounts.length ? accounts.map((item) => <Pressable key={item.id} style={[s.pill, accountId === item.id && s.pillOn]} onPress={() => setAccountId(item.id)}><Text style={[s.pillText, accountId === item.id && s.pillTextOn]}>{item.name}</Text></Pressable>) : <Text style={s.modalSub}>Crie uma conta antes de aportar.</Text>}</View><View style={s.moneyRow}><Text style={s.prefix}>R$</Text><TextInput value={amount} onChangeText={(v) => setAmount(moneyMask(v))} keyboardType="numeric" placeholder="0,00" placeholderTextColor={themeColors.textSecondary} style={s.moneyInput} autoFocus /></View><TextInput value={note} onChangeText={setNote} placeholder="Observacao" placeholderTextColor={themeColors.textSecondary} style={s.input} /><View style={s.actions}><Pressable style={s.ghost} onPress={() => setAddOpen(false)}><Text style={s.ghostText}>Cancelar</Text></Pressable><Pressable style={[s.green, (contribute.isPending || !accounts.length) && s.dim]} onPress={onContribute} disabled={contribute.isPending || !accounts.length}>{contribute.isPending ? <ActivityIndicator color="#fff" /> : <Text style={s.greenText}>Adicionar</Text>}</Pressable></View></View></View>
+        <View style={s.center}><View style={s.modal}><View style={s.row}><Text style={s.modalTitle}>Adicionar Valor</Text><Pressable onPress={() => setAddOpen(false)}><X size={18} color={themeColors.textSecondary} /></Pressable></View><Text style={s.modalSub}>Adicionando a <Text style={s.softStrong}>{selectedGoal?.title ?? 'Meta'}</Text></Text><View style={s.wrap}>{accounts.length ? accounts.map((item) => <Pressable key={item.id} style={[s.pill, accountId === item.id && s.pillOn]} onPress={() => setAccountId(item.id)}><Text style={[s.pillText, accountId === item.id && s.pillTextOn]}>{item.name}</Text></Pressable>) : <Text style={s.modalSub}>Crie uma conta antes de aportar.</Text>}</View><View style={s.moneyRow}><Text style={s.prefix}>R$</Text><TextInput value={amount} onChangeText={(v) => setAmount(moneyMask(v))} keyboardType="numeric" placeholder="0,00" placeholderTextColor={themeColors.textSecondary} style={s.moneyInput} autoFocus /></View><TextInput value={note} onChangeText={setNote} placeholder="Observação" placeholderTextColor={themeColors.textSecondary} style={s.input} /><View style={s.actions}><Pressable style={s.ghost} onPress={() => setAddOpen(false)}><Text style={s.ghostText}>Cancelar</Text></Pressable><Pressable style={[s.green, (contribute.isPending || !accounts.length) && s.dim]} onPress={onContribute} disabled={contribute.isPending || !accounts.length}>{contribute.isPending ? <ActivityIndicator color="#fff" /> : <Text style={s.greenText}>Adicionar</Text>}</Pressable></View></View></View>
       </Modal>
 
       <Modal visible={deadlineOpen} transparent animationType="slide" onRequestClose={() => setDeadlineOpen(false)}>
         <View style={s.overlay}><View style={s.sheet}><View style={s.sheetHead}><Text style={s.sheetTitle}>Editar Prazo</Text><Pressable onPress={() => setDeadlineOpen(false)}><X size={22} color={themeColors.textPrimary} /></Pressable></View><Text style={s.modalSub}>Nova data para <Text style={s.softStrong}>{selectedGoal?.title ?? 'Meta'}</Text></Text><View style={s.calendar}><Calendar current={tempDue} minDate={TODAY} markedDates={{ [tempDue]: { selected: true, selectedColor: '#6567ef' } }} onDayPress={(day) => setTempDue(day.dateString)} theme={{ todayTextColor: '#6567ef', selectedDayBackgroundColor: '#6567ef' }} /></View><Pressable style={s.ghostWide} onPress={() => onUpdateDeadline(null)}><Text style={s.ghostText}>Limpar prazo</Text></Pressable><Pressable style={[s.primary, updateGoal.isPending && s.dim]} onPress={() => onUpdateDeadline(tempDue)} disabled={updateGoal.isPending}>{updateGoal.isPending ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>Salvar Novo Prazo</Text>}</Pressable></View></View>
       </Modal>
-    </SafeAreaView>
+    </>
   );
 }
 
 const createStyles = (colors: AppColors) => StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.background },
   content: { paddingBottom: 40 },
-  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, gap: 12 },
-  tt: { fontSize: 20, fontWeight: '800', color: colors.textPrimary },
-  sub: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
-  darkBtn: { backgroundColor: colors.textPrimary, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  darkBtnText: { color: colors.white, fontWeight: '700', fontSize: 13 },
-  tabs: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 16, padding: 4, borderRadius: 14, backgroundColor: colors.mutedSurface },
-  tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12 },
+  darkBtn: { backgroundColor: colors.primaryLight, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  darkBtnText: { ...typography.caption, color: colors.white, fontWeight: '700' },
+  tabs: { flexDirection: 'row', marginBottom: spacing.xs, padding: 4, borderRadius: 14, backgroundColor: colors.mutedSurface },
+  tab: { flex: 1, paddingVertical: spacing.sm + 4, alignItems: 'center', borderRadius: 12 },
   tabOn: { backgroundColor: colors.surface },
   tabText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
   tabTextOn: { color: colors.textPrimary },
@@ -225,7 +231,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   msg: { textAlign: 'center', color: colors.textSecondary, lineHeight: 18 },
   retry: { backgroundColor: colors.primaryLight, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999, alignSelf: 'center', marginTop: 12 },
   retryText: { color: colors.white, fontWeight: '700' },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '90%' },
   sheetHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sheetTitle: { fontSize: 24, fontWeight: '800', color: colors.textPrimary },
@@ -245,7 +251,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   colorOn: { borderWidth: 3, borderColor: colors.border },
   primary: { backgroundColor: colors.primaryLight, borderRadius: 999, paddingVertical: 18, alignItems: 'center', justifyContent: 'center', marginTop: 24 },
   primaryText: { color: colors.white, fontWeight: '800', fontSize: 16 },
-  center: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },
+  center: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 24 },
   modal: { backgroundColor: colors.surface, borderRadius: 18, padding: 20, borderWidth: 1, borderColor: colors.border },
   modalTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary, flex: 1 },
   modalSub: { fontSize: 13, color: colors.textSecondary, marginVertical: 12 },

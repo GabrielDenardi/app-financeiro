@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import {
+  layout,
   radius,
   spacing,
   typography,
@@ -230,7 +231,7 @@ export default function ListChatScreen() {
 
             <Text style={styles.modalLabel}>Informações</Text>
             <TextInput
-              placeholder="Titulo"
+              placeholder="Título"
               value={title}
               onChangeText={(t) => setTitle(t)}
               style={styles.modalInput}
@@ -281,8 +282,8 @@ const createStyles = (colors: AppColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: spacing.md,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.xl,
+        paddingHorizontal: layout.pageHorizontal,
+      paddingTop: layout.pageHeaderTop,
       paddingBottom: spacing.md,
     },
     backButton: {
@@ -313,16 +314,18 @@ const createStyles = (colors: AppColors) =>
 
     //Search
     searchContainer: {
-      paddingHorizontal: 20,
-      marginTop: 25,
+      paddingHorizontal: spacing.lg,
+      marginTop: spacing.sm,
     },
     search: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
       height: 56,
       borderRadius: 18,
       paddingHorizontal: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
       elevation: 4,
       shadowColor: colors.shadow,
       shadowOpacity: 0.1,
@@ -346,7 +349,7 @@ const createStyles = (colors: AppColors) =>
     modalOverlay: {
       flex: 1,
       justifyContent: "flex-end",
-      backgroundColor: colors.shadow,
+      backgroundColor: colors.overlay,
     },
     modalBackdrop: {
       flex: 1,
@@ -359,7 +362,7 @@ const createStyles = (colors: AppColors) =>
     modalSheet: {
       flex: 1,
       minHeight: 500,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       padding: spacing.lg,
@@ -447,8 +450,8 @@ const createStyles = (colors: AppColors) =>
 
     //Conversations
     content: {
-      padding: spacing.lg,
-      gap: spacing.lg,
+      padding: layout.pageHorizontal,
+      gap: layout.pageSectionGap,
       paddingBottom: BOTTOM_TAB_BAR_HEIGHT + 72,
     },
     conversationCard: {

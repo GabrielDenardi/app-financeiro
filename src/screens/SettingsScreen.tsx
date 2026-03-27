@@ -8,16 +8,16 @@ export function SettingsScreen() {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      Alert.alert('Erro', 'Nao foi possivel sair agora. Tente novamente.');
+      Alert.alert('Erro', 'Não foi possível sair agora. Tente novamente.');
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.title}>Configuracoes</Text>
+        <Text style={styles.title}>Configurações</Text>
         <Text style={styles.subtitle}>
-          Use o botao abaixo para encerrar sua sessao e voltar para o fluxo de login.
+          Use o botão abaixo para encerrar sua sessão e voltar para o fluxo de login.
         </Text>
 
         <Pressable

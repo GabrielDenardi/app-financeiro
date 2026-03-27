@@ -113,7 +113,7 @@ function ensureSupabaseEnv() {
 
 function ensureCurrentUserId(currentUserId?: string | null): string {
   if (!currentUserId) {
-    throw new GroupsServiceError('not_authenticated', 'Usuario nao autenticado.');
+    throw new GroupsServiceError('not_authenticated', 'Usuário não autenticado.');
   }
 
   return currentUserId;
@@ -138,7 +138,7 @@ function mapGroupMember(row: GroupMemberRow, profilesById: Map<string, ProfileRo
     id: row.id,
     groupId: row.group_id,
     userId: row.user_id,
-    fullName: profile?.full_name?.trim() || 'Usuario',
+    fullName: profile?.full_name?.trim() || 'Usuário',
     email: profile?.email?.trim() || '',
     role: row.role,
     joinedAt: row.joined_at,
@@ -265,7 +265,7 @@ async function fetchGroupGraph(groupIds: string[]) {
         membersError?.message ||
         splitsError?.message ||
         settlementsError?.message ||
-        'Nao foi possivel carregar os grupos.',
+        'Não foi possível carregar os grupos.',
     );
   }
 
@@ -383,14 +383,14 @@ export async function getGroupDetails(
 
   const membership = membershipData as MembershipRoleRow | null;
   if (!membership) {
-    throw new GroupsServiceError('not_found', 'Grupo nao encontrado.');
+    throw new GroupsServiceError('not_found', 'Grupo não encontrado.');
   }
 
   const graph = await fetchGroupGraph([groupId]);
   const group = graph.groups[0];
 
   if (!group) {
-    throw new GroupsServiceError('not_found', 'Grupo nao encontrado.');
+    throw new GroupsServiceError('not_found', 'Grupo não encontrado.');
   }
 
   return buildGroupDetailsData(

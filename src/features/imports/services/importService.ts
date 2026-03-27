@@ -149,7 +149,7 @@ function parseRow(rawRow: Record<string, unknown>): ParsedRow {
     amount: Math.abs(amount),
     type,
     category: String(row.category ?? row.categoria ?? 'other').trim(),
-    paymentMethod: String(row.payment_method ?? row.metodo ?? row.method ?? 'Transferencia').trim(),
+    paymentMethod: String(row.payment_method ?? row.metodo ?? row.method ?? 'Transferência').trim(),
     occurredOn: parseDate(row.date ?? row.data ?? row.occurred_on),
     rawData: row,
   };
@@ -236,7 +236,7 @@ export async function importTransactionsFromAsset(asset: PickedAsset) {
     const categoryCode = categoryByName.get(normalizeText(row.category)) ?? 'other';
     const hasRequiredFields = Boolean(row.title && row.amount > 0 && row.occurredOn);
     const status = !hasRequiredFields ? 'failed' : duplicate ? 'duplicate' : 'accepted';
-    const errorMessage = !hasRequiredFields ? 'Linha invalida ou incompleta.' : duplicate ? 'Transacao ja existente.' : '';
+    const errorMessage = !hasRequiredFields ? 'Linha inválida ou incompleta.' : duplicate ? 'Transação já existente.' : '';
 
     inBatchFingerprints.add(fingerprint);
 
@@ -247,7 +247,7 @@ export async function importTransactionsFromAsset(asset: PickedAsset) {
       amount: row.amount,
       type: row.type,
       categoryCode,
-      paymentMethod: row.paymentMethod || 'Transferencia',
+      paymentMethod: row.paymentMethod || 'Transferência',
       occurredOn: row.occurredOn,
       status,
       errorMessage,

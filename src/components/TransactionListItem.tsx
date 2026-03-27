@@ -13,7 +13,10 @@ interface TransactionListItemProps {
 }
 
 function getCategoryIcon(category: string, colors: AppColors) {
-  const normalized = category.toLowerCase();
+  const normalized = category
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 
   if (normalized.includes('combustivel') || normalized.includes('transporte')) {
     return <Fuel size={20} color={colors.textSecondary} />;

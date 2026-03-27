@@ -27,7 +27,7 @@ const ACCOUNT_TYPES: Array<{
   icon: typeof Wallet;
 }> = [
   { value: 'checking', label: 'Corrente', icon: Wallet },
-  { value: 'savings', label: 'Poupanca', icon: PiggyBank },
+  { value: 'savings', label: 'Poupança', icon: PiggyBank },
   { value: 'investment', label: 'Investimento', icon: TrendingUp },
   { value: 'cash', label: 'Dinheiro', icon: Banknote },
   { value: 'other', label: 'Outros', icon: Building2 },
@@ -36,7 +36,7 @@ const ACCOUNT_TYPES: Array<{
 const POPULAR_BANKS = [
   { id: 'nubank', name: 'Nubank', color: '#8A05BE' },
   { id: 'inter', name: 'Inter', color: '#FF7A00' },
-  { id: 'itau', name: 'Itau', color: '#EC7000' },
+  { id: 'itau', name: 'Itaú', color: '#EC7000' },
   { id: 'bradesco', name: 'Bradesco', color: '#CC092F' },
   { id: 'santander', name: 'Santander', color: '#EC0000' },
   { id: 'c6', name: 'C6 Bank', color: '#212121' },
@@ -194,7 +194,7 @@ export function AddAccountModal({
                 ))}
               </ScrollView>
 
-              <Text style={styles.sectionLabel}>Instituicoes Populares</Text>
+              <Text style={styles.sectionLabel}>Instituições Populares</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -242,7 +242,7 @@ export function AddAccountModal({
                 <View style={styles.divider} />
 
                 <View style={styles.inputRow}>
-                  <Text style={styles.inputLabel}>Instituicao</Text>
+                  <Text style={styles.inputLabel}>Instituição</Text>
                   <TextInput
                     placeholder="Ex: Nubank"
                     placeholderTextColor={colors.textSecondary}

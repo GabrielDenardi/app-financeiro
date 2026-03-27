@@ -7,7 +7,7 @@ import { appEnv, hasSupabaseEnv } from '../config/env';
 
 if (!hasSupabaseEnv) {
   console.warn(
-    '[Supabase] Variaveis EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY nao configuradas.',
+    '[Supabase] Variáveis EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY não configuradas.',
   );
 }
 

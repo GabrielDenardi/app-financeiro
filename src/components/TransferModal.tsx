@@ -150,7 +150,7 @@ export function TransferModal({
               <View style={styles.handle} />
               <View style={styles.header}>
                 <View>
-                  <Text style={styles.title}>Transferencia</Text>
+                  <Text style={styles.title}>Transferência</Text>
                   <Text style={styles.subtitle}>Mover saldo entre suas contas</Text>
                 </View>
                 <TouchableOpacity onPress={requestClose} style={styles.closeButton}>
@@ -180,7 +180,7 @@ export function TransferModal({
                 </View>
               </View>
 
-              <Text style={styles.sectionLabel}>Conta de Saida</Text>
+              <Text style={styles.sectionLabel}>Conta de Saída</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
                 {activeAccounts.map((account) => (
                   <TouchableOpacity

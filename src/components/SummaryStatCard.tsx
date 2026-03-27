@@ -42,7 +42,7 @@ export function SummaryStatCard({
       <Text style={[styles.amount, { color: toneColor }]} numberOfLines={1}>
         {amountText}
       </Text>
-      <Text style={styles.caption}>No mes atual</Text>
+      <Text style={styles.caption}>No mês atual</Text>
     </Card>
   );
 }

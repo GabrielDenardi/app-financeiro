@@ -28,10 +28,12 @@ import { TransferModal } from '../components/TransferModal';
 import { typeConfig } from '../data/accountsMock';
 import { useAccountsOverview, useCreateAccountMutation, useCreateTransferMutation } from '../features/accounts/hooks/useAccounts';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
-import { colors, radius, spacing, typography } from '../theme';
+import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { formatCurrencyBRL } from '../utils/format';
 
 export function AccountsScreen({ navigation }: any) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const currentUser = useAuthenticatedUser();
   const overviewQuery = useAccountsOverview(currentUser?.id);
   const createAccountMutation = useCreateAccountMutation(currentUser?.id);
@@ -56,7 +58,7 @@ export function AccountsScreen({ navigation }: any) {
       await createAccountMutation.mutateAsync(input);
       setAddVisible(false);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel criar a conta.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível criar a conta.');
     }
   };
 
@@ -65,7 +67,7 @@ export function AccountsScreen({ navigation }: any) {
       await createTransferMutation.mutateAsync(input);
       setTransferVisible(false);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel transferir.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível transferir.');
     }
   };
 
@@ -100,7 +102,7 @@ export function AccountsScreen({ navigation }: any) {
             ) : (
               <>
                 <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Patrimonio Liquido</Text>
+                  <Text style={styles.totalLabel}>Patrimônio Líquido</Text>
                   <Pressable onPress={() => setShowBalances((current) => !current)}>
                     {showBalances ? (
                       <Eye color={colors.white} size={18} opacity={0.7} />
@@ -118,7 +120,7 @@ export function AccountsScreen({ navigation }: any) {
                   </View>
                   <View style={styles.statDivider} />
                   <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Dividas</Text>
+                    <Text style={styles.statLabel}>Dívidas</Text>
                     <Text style={[styles.statValue, styles.debtValue]}>
                       {showBalances ? formatCurrencyBRL(overview?.totalLiabilities ?? 0) : 'R$ ••••'}
                     </Text>
@@ -157,7 +159,7 @@ export function AccountsScreen({ navigation }: any) {
             <View style={styles.summaryBox}>
               <View style={styles.summaryLabelRow}>
                 <ArrowDownRight size={14} color={colors.danger} />
-                <Text style={styles.summarySmallLabel}>Saidas</Text>
+                <Text style={styles.summarySmallLabel}>Saídas</Text>
               </View>
               <Text style={[styles.summaryAmount, styles.expenseText]}>
                 {formatMaybeHidden(overview?.monthlyExpense ?? 0)}
@@ -206,7 +208,7 @@ export function AccountsScreen({ navigation }: any) {
                   <View style={styles.institutionRow}>
                     <Landmark size={12} color={colors.textSecondary} />
                     <Text style={styles.institutionText}>
-                      {account.institution || 'Instituicao nao informada'}
+                      {account.institution || 'Instituição não informada'}
                     </Text>
                   </View>
                 </View>
@@ -226,7 +228,7 @@ export function AccountsScreen({ navigation }: any) {
         ) : (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>Nenhuma conta cadastrada</Text>
-            <Text style={styles.emptyText}>Crie a primeira conta para ver o patrimonio real do app.</Text>
+            <Text style={styles.emptyText}>Crie a primeira conta para ver o patrimônio real do app.</Text>
           </View>
         )}
 
@@ -237,7 +239,7 @@ export function AccountsScreen({ navigation }: any) {
                 <CreditCard size={20} color={colors.primary} />
               </View>
               <View>
-                <Text style={styles.quickActionTitle}>Cartoes</Text>
+                <Text style={styles.quickActionTitle}>Cartões</Text>
                 <Text style={styles.quickActionSubtitle}>Gerenciar faturas</Text>
               </View>
             </View>
@@ -277,14 +279,14 @@ export function AccountsScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   headerBackground: {
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
+      paddingHorizontal: layout.pageHorizontal,
     paddingBottom: 70,
     borderBottomLeftRadius: radius.lg * 2,
     borderBottomRightRadius: radius.lg * 2,
@@ -293,40 +295,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing.md,
+    gap: spacing.sm,
+    paddingTop: layout.pageHeaderTop,
+    paddingBottom: spacing.md,
   },
   headerIconButton: {
     padding: spacing.sm,
     marginLeft: -spacing.sm,
   },
   headerTitle: {
-    ...typography.h2,
+    ...typography.h1,
     color: colors.white,
+    flex: 1,
+    flexShrink: 1,
   },
   headerActions: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
+    alignItems: 'center',
   },
   actionButtonGhost: {
-    padding: spacing.md,
+    minHeight: 40,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: radius.md,
     flexDirection: 'row',
-    gap: 5,
+    gap: spacing.xs,
     alignItems: 'center',
   },
   actionButtonSolid: {
-    padding: spacing.md,
+    minHeight: 40,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.success,
     borderRadius: radius.md,
     flexDirection: 'row',
-    gap: 5,
+    gap: spacing.xs,
     alignItems: 'center',
   },
   headerActionText: {
     ...typography.caption,
     color: colors.white,
     fontWeight: '700',
+    fontSize: 11,
   },
   totalCard: {
     backgroundColor: 'rgba(255,255,255,0.1)',
@@ -385,7 +397,7 @@ const styles = StyleSheet.create({
     marginTop: -50,
   },
   scrollPadding: {
-    paddingHorizontal: spacing.xl,
+      paddingHorizontal: layout.pageHorizontal,
     paddingBottom: spacing.xxl,
   },
   summaryCard: {
@@ -533,7 +545,7 @@ const styles = StyleSheet.create({
   quickActionIcon: {
     width: 44,
     height: 44,
-    backgroundColor: colors.mutedSurface,
+    backgroundColor: colors.primarySoft,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',

@@ -10,16 +10,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { ArrowLeft, Search, SlidersHorizontal, X } from 'lucide-react-native';
+import { Search, SlidersHorizontal, X } from 'lucide-react-native';
 
 import { TransactionListItem } from '../components/TransactionListItem';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { useTransactionSections } from '../features/transactions/hooks/useTransactions';
 import { formatCurrencyBRL } from '../utils/format';
-import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
+import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 const MONTHS = ['Todos', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-const METHODS = ['Todos', 'Pix', 'Transferencia', 'Dinheiro', 'Cartao de credito', 'Cartao de debito', 'Boleto'];
+const METHODS = ['Todos', 'Pix', 'Transferência', 'Dinheiro', 'Cartão de crédito', 'Cartão de débito', 'Boleto'];
 
 export function TransactionsScreen({ navigation }: any) {
   const colors = useThemeColors();
@@ -59,10 +59,7 @@ export function TransactionsScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={22} color={colors.textPrimary} />
-        </Pressable>
-        <Text style={styles.title}>Transacoes</Text>
+        <Text style={styles.title}>Transações</Text>
         <Pressable
           style={[styles.filterToggle, showFilters && styles.filterToggleActive]}
           onPress={() => setShowFilters((current) => !current)}
@@ -94,7 +91,7 @@ export function TransactionsScreen({ navigation }: any) {
 
       {showFilters ? (
         <View style={styles.advancedFilters}>
-          <Text style={styles.filterLabel}>Periodo</Text>
+          <Text style={styles.filterLabel}>Período</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -111,7 +108,7 @@ export function TransactionsScreen({ navigation }: any) {
             ))}
           </ScrollView>
 
-          <Text style={styles.filterLabel}>Metodo de pagamento</Text>
+          <Text style={styles.filterLabel}>Método de pagamento</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -132,7 +129,7 @@ export function TransactionsScreen({ navigation }: any) {
           <View style={styles.chipRow}>
             <FilterChip label="Tudo" active={activeType === 'all'} onPress={() => setActiveType('all')} styles={styles} />
             <FilterChip label="Entradas" active={activeType === 'income'} onPress={() => setActiveType('income')} styles={styles} />
-            <FilterChip label="Saidas" active={activeType === 'expense'} onPress={() => setActiveType('expense')} styles={styles} />
+            <FilterChip label="Saídas" active={activeType === 'expense'} onPress={() => setActiveType('expense')} styles={styles} />
           </View>
         </View>
       ) : null}
@@ -166,7 +163,7 @@ export function TransactionsScreen({ navigation }: any) {
             {sectionsQuery.isLoading ? (
               <ActivityIndicator />
             ) : (
-              <Text style={styles.emptyText}>Nenhuma transacao para os filtros selecionados.</Text>
+              <Text style={styles.emptyText}>Nenhuma transação para os filtros selecionados.</Text>
             )}
           </View>
         }
@@ -221,19 +218,9 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingHorizontal: layout.pageHorizontal,
+    paddingTop: layout.pageHeaderTop,
     gap: spacing.md,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   title: {
     ...typography.h1,
@@ -251,11 +238,11 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   filterToggleActive: {
-    backgroundColor: colors.textPrimary,
-    borderColor: colors.textPrimary,
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryLight,
   },
   searchRow: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.pageHorizontal,
     gap: spacing.sm,
     marginTop: spacing.md,
     marginBottom: spacing.md,
@@ -278,7 +265,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   },
   advancedFilters: {
     backgroundColor: colors.surface,
-    marginHorizontal: spacing.lg,
+    marginHorizontal: layout.pageHorizontal,
     padding: spacing.md,
     borderRadius: radius.md,
     marginBottom: spacing.md,
@@ -312,8 +299,8 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     marginRight: 8,
   },
   chipActive: {
-    backgroundColor: colors.textPrimary,
-    borderColor: colors.textPrimary,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
   },
   chipText: {
     ...typography.caption,
@@ -321,12 +308,12 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     fontWeight: '600',
   },
   chipTextActive: {
-    color: colors.background,
+    color: colors.primary,
   },
   summaryCard: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    marginHorizontal: spacing.lg,
+    marginHorizontal: layout.pageHorizontal,
     paddingVertical: spacing.lg,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -354,7 +341,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     alignSelf: 'center',
   },
   listContent: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: layout.pageHorizontal,
     paddingBottom: 48,
   },
   sectionTitle: {

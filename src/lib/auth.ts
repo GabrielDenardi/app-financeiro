@@ -14,7 +14,7 @@ export async function requireCurrentUserId(): Promise<string> {
   const userId = await getCurrentUserId();
 
   if (!userId) {
-    throw new Error('Usuario nao autenticado.');
+    throw new Error('Usuário não autenticado.');
   }
 
   return userId;

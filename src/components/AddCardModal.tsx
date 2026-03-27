@@ -25,7 +25,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const POPULAR_BANKS = [
   { id: 'nubank', name: 'Nubank', color: '#8A05BE' },
   { id: 'inter', name: 'Inter', color: '#FF7A00' },
-  { id: 'itau', name: 'Itau', color: '#EC7000' },
+  { id: 'itau', name: 'Itaú', color: '#EC7000' },
   { id: 'bradesco', name: 'Bradesco', color: '#CC092F' },
   { id: 'santander', name: 'Santander', color: '#EC0000' },
   { id: 'c6', name: 'C6 Bank', color: '#212121' },
@@ -163,8 +163,8 @@ export function AddCardModal({
               <View style={styles.handle} />
               <View style={styles.header}>
                 <View>
-                  <Text style={styles.title}>Novo Cartao</Text>
-                  <Text style={styles.subtitle}>Configure os detalhes do seu cartao</Text>
+                  <Text style={styles.title}>Novo Cartão</Text>
+                  <Text style={styles.subtitle}>Configure os detalhes do seu cartão</Text>
                 </View>
                 <TouchableOpacity onPress={requestClose} style={styles.closeButton}>
                   <X size={18} color={colors.textPrimary} />
@@ -191,9 +191,9 @@ export function AddCardModal({
                   <View style={styles.cardHeaderPreview}>
                     <View>
                       <Text style={styles.cardPreviewInstLabel}>
-                        {(institution || 'INSTITUICAO').toUpperCase()}
+                        {(institution || 'INSTITUIÇÃO').toUpperCase()}
                       </Text>
-                      <Text style={styles.cardPreviewNameText}>{name || 'Nome do Cartao'}</Text>
+                      <Text style={styles.cardPreviewNameText}>{name || 'Nome do Cartão'}</Text>
                     </View>
                     <Text style={styles.cardPreviewNetworkText}>{network}</Text>
                   </View>
@@ -215,7 +215,7 @@ export function AddCardModal({
                 </LinearGradient>
               </View>
 
-              <Text style={styles.sectionLabel}>Cor do Cartao</Text>
+              <Text style={styles.sectionLabel}>Cor do Cartão</Text>
               <View style={styles.colorRow}>
                 {CARD_COLORS.map((color) => (
                   <TouchableOpacity
@@ -228,7 +228,7 @@ export function AddCardModal({
                 ))}
               </View>
 
-              <Text style={styles.sectionLabel}>Instituicao</Text>
+              <Text style={styles.sectionLabel}>Instituição</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -279,7 +279,7 @@ export function AddCardModal({
 
               <View style={styles.inputCard}>
                 <View style={styles.inputRow}>
-                  <Text style={styles.inputLabel}>Nome do Cartao</Text>
+                  <Text style={styles.inputLabel}>Nome do Cartão</Text>
                   <TextInput
                     placeholder="Ex: Nubank Black"
                     placeholderTextColor={colors.textSecondary}
@@ -291,7 +291,7 @@ export function AddCardModal({
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.inputRow}>
-                  <Text style={styles.inputLabel}>Ultimos 4 digitos</Text>
+                  <Text style={styles.inputLabel}>Últimos 4 dígitos</Text>
                   <TextInput
                     placeholder="0000"
                     keyboardType="number-pad"
@@ -363,7 +363,7 @@ export function AddCardModal({
                 {submitting ? (
                   <ActivityIndicator color={colors.white} />
                 ) : (
-                  <Text style={styles.saveButtonText}>Criar Cartao</Text>
+                  <Text style={styles.saveButtonText}>Criar Cartão</Text>
                 )}
               </TouchableOpacity>
             </View>
