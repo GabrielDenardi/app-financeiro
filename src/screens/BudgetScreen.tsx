@@ -6,15 +6,16 @@ import {
   Modal,
   Platform,
   Pressable,
-  SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { Pencil, PiggyBank, Plus, Trash2, X } from 'lucide-react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
+import { PageHeader } from '../components/PageHeader';
+import { PageShell } from '../components/PageShell';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { useBudgets, useDeleteBudgetMutation, useUpsertBudgetMutation } from '../features/budgets/hooks/useBudgets';
 import { formatMonthDate, monthLabel } from '../features/finance/utils';
@@ -25,6 +26,8 @@ import { formatCurrencyBRL } from '../utils/format';
 export default function BudgetsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const currentUser = useAuthenticatedUser();
   const monthDate = formatMonthDate();
   const budgetsQuery = useBudgets(currentUser?.id, monthDate);
@@ -41,6 +44,7 @@ export default function BudgetsScreen() {
     () => (categoriesQuery.data ?? []).filter((category) => category.kind !== 'income'),
     [categoriesQuery.data],
   );
+  const showBackButton = route.name === 'Budgets';
 
   const totals = useMemo(() => {
     return (budgetsQuery.data ?? []).reduce(
@@ -87,7 +91,7 @@ export default function BudgetsScreen() {
       });
       closeModal();
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel salvar o orcamento.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível salvar o orçamento.');
     }
   };
 
@@ -95,23 +99,25 @@ export default function BudgetsScreen() {
     try {
       await deleteBudgetMutation.mutateAsync(id);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel excluir o orcamento.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível excluir o orçamento.');
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.h2}>Orcamentos</Text>
-            <Text style={styles.caption}>{monthLabel(monthDate)}</Text>
-          </View>
-          <Pressable style={styles.btnHeader} onPress={() => setModalVisible(true)}>
-            <Plus size={18} color={colors.white} />
-            <Text style={styles.btnHeaderText}>Novo</Text>
-          </Pressable>
-        </View>
+    <>
+      <PageShell withTabBarInset>
+        <PageHeader
+          title="Orçamentos"
+          subtitle={monthLabel(monthDate)}
+          variant="primary"
+          onBackPress={showBackButton ? () => navigation.goBack() : undefined}
+          action={
+            <Pressable style={styles.btnHeader} onPress={() => setModalVisible(true)}>
+              <Plus size={18} color={colors.white} />
+              <Text style={styles.btnHeaderText}>Novo</Text>
+            </Pressable>
+          }
+        />
 
         <View style={styles.summaryBox}>
           <View style={styles.summaryItem}>
@@ -188,12 +194,12 @@ export default function BudgetsScreen() {
             })
           ) : (
             <View style={styles.emptyCard}>
-              <Text style={styles.h2}>Nenhum orcamento criado</Text>
+              <Text style={styles.h2}>Nenhum orçamento criado</Text>
               <Text style={styles.bodyText}>Crie o primeiro limite mensal por categoria para acompanhar seus gastos.</Text>
             </View>
           )}
         </View>
-      </ScrollView>
+      </PageShell>
 
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={closeModal}>
         <View style={styles.modalOverlay}>
@@ -203,7 +209,7 @@ export default function BudgetsScreen() {
           >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.h2}>{editingId ? 'Editar Orcamento' : 'Novo Orcamento'}</Text>
+                <Text style={styles.h2}>{editingId ? 'Editar Orçamento' : 'Novo Orçamento'}</Text>
                 <Pressable onPress={closeModal}>
                   <X size={24} color={colors.textPrimary} />
                 </Pressable>
@@ -265,7 +271,7 @@ export default function BudgetsScreen() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </>
   );
 }
 
@@ -274,25 +280,14 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
-    padding: 24,
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.xl,
-    marginBottom: spacing.lg,
-  },
   btnHeader: {
     flexDirection: 'row',
-    backgroundColor: colors.textPrimary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   btnHeaderText: {
     ...typography.body,
@@ -302,9 +297,8 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   summaryBox: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 24,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -334,12 +328,12 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     fontWeight: '700',
   },
   listContainer: {
-    gap: 16,
+    gap: spacing.md,
   },
   card: {
     backgroundColor: colors.surface,
-    padding: 16,
-    borderRadius: 16,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -400,14 +394,14 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   },
   emptyCard: {
     backgroundColor: colors.surface,
-    padding: 20,
-    borderRadius: 16,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   modalWrap: {
@@ -417,7 +411,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 24,
+    padding: spacing.xl,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -436,15 +430,16 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
     color: colors.textPrimary,
+    backgroundColor: colors.surface,
   },
   chipsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 24,
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
   },
   categoryChip: {
     paddingHorizontal: 12,
@@ -471,7 +466,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     alignItems: 'center',
   },
   btnCreate: {
-    backgroundColor: colors.success,
+    backgroundColor: colors.primaryLight,
   },
   btnCancel: {
     borderWidth: 1,

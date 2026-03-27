@@ -72,22 +72,26 @@ export interface Props {
 }
 
 export type HelpCategory =
-  | 'Transacoes'
   | 'Transações'
+  | 'Transacoes'
   | 'TransaÃ§Ãµes'
-  | 'Cartoes'
+  | 'TransaÃƒÂ§ÃƒÂµes'
   | 'Cartões'
+  | 'Cartoes'
   | 'CartÃµes'
+  | 'CartÃƒÂµes'
   | 'Metas'
   | 'Grupos'
-  | 'Orcamentos'
   | 'Orçamentos'
+  | 'Orcamentos'
   | 'OrÃ§amentos'
+  | 'OrÃƒÂ§amentos'
   | 'Contas'
   | 'Voz'
-  | 'Relatorios'
   | 'Relatórios'
-  | 'RelatÃ³rios';
+  | 'Relatorios'
+  | 'RelatÃ³rios'
+  | 'RelatÃƒÂ³rios';
 
 export interface ArticleHelp {
   id: string;

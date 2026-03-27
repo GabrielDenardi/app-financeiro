@@ -1,14 +1,41 @@
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { type ReactNode, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { ArrowLeft, Database, Download, Lock, ShieldCheck, Trash2, X } from 'lucide-react-native';
+import { Database, Download, Lock, ShieldCheck, Trash2, X } from 'lucide-react-native';
 
+import { Card } from '../components/Card';
+import { PageHeader } from '../components/PageHeader';
+import { PageShell } from '../components/PageShell';
 import { appEnv } from '../config/env';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
-import { useDisableTotpMutation, useEnrollTotpMutation, useLoginEvents, useMfaFactors, usePreferences, useRequestDeletionMutation, useRequestExportMutation, useUpdatePreferencesMutation, useVerifyTotpMutation } from '../features/preferences/hooks/usePreferences';
+import {
+  useDisableTotpMutation,
+  useEnrollTotpMutation,
+  useLoginEvents,
+  useMfaFactors,
+  usePreferences,
+  useRequestDeletionMutation,
+  useRequestExportMutation,
+  useUpdatePreferencesMutation,
+  useVerifyTotpMutation,
+} from '../features/preferences/hooks/usePreferences';
 import { canUseBiometricLock, setBiometricLockEnabled } from '../features/preferences/services/biometricService';
+import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 export function PrivacySecurityScreen({ navigation }: any) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const user = useAuthenticatedUser();
   const preferencesQuery = usePreferences(user?.id);
   const loginEventsQuery = useLoginEvents(user?.id);
@@ -34,20 +61,21 @@ export function PrivacySecurityScreen({ navigation }: any) {
     try {
       await updatePref.mutateAsync({ [key]: value });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar a preferencia.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível atualizar a preferência.');
     }
   };
 
   const onToggleBiometric = async (value: boolean) => {
     try {
       if (value && !(await canUseBiometricLock())) {
-        Alert.alert('Biometria indisponivel', 'O dispositivo nao possui biometria configurada.');
+        Alert.alert('Biometria indisponível', 'O dispositivo não possui biometria configurada.');
         return;
       }
+
       await setBiometricLockEnabled(value);
       await updatePref.mutateAsync({ biometricEnabled: value });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar a biometria.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível atualizar a biometria.');
     }
   };
 
@@ -60,22 +88,28 @@ export function PrivacySecurityScreen({ navigation }: any) {
         setMfaOpen(true);
         return;
       }
+
       const factor = mfaFactorsQuery.data?.[0];
-      if (factor) await disableTotp.mutateAsync(factor.id);
+      if (factor) {
+        await disableTotp.mutateAsync(factor.id);
+      }
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar o MFA.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível atualizar o MFA.');
     }
   };
 
   const onVerifyMfa = async () => {
-    if (!enrollment) return;
+    if (!enrollment) {
+      return;
+    }
+
     try {
       await verifyTotp.mutateAsync({ factorId: enrollment.factorId, code: mfaCode });
       setMfaOpen(false);
       setEnrollment(null);
       setMfaCode('');
     } catch (error) {
-      Alert.alert('Codigo invalido', error instanceof Error ? error.message : 'Nao foi possivel validar o TOTP.');
+      Alert.alert('Código inválido', error instanceof Error ? error.message : 'Não foi possível validar o TOTP.');
     }
   };
 
@@ -83,13 +117,14 @@ export function PrivacySecurityScreen({ navigation }: any) {
     try {
       const url = await exportData.mutateAsync();
       if (!url) {
-        Alert.alert('Exportacao solicitada', 'A requisicao foi registrada, mas o link ainda nao ficou disponivel.');
+        Alert.alert('Exportação solicitada', 'A requisição foi registrada, mas o link ainda não ficou disponível.');
         return;
       }
+
       await Linking.openURL(url);
-      Alert.alert('Exportacao pronta', 'O download foi iniciado.');
+      Alert.alert('Exportação pronta', 'O download foi iniciado.');
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel solicitar a exportacao.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível solicitar a exportação.');
     }
   };
 
@@ -99,84 +134,489 @@ export function PrivacySecurityScreen({ navigation }: any) {
       setDeleteOpen(false);
       setReason('');
       setPassword('');
-      Alert.alert('Conta excluida', 'Sua conta foi removida e a sessao atual foi encerrada.');
+      Alert.alert('Conta excluída', 'Sua conta foi removida e a sessão atual foi encerrada.');
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel solicitar a exclusao.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível solicitar a exclusão.');
     }
   };
 
   const onOpenPolicy = () => {
     if (!appEnv.privacyPolicyUrl) {
-      Alert.alert('Link indisponivel', 'Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a politica.');
+      Alert.alert('Link indisponível', 'Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a política.');
       return;
     }
+
     Linking.openURL(appEnv.privacyPolicyUrl).catch(() => {
-      Alert.alert('Erro', 'Nao foi possivel abrir a politica de privacidade.');
+      Alert.alert('Erro', 'Não foi possível abrir a política de privacidade.');
     });
   };
 
   return (
-    <SafeAreaView style={s.bg}>
-      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-        <View style={s.head}><Pressable onPress={() => navigation.goBack()} style={s.back}><ArrowLeft size={22} color="#111" /></Pressable><Text style={s.title}>Privacidade e Seguranca</Text></View>
+    <PageShell>
+      <PageHeader title="Privacidade e Segurança" onBackPress={() => navigation.goBack()} />
 
-        {preferencesQuery.isLoading && !prefs ? <View style={s.card}><ActivityIndicator color="#111827" /></View> : null}
-        {preferencesQuery.isError ? <View style={s.card}><Text style={s.desc}>Nao foi possivel carregar suas preferencias.</Text><Pressable style={s.linkBtn} onPress={() => preferencesQuery.refetch()}><Text style={s.linkBtnText}>Tentar novamente</Text></Pressable></View> : null}
+      {preferencesQuery.isLoading && !prefs ? (
+        <Card style={styles.cardCenter}>
+          <ActivityIndicator color={colors.primaryLight} />
+        </Card>
+      ) : null}
+      {preferencesQuery.isError ? (
+        <Card style={styles.cardCenter}>
+          <Text style={styles.desc}>Não foi possível carregar suas preferências.</Text>
+          <Pressable style={styles.linkBtn} onPress={() => preferencesQuery.refetch()}>
+            <Text style={styles.linkBtnText}>Tentar novamente</Text>
+          </Pressable>
+        </Card>
+      ) : null}
 
-        {prefs ? (
-          <>
-            <Section title="Seguranca" icon={<ShieldCheck size={18} color="#111827" />}>
-              <PrefRow label="Autenticacao em duas etapas" desc="Adiciona uma camada extra de seguranca." value={prefs.twoFactorEnabled} loading={mfaBusy} onChange={onToggleTwoFactor} />
-              <PrefRow label="Bloqueio por biometria" desc="Use biometria ao abrir o app." value={prefs.biometricEnabled} loading={updatePref.isPending} onChange={onToggleBiometric} />
-              <PrefRow label="Alertas de login" desc="Notificar sobre novos acessos." value={prefs.loginAlertsEnabled} loading={updatePref.isPending} onChange={(value) => onTogglePref('loginAlertsEnabled', value)} />
-            </Section>
+      {prefs ? (
+        <>
+          <Section
+            title="Segurança"
+            icon={<ShieldCheck size={18} color={colors.textPrimary} />}
+            styles={styles}
+          >
+            <PrefRow
+              label="Autenticação em duas etapas"
+              desc="Adiciona uma camada extra de segurança."
+              value={prefs.twoFactorEnabled}
+              loading={mfaBusy}
+              onChange={onToggleTwoFactor}
+              styles={styles}
+            />
+            <PrefRow
+              label="Bloqueio por biometria"
+              desc="Use biometria ao abrir o app."
+              value={prefs.biometricEnabled}
+              loading={updatePref.isPending}
+              onChange={onToggleBiometric}
+              styles={styles}
+            />
+            <PrefRow
+              label="Alertas de login"
+              desc="Notificar sobre novos acessos."
+              value={prefs.loginAlertsEnabled}
+              loading={updatePref.isPending}
+              onChange={(value) => onTogglePref('loginAlertsEnabled', value)}
+              styles={styles}
+            />
+          </Section>
 
-            <Section title="Privacidade" icon={<Lock size={18} color="#111827" />}>
-              <PrefRow label="Ocultar valores na tela inicial" desc="Protege seus dados em publico." value={prefs.hideValuesHome} loading={updatePref.isPending} onChange={(value) => onTogglePref('hideValuesHome', value)} />
-              <PrefRow label="Compartilhar estatisticas anonimas" desc="Ajuda a melhorar o app." value={prefs.shareAnonymousStats} loading={updatePref.isPending} onChange={(value) => onTogglePref('shareAnonymousStats', value)} />
-            </Section>
+          <Section title="Privacidade" icon={<Lock size={18} color={colors.textPrimary} />} styles={styles}>
+            <PrefRow
+              label="Ocultar valores na tela inicial"
+              desc="Protege seus dados em público."
+              value={prefs.hideValuesHome}
+              loading={updatePref.isPending}
+              onChange={(value) => onTogglePref('hideValuesHome', value)}
+              styles={styles}
+            />
+            <PrefRow
+              label="Compartilhar estatísticas anônimas"
+              desc="Ajuda a melhorar o app."
+              value={prefs.shareAnonymousStats}
+              loading={updatePref.isPending}
+              onChange={(value) => onTogglePref('shareAnonymousStats', value)}
+              styles={styles}
+            />
+          </Section>
 
-            <Section title="Seus Dados" icon={<Database size={18} color="#111827" />}>
-              <Pressable style={s.action} onPress={onExport}><Download size={18} color="#111827" /><Text style={s.actionText}>Exportar meus dados</Text>{exportData.isPending ? <ActivityIndicator /> : null}</Pressable>
-              <Pressable style={[s.action, s.danger]} onPress={() => setDeleteOpen(true)}><Trash2 size={18} color="#dc2626" /><Text style={[s.actionText, s.dangerText]}>Excluir minha conta</Text></Pressable>
-            </Section>
-          </>
+          <Section title="Seus Dados" icon={<Database size={18} color={colors.textPrimary} />} styles={styles}>
+            <Pressable style={styles.action} onPress={onExport}>
+              <Download size={18} color={colors.textPrimary} />
+              <Text style={styles.actionText}>Exportar meus dados</Text>
+              {exportData.isPending ? <ActivityIndicator /> : null}
+            </Pressable>
+            <Pressable style={[styles.action, styles.danger]} onPress={() => setDeleteOpen(true)}>
+              <Trash2 size={18} color={colors.danger} />
+              <Text style={[styles.actionText, styles.dangerText]}>Excluir minha conta</Text>
+            </Pressable>
+          </Section>
+        </>
+      ) : null}
+
+      <Card style={styles.card}>
+        <Text style={styles.sectionTitle}>Acessos recentes</Text>
+        {loginEventsQuery.isLoading ? <ActivityIndicator color={colors.primaryLight} /> : null}
+        {loginEventsQuery.isError ? <Text style={styles.desc}>Não foi possível carregar os acessos.</Text> : null}
+        {!loginEventsQuery.isLoading && !loginEventsQuery.isError && !(loginEventsQuery.data?.length) ? (
+          <Text style={styles.desc}>Nenhum evento registrado ainda.</Text>
         ) : null}
+        {(loginEventsQuery.data ?? []).map((item) => (
+          <View key={item.id} style={styles.event}>
+            <Text style={styles.eventTitle}>{item.eventType}</Text>
+            <Text style={styles.eventMeta}>
+              {item.deviceLabel || item.platform} - {new Date(item.createdAt).toLocaleString('pt-BR')}
+            </Text>
+          </View>
+        ))}
+      </Card>
 
-        <View style={s.card}>
-          <Text style={s.sectionTitle}>Acessos recentes</Text>
-          {loginEventsQuery.isLoading ? <ActivityIndicator color="#111827" /> : null}
-          {loginEventsQuery.isError ? <Text style={s.desc}>Nao foi possivel carregar os acessos.</Text> : null}
-          {!loginEventsQuery.isLoading && !loginEventsQuery.isError && !(loginEventsQuery.data?.length) ? <Text style={s.desc}>Nenhum evento registrado ainda.</Text> : null}
-          {(loginEventsQuery.data ?? []).map((item) => <View key={item.id} style={s.event}><Text style={s.eventTitle}>{item.eventType}</Text><Text style={s.eventMeta}>{item.deviceLabel || item.platform} • {new Date(item.createdAt).toLocaleString('pt-BR')}</Text></View>)}
-        </View>
-
-        <View style={s.policy}>
-          <Text style={s.policyTitle}>Politica de Privacidade</Text>
-          <Text style={s.policyText}>Levamos sua privacidade a serio. Seus dados financeiros sao protegidos, voce pode exporta-los a qualquer momento e o controle das preferencias fica sempre com sua conta.</Text>
-          <Pressable onPress={onOpenPolicy}><Text style={s.policyLink}>Ler politica completa</Text></Pressable>
-        </View>
-      </ScrollView>
+      <View style={styles.policy}>
+        <Text style={styles.policyTitle}>Política de Privacidade</Text>
+        <Text style={styles.policyText}>
+          Levamos sua privacidade a sério. Seus dados financeiros são protegidos, você pode exportá-los a qualquer momento
+          e o controle das preferências fica sempre com sua conta.
+        </Text>
+        <Pressable onPress={onOpenPolicy}>
+          <Text style={styles.policyLink}>Ler política completa</Text>
+        </Pressable>
+      </View>
 
       <Modal visible={mfaOpen} transparent animationType="slide" onRequestClose={() => setMfaOpen(false)}>
-        <View style={s.overlay}><View style={s.sheet}><View style={s.sheetHead}><Text style={s.sheetTitle}>Confirmar MFA</Text><Pressable onPress={() => setMfaOpen(false)}><X size={22} color="#111827" /></Pressable></View>{enrollment ? <><View style={s.qr}><QRCode value={enrollment.uri} size={176} /></View><Text style={s.small}>Chave secreta: {enrollment.secret}</Text><TextInput value={mfaCode} onChangeText={setMfaCode} keyboardType="number-pad" placeholder="Codigo de 6 digitos" placeholderTextColor="#9ca3af" style={s.input} /><View style={s.actions}><Pressable style={s.ghost} onPress={() => setMfaOpen(false)}><Text style={s.ghostText}>Cancelar</Text></Pressable><Pressable style={[s.primary, verifyTotp.isPending && s.dim]} onPress={onVerifyMfa} disabled={verifyTotp.isPending}>{verifyTotp.isPending ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>Verificar</Text>}</Pressable></View></> : null}</View></View>
+        <View style={styles.overlay}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHead}>
+              <Text style={styles.sheetTitle}>Confirmar MFA</Text>
+              <Pressable onPress={() => setMfaOpen(false)}>
+                <X size={22} color={colors.textPrimary} />
+              </Pressable>
+            </View>
+            {enrollment ? (
+              <>
+                <View style={styles.qr}>
+                  <QRCode value={enrollment.uri} size={176} />
+                </View>
+                <Text style={styles.small}>Chave secreta: {enrollment.secret}</Text>
+                <TextInput
+                  value={mfaCode}
+                  onChangeText={setMfaCode}
+                  keyboardType="number-pad"
+                  placeholder="Código de 6 dígitos"
+                  placeholderTextColor={colors.textSecondary}
+                  style={styles.input}
+                />
+                <View style={styles.actions}>
+                  <Pressable style={styles.ghost} onPress={() => setMfaOpen(false)}>
+                    <Text style={styles.ghostText}>Cancelar</Text>
+                  </Pressable>
+                  <Pressable style={[styles.primary, verifyTotp.isPending && styles.dim]} onPress={onVerifyMfa} disabled={verifyTotp.isPending}>
+                    {verifyTotp.isPending ? (
+                      <ActivityIndicator color={colors.white} />
+                    ) : (
+                      <Text style={styles.primaryText}>Verificar</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </>
+            ) : null}
+          </View>
+        </View>
       </Modal>
 
       <Modal visible={deleteOpen} transparent animationType="slide" onRequestClose={() => setDeleteOpen(false)}>
-        <View style={s.overlay}><View style={s.sheet}><View style={s.sheetHead}><Text style={s.sheetTitle}>Excluir conta</Text><Pressable onPress={() => setDeleteOpen(false)}><X size={22} color="#111827" /></Pressable></View><TextInput value={reason} onChangeText={setReason} placeholder="Motivo" placeholderTextColor="#9ca3af" style={s.input} /><TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Senha atual" placeholderTextColor="#9ca3af" style={s.input} /><View style={s.actions}><Pressable style={s.ghost} onPress={() => setDeleteOpen(false)}><Text style={s.ghostText}>Cancelar</Text></Pressable><Pressable style={[s.deleteBtn, deleteAccount.isPending && s.dim]} onPress={onDelete} disabled={deleteAccount.isPending}>{deleteAccount.isPending ? <ActivityIndicator color="#fff" /> : <Text style={s.deleteText}>Confirmar</Text>}</Pressable></View></View></View>
+        <View style={styles.overlay}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHead}>
+              <Text style={styles.sheetTitle}>Excluir conta</Text>
+              <Pressable onPress={() => setDeleteOpen(false)}>
+                <X size={22} color={colors.textPrimary} />
+              </Pressable>
+            </View>
+            <TextInput
+              value={reason}
+              onChangeText={setReason}
+              placeholder="Motivo"
+              placeholderTextColor={colors.textSecondary}
+              style={styles.input}
+            />
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholder="Senha atual"
+              placeholderTextColor={colors.textSecondary}
+              style={styles.input}
+            />
+            <View style={styles.actions}>
+              <Pressable style={styles.ghost} onPress={() => setDeleteOpen(false)}>
+                <Text style={styles.ghostText}>Cancelar</Text>
+              </Pressable>
+              <Pressable style={[styles.deleteBtn, deleteAccount.isPending && styles.dim]} onPress={onDelete} disabled={deleteAccount.isPending}>
+                {deleteAccount.isPending ? (
+                  <ActivityIndicator color={colors.white} />
+                ) : (
+                  <Text style={styles.deleteText}>Confirmar</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </Modal>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
-function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return <View style={s.card}><View style={s.sectionHead}><View style={s.sectionIcon}>{icon}</View><Text style={s.sectionTitle}>{title}</Text></View>{children}</View>;
+function Section({
+  title,
+  icon,
+  children,
+  styles,
+}: {
+  title: string;
+  icon: ReactNode;
+  children: ReactNode;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  return (
+    <Card style={styles.card}>
+      <View style={styles.sectionHead}>
+        <View style={styles.sectionIcon}>{icon}</View>
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
+      {children}
+    </Card>
+  );
 }
 
-function PrefRow({ label, desc, value, onChange, loading }: { label: string; desc: string; value: boolean; onChange: (value: boolean) => void; loading?: boolean }) {
-  return <View style={s.pref}><View style={s.prefText}><Text style={s.prefTitle}>{label}</Text><Text style={s.prefDesc}>{desc}</Text></View>{loading ? <ActivityIndicator /> : <Switch value={value} onValueChange={onChange} />}</View>;
+function PrefRow({
+  label,
+  desc,
+  value,
+  onChange,
+  loading,
+  styles,
+}: {
+  label: string;
+  desc: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+  loading?: boolean;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const colors = useThemeColors();
+
+  return (
+    <View style={styles.pref}>
+      <View style={styles.prefText}>
+        <Text style={styles.prefTitle}>{label}</Text>
+        <Text style={styles.prefDesc}>{desc}</Text>
+      </View>
+      {loading ? (
+        <ActivityIndicator />
+      ) : (
+        <Switch
+          value={value}
+          onValueChange={onChange}
+          trackColor={{ false: colors.border, true: `${colors.primary}66` }}
+          thumbColor={value ? colors.primaryLight : colors.white}
+        />
+      )}
+    </View>
+  );
 }
 
-const s = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#f8f9fa' }, content: { paddingBottom: 28 }, head: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }, back: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, title: { fontSize: 16, fontWeight: '800', color: '#111827' }, card: { marginHorizontal: 16, marginTop: 12, borderRadius: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden', padding: 14 }, sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }, sectionIcon: { width: 22, alignItems: 'center' }, sectionTitle: { fontSize: 14, fontWeight: '800', color: '#111827' }, pref: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' }, prefText: { flex: 1 }, prefTitle: { fontSize: 13, fontWeight: '700', color: '#111827' }, prefDesc: { fontSize: 12, color: '#6b7280', marginTop: 2, lineHeight: 17 }, action: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 13, marginTop: 10 }, actionText: { fontSize: 13, fontWeight: '700', color: '#111827', flex: 1 }, danger: { borderColor: '#fecaca', backgroundColor: '#fff5f5' }, dangerText: { color: '#dc2626' }, desc: { fontSize: 12, color: '#6b7280', lineHeight: 18 }, linkBtn: { alignSelf: 'flex-start', marginTop: 10 }, linkBtnText: { fontSize: 12, fontWeight: '800', color: '#111827' }, event: { paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' }, eventTitle: { fontSize: 13, fontWeight: '700', color: '#111827' }, eventMeta: { fontSize: 12, color: '#6b7280', marginTop: 4, lineHeight: 17 }, policy: { marginHorizontal: 16, marginTop: 14 }, policyTitle: { fontSize: 13, fontWeight: '800', color: '#111827', marginBottom: 8 }, policyText: { fontSize: 12, color: '#6b7280', lineHeight: 18 }, policyLink: { marginTop: 8, fontSize: 12, fontWeight: '800', color: '#111827' }, overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }, sheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 12 }, sheetHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, sheetTitle: { fontSize: 18, fontWeight: '800', color: '#111827' }, qr: { alignItems: 'center', backgroundColor: '#fff', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#f1f5f9' }, small: { fontSize: 12, color: '#6b7280', textAlign: 'center', lineHeight: 18 }, input: { minHeight: 48, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#fafafa', color: '#111827' }, actions: { flexDirection: 'row', gap: 10, marginTop: 4 }, ghost: { flex: 1, minHeight: 46, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, ghostText: { fontWeight: '700', color: '#111827' }, primary: { flex: 1, minHeight: 46, borderRadius: 12, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center' }, primaryText: { color: '#fff', fontWeight: '800' }, deleteBtn: { flex: 1, minHeight: 46, borderRadius: 12, backgroundColor: '#dc2626', alignItems: 'center', justifyContent: 'center' }, deleteText: { color: '#fff', fontWeight: '800' }, dim: { opacity: 0.7 },
-});
+const createStyles = (colors: AppColors) =>
+  StyleSheet.create({
+    card: {
+      gap: spacing.sm,
+    },
+    cardCenter: {
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    sectionHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginBottom: spacing.xs,
+    },
+    sectionIcon: {
+      width: 22,
+      alignItems: 'center',
+    },
+    sectionTitle: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    pref: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+      paddingVertical: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    prefText: {
+      flex: 1,
+    },
+    prefTitle: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: '700',
+    },
+    prefDesc: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      marginTop: 2,
+      lineHeight: 17,
+    },
+    action: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 13,
+      marginTop: spacing.sm,
+      backgroundColor: colors.surface,
+    },
+    actionText: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: '700',
+      flex: 1,
+    },
+    danger: {
+      borderColor: colors.danger,
+      backgroundColor: colors.dangerSoft,
+    },
+    dangerText: {
+      color: colors.danger,
+    },
+    desc: {
+      ...typography.body,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
+    linkBtn: {
+      alignSelf: 'flex-start',
+    },
+    linkBtnText: {
+      ...typography.caption,
+      color: colors.primary,
+      fontWeight: '800',
+    },
+    event: {
+      paddingVertical: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    eventTitle: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: '700',
+    },
+    eventMeta: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      marginTop: spacing.xs,
+      lineHeight: 17,
+    },
+    policy: {
+      gap: spacing.sm,
+      paddingBottom: spacing.sm,
+    },
+    policyTitle: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: '800',
+    },
+    policyText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
+    policyLink: {
+      ...typography.caption,
+      color: colors.primary,
+      fontWeight: '800',
+      marginTop: spacing.xs,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: spacing.lg,
+      gap: spacing.md,
+    },
+    sheetHead: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    sheetTitle: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    qr: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      padding: spacing.md,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    small: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 18,
+    },
+    input: {
+      minHeight: 48,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      backgroundColor: colors.surfaceMuted,
+      color: colors.textPrimary,
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+    },
+    ghost: {
+      flex: 1,
+      minHeight: 46,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+    },
+    ghostText: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: '700',
+    },
+    primary: {
+      flex: 1,
+      minHeight: 46,
+      borderRadius: radius.md,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primaryText: {
+      ...typography.body,
+      color: colors.white,
+      fontWeight: '800',
+    },
+    deleteBtn: {
+      flex: 1,
+      minHeight: 46,
+      borderRadius: radius.md,
+      backgroundColor: colors.danger,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    deleteText: {
+      ...typography.body,
+      color: colors.white,
+      fontWeight: '800',
+    },
+    dim: {
+      opacity: 0.7,
+    },
+  });

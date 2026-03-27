@@ -236,8 +236,8 @@ export function AddCardBillsModal({
               <View style={styles.handle} />
               <View style={styles.header}>
                 <View>
-                  <Text style={styles.title}>Lancar Despesa</Text>
-                  <Text style={styles.subtitle}>Registre um gasto no seu cartao</Text>
+                  <Text style={styles.title}>Lançar Despesa</Text>
+                  <Text style={styles.subtitle}>Registre um gasto no seu cartão</Text>
                 </View>
                 <TouchableOpacity onPress={requestClose} style={styles.closeButton}>
                   <X size={18} color={colors.textPrimary} />
@@ -251,7 +251,7 @@ export function AddCardBillsModal({
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <Text style={styles.inputLabel}>Escolha o Cartao</Text>
+              <Text style={styles.inputLabel}>Escolha o Cartão</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
                 {cards.map((card) => {
                   const selected = selectedCardId === card.id;
@@ -374,10 +374,10 @@ export function AddCardBillsModal({
               {renderInstallmentSchedule()}
 
               <View style={styles.descriptionContainer}>
-                <Text style={styles.descriptionHeader}>Descricao</Text>
+                <Text style={styles.descriptionHeader}>Descrição</Text>
                 <TextInput
                   multiline
-                  placeholder="Adicione uma descricao..."
+                  placeholder="Adicione uma descrição..."
                   placeholderTextColor={colors.textSecondary}
                   style={styles.descriptionInput}
                   value={title}
@@ -386,7 +386,7 @@ export function AddCardBillsModal({
               </View>
 
               <View style={styles.descriptionContainer}>
-                <Text style={styles.descriptionHeader}>Observacoes</Text>
+                <Text style={styles.descriptionHeader}>Observações</Text>
                 <TextInput
                   multiline
                   placeholder="Opcional"

@@ -24,7 +24,7 @@ export function BalanceCard({
   return (
     <View style={styles.card}>
       <View style={styles.topRow}>
-        <Text style={styles.label}>Saldo do mes</Text>
+        <Text style={styles.label}>Saldo do mês</Text>
         {badgeText ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{badgeText}</Text>

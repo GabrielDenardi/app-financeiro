@@ -151,14 +151,23 @@ export async function enrollTotpFactor(): Promise<MfaEnrollment> {
   });
 
   if (error || !data) {
-    throw new Error(error?.message ?? 'Nao foi possivel iniciar o MFA.');
+    throw new Error(error?.message ?? 'Não foi possível iniciar o MFA.');
   }
 
+  const enrollment = data as {
+    id: string;
+    totp: {
+      qr_code: string;
+      secret: string;
+      uri: string;
+    };
+  };
+
   return {
-    factorId: data.id,
-    qrCode: data.totp.qr_code,
-    secret: data.totp.secret,
-    uri: data.totp.uri,
+    factorId: enrollment.id,
+    qrCode: enrollment.totp.qr_code,
+    secret: enrollment.totp.secret,
+    uri: enrollment.totp.uri,
   };
 }
 

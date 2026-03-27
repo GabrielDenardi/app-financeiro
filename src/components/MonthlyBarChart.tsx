@@ -37,7 +37,7 @@ function getSeriesMeta(series: FlowSeries, colors: AppColors) {
   }
 
   return {
-    label: 'Saidas',
+    label: 'Saídas',
     color: colors.danger,
   };
 }
@@ -78,7 +78,7 @@ export function MonthlyBarChart({ data, hideValues = false }: MonthlyBarChartPro
       <View style={styles.header}>
         <View style={styles.headerTextBlock}>
           <Text style={styles.title}>Fluxo mensal</Text>
-          <Text style={styles.subtitle}>Semanas do mes</Text>
+          <Text style={styles.subtitle}>Semanas do mês</Text>
         </View>
 
         <View style={styles.seriesPill}>
@@ -89,7 +89,7 @@ export function MonthlyBarChart({ data, hideValues = false }: MonthlyBarChartPro
 
       <View style={styles.summaryRow}>
         <View>
-          <Text style={styles.summaryLabel}>Total da serie</Text>
+          <Text style={styles.summaryLabel}>Total da série</Text>
           <Text style={[styles.summaryValue, { color: seriesMeta.color }]}>{totalText}</Text>
         </View>
 

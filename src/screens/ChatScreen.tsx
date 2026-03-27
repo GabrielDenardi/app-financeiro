@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import {
+  layout,
   radius,
   spacing,
   typography,
@@ -243,8 +244,8 @@ const createStyles = (colors: AppColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: spacing.md,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.xl,
+        paddingHorizontal: layout.pageHorizontal,
+      paddingTop: layout.pageHeaderTop,
       paddingBottom: spacing.md,
       borderBottomWidth: 1,
       borderColor: colors.border,
@@ -269,7 +270,7 @@ const createStyles = (colors: AppColors) =>
       justifyContent: "space-between",
     },
     headerTitle: {
-      ...typography.h2,
+      ...typography.h1,
       color: colors.textPrimary,
     },
     headerUser: {
@@ -316,9 +317,9 @@ const createStyles = (colors: AppColors) =>
       position: "absolute",
       bottom: 0,
       width: "100%",
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      backgroundColor: colors.background,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.xs,
+      backgroundColor: colors.surface,
       borderTopWidth: 1,
       borderColor: colors.border,
     },
@@ -326,14 +327,14 @@ const createStyles = (colors: AppColors) =>
       flex: 1,
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.mutedSurface,
+      backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: 25,
       paddingHorizontal: 15,
       gap: 10,
-      marginTop: 10,
-      marginBottom: 5,
+      marginTop: spacing.sm,
+      marginBottom: spacing.xs,
     },
     textInput: {
       flex: 1,

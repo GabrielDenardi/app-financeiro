@@ -6,8 +6,6 @@ import {
   Alert,
   type KeyboardTypeOptions,
   Pressable,
-  SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,12 +13,14 @@ import {
 } from 'react-native';
 
 import { Card } from '../../../components/Card';
+import { PageHeader } from '../../../components/PageHeader';
+import { PageShell } from '../../../components/PageShell';
 import { brazilStates } from '../../auth/constants/locations';
 import { formatAddressNumber, formatCep, formatDateBR, formatPhoneBR, digitsOnly } from '../../auth/utils/masks';
 import { isValidPhoneBR, parseDateBR } from '../../auth/utils/validation';
 import { useProfile, useUpdateProfileMutation } from '../hooks/useProfile';
 import { lookupAddressByCep } from '../../../services/viaCepService';
-import { colors, radius, spacing, typography } from '../../../theme';
+import { radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import type { AppStackParamList } from '../../../navigation/types';
 import type { AuthenticatedUserSummary } from '../../../types/auth';
 import type { UserProfile } from '../../../types/profile';
@@ -112,23 +112,23 @@ function validateProfileForm(form: ProfileFormState): FormErrors {
   }
 
   if (phoneDigits.length > 0 && !isValidPhoneBR(phoneDigits)) {
-    errors.phone = 'Digite um celular com DDD e 9 digitos.';
+    errors.phone = 'Digite um celular com DDD e 9 dígitos.';
   }
 
   if (form.birthDate.trim() && !parseDateBR(form.birthDate)) {
-    errors.birthDate = 'Digite uma data valida no formato dd/mm/aaaa.';
+    errors.birthDate = 'Digite uma data válida no formato dd/mm/aaaa.';
   }
 
   if (cepDigits.length > 0 && cepDigits.length !== 8) {
-    errors.cep = 'Digite um CEP valido com 8 digitos.';
+    errors.cep = 'Digite um CEP válido com 8 digitos.';
   }
 
   if (state && !BRAZIL_STATES.has(state)) {
-    errors.state = 'Informe uma UF valida.';
+    errors.state = 'Informe uma UF válida.';
   }
 
   if (bioLength > BIO_MAX_LENGTH) {
-    errors.bio = `A bio pode ter ate ${BIO_MAX_LENGTH} caracteres.`;
+    errors.bio = `A bio pode ter até ${BIO_MAX_LENGTH} caracteres.`;
   }
 
   return errors;
@@ -152,6 +152,8 @@ function buildUpdatePayload(currentUser: AuthenticatedUserSummary, form: Profile
 }
 
 export function EditProfileScreen({ navigation, currentUser }: EditProfileScreenProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [form, setForm] = useState<ProfileFormState>(() => createInitialForm(currentUser));
   const [errors, setErrors] = useState<FormErrors>({});
   const [hydratedProfileId, setHydratedProfileId] = useState<string | null>(null);
@@ -202,7 +204,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
     if (cepDigits.length !== 8) {
       setErrors((current) => ({
         ...current,
-        cep: 'Digite um CEP valido com 8 digitos.',
+        cep: 'Digite um CEP válido com 8 digitos.',
       }));
       setCepMessage(null);
       return;
@@ -224,7 +226,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
       const address = await lookupAddressByCep(cepDigits);
 
       if (!address) {
-        setCepMessage('Nao foi possivel preencher o endereco por esse CEP.');
+        setCepMessage('Não foi possível preencher o endereço por esse CEP.');
         return;
       }
 
@@ -234,7 +236,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
         city: address.city || current.city,
         state: address.state || current.state,
       }));
-      setCepMessage('Endereco preenchido pelo CEP. Voce pode ajustar manualmente.');
+      setCepMessage('Endereço preenchido pelo CEP. Você pode ajustar manualmente.');
     } finally {
       setIsLookingUpCep(false);
     }
@@ -242,7 +244,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
 
   const handleSave = async () => {
     if (!currentUser) {
-      Alert.alert('Perfil', 'Nao foi possivel identificar o usuario atual.');
+      Alert.alert('Perfil', 'Não foi possível identificar o usuário atual.');
       return;
     }
 
@@ -260,7 +262,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
       setForm(profileToForm(updatedProfile));
       setHydratedProfileId(updatedProfile.id);
 
-      Alert.alert('Perfil', 'Alteracoes salvas com sucesso.', [
+      Alert.alert('Perfil', 'Alterações salvas com sucesso.', [
         {
           text: 'OK',
           onPress: () => navigation.goBack(),
@@ -269,207 +271,212 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
     } catch (error) {
       Alert.alert(
         'Perfil',
-        error instanceof Error ? error.message : 'Nao foi possivel salvar o perfil agora.',
+        error instanceof Error ? error.message : 'Não foi possível salvar o perfil agora.',
       );
     }
   };
 
   if (!currentUser && profileQuery.isLoading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <PageShell scroll={false} contentContainerStyle={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-      </SafeAreaView>
+      </PageShell>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => navigation.goBack()}
-            style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
-          >
-            <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
-          </Pressable>
+    <PageShell>
+      <PageHeader title="Editar Perfil" onBackPress={() => navigation.goBack()} />
 
-          <Text style={styles.headerTitle}>Editar Perfil</Text>
-          <View style={styles.headerSpacer} />
+      <View style={styles.avatarWrap}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{avatarLetter}</Text>
         </View>
+        <Text style={styles.avatarHint}>Foto opcional fora do escopo neste MVP.</Text>
+      </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          <View style={styles.avatarWrap}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{avatarLetter}</Text>
-            </View>
-            <Text style={styles.avatarHint}>Foto opcional fora do escopo neste MVP.</Text>
+      {profileQuery.isLoading ? (
+        <View style={styles.inlineState}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={styles.inlineStateText}>Carregando informações do perfil...</Text>
+        </View>
+      ) : null}
+
+      {profileQuery.isError ? (
+        <Card style={styles.noticeCard}>
+          <Text style={styles.noticeTitle}>Não foi possível carregar o perfil completo.</Text>
+          <Text style={styles.noticeText}>
+            Você ainda pode revisar os dados exibidos e tentar salvar novamente.
+          </Text>
+        </Card>
+      ) : null}
+
+      <Card style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Informações da Conta</Text>
+
+        <ProfileField
+          colors={colors}
+          styles={styles}
+          label="Nome"
+          placeholder="Nome e sobrenome"
+          value={form.fullName}
+          onChangeText={(value) => setFieldValue('fullName', value)}
+          autoCapitalize="words"
+          error={errors.fullName}
+        />
+
+        <ProfileField
+          colors={colors}
+          styles={styles}
+          label="E-mail"
+          placeholder="seuemail@provedor.com"
+          value={form.email}
+          onChangeText={(value) => setFieldValue('email', value)}
+          keyboardType="email-address"
+          editable={false}
+          helperText="O e-mail fica somente para leitura nesta etapa."
+        />
+      </Card>
+
+      <Card style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Informações Pessoais</Text>
+
+        <ProfileField
+          colors={colors}
+          styles={styles}
+          label="Telefone"
+          placeholder="(00) 00000-0000"
+          value={form.phone}
+          onChangeText={(value) => setFieldValue('phone', formatPhoneBR(value))}
+          keyboardType="number-pad"
+          maxLength={15}
+          error={errors.phone}
+        />
+
+        <ProfileField
+          colors={colors}
+          styles={styles}
+          label="Data de Nascimento"
+          placeholder="dd/mm/aaaa"
+          value={form.birthDate}
+          onChangeText={(value) => setFieldValue('birthDate', formatDateBR(value))}
+          keyboardType="number-pad"
+          maxLength={10}
+          error={errors.birthDate}
+        />
+
+        <ProfileField
+          colors={colors}
+          styles={styles}
+          label="CEP"
+          placeholder="00000-000"
+          value={form.cep}
+          onChangeText={(value) => {
+            setFieldValue('cep', formatCep(value));
+            setCepMessage(null);
+          }}
+          keyboardType="number-pad"
+          maxLength={9}
+          error={errors.cep}
+          helperText={cepMessage ?? 'Ao sair do campo, tentamos preencher rua, cidade e UF.'}
+          onBlur={handleLookupCep}
+          trailing={
+            isLookingUpCep ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : undefined
+          }
+        />
+
+        <ProfileField
+          colors={colors}
+          styles={styles}
+          label="Rua"
+          placeholder="Rua, avenida ou alameda"
+          value={form.street}
+          onChangeText={(value) => setFieldValue('street', value)}
+          autoCapitalize="words"
+        />
+
+        <View style={styles.row}>
+          <View style={styles.rowField}>
+            <ProfileField
+              colors={colors}
+              styles={styles}
+              label="Número"
+              placeholder="Número"
+              value={form.addressNumber}
+              onChangeText={(value) => setFieldValue('addressNumber', formatAddressNumber(value))}
+              keyboardType="number-pad"
+              maxLength={6}
+            />
           </View>
 
-          {profileQuery.isLoading ? (
-            <View style={styles.inlineState}>
-              <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={styles.inlineStateText}>Carregando informacoes do perfil...</Text>
-            </View>
-          ) : null}
-
-          {profileQuery.isError ? (
-            <Card style={styles.noticeCard}>
-              <Text style={styles.noticeTitle}>Nao foi possivel carregar o perfil completo.</Text>
-              <Text style={styles.noticeText}>
-                Voce ainda pode revisar os dados exibidos e tentar salvar novamente.
-              </Text>
-            </Card>
-          ) : null}
-
-          <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Informacoes da Conta</Text>
-
+          <View style={styles.rowField}>
             <ProfileField
-              label="Nome"
-              placeholder="Nome e sobrenome"
-              value={form.fullName}
-              onChangeText={(value) => setFieldValue('fullName', value)}
-              autoCapitalize="words"
-              error={errors.fullName}
-            />
-
-            <ProfileField
-              label="E-mail"
-              placeholder="seuemail@provedor.com"
-              value={form.email}
-              onChangeText={(value) => setFieldValue('email', value)}
-              keyboardType="email-address"
-              editable={false}
-              helperText="O e-mail fica somente para leitura nesta etapa."
-            />
-          </Card>
-
-          <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Informacoes Pessoais</Text>
-
-            <ProfileField
-              label="Telefone"
-              placeholder="(00) 00000-0000"
-              value={form.phone}
-              onChangeText={(value) => setFieldValue('phone', formatPhoneBR(value))}
-              keyboardType="number-pad"
-              maxLength={15}
-              error={errors.phone}
-            />
-
-            <ProfileField
-              label="Data de Nascimento"
-              placeholder="dd/mm/aaaa"
-              value={form.birthDate}
-              onChangeText={(value) => setFieldValue('birthDate', formatDateBR(value))}
-              keyboardType="number-pad"
-              maxLength={10}
-              error={errors.birthDate}
-            />
-
-            <ProfileField
-              label="CEP"
-              placeholder="00000-000"
-              value={form.cep}
-              onChangeText={(value) => {
-                setFieldValue('cep', formatCep(value));
-                setCepMessage(null);
-              }}
-              keyboardType="number-pad"
-              maxLength={9}
-              error={errors.cep}
-              helperText={cepMessage ?? 'Ao sair do campo, tentamos preencher rua, cidade e UF.'}
-              onBlur={handleLookupCep}
-              trailing={
-                isLookingUpCep ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : undefined
+              colors={colors}
+              styles={styles}
+              label="UF"
+              placeholder="SP"
+              value={form.state}
+              onChangeText={(value) =>
+                setFieldValue('state', value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2))
               }
+              autoCapitalize="characters"
+              maxLength={2}
+              error={errors.state}
             />
+          </View>
+        </View>
 
-            <ProfileField
-              label="Rua"
-              placeholder="Rua, avenida ou alameda"
-              value={form.street}
-              onChangeText={(value) => setFieldValue('street', value)}
-              autoCapitalize="words"
-            />
+        <ProfileField
+          colors={colors}
+          styles={styles}
+          label="Complemento"
+          placeholder="Apto, bloco, sala..."
+          value={form.complement}
+          onChangeText={(value) => setFieldValue('complement', value)}
+          autoCapitalize="words"
+        />
 
-            <View style={styles.row}>
-              <View style={styles.rowField}>
-                <ProfileField
-                  label="Numero"
-                  placeholder="Numero"
-                  value={form.addressNumber}
-                  onChangeText={(value) => setFieldValue('addressNumber', formatAddressNumber(value))}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                />
-              </View>
+        <ProfileField
+          colors={colors}
+          styles={styles}
+          label="Cidade"
+          placeholder="Sua cidade"
+          value={form.city}
+          onChangeText={(value) => setFieldValue('city', value)}
+          autoCapitalize="words"
+        />
 
-              <View style={styles.rowField}>
-                <ProfileField
-                  label="UF"
-                  placeholder="SP"
-                  value={form.state}
-                  onChangeText={(value) =>
-                    setFieldValue('state', value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2))
-                  }
-                  autoCapitalize="characters"
-                  maxLength={2}
-                  error={errors.state}
-                />
-              </View>
-            </View>
+        <ProfileField
+          colors={colors}
+          styles={styles}
+          label="Bio"
+          placeholder="Conte um pouco sobre você..."
+          value={form.bio}
+          onChangeText={(value) => setFieldValue('bio', value.slice(0, BIO_MAX_LENGTH))}
+          multiline
+          numberOfLines={4}
+          error={errors.bio}
+          helperText={`${form.bio.length}/${BIO_MAX_LENGTH} caracteres`}
+        />
+      </Card>
 
-            <ProfileField
-              label="Complemento"
-              placeholder="Apto, bloco, sala..."
-              value={form.complement}
-              onChangeText={(value) => setFieldValue('complement', value)}
-              autoCapitalize="words"
-            />
-
-            <ProfileField
-              label="Cidade"
-              placeholder="Sua cidade"
-              value={form.city}
-              onChangeText={(value) => setFieldValue('city', value)}
-              autoCapitalize="words"
-            />
-
-            <ProfileField
-              label="Bio"
-              placeholder="Conte um pouco sobre voce..."
-              value={form.bio}
-              onChangeText={(value) => setFieldValue('bio', value.slice(0, BIO_MAX_LENGTH))}
-              multiline
-              numberOfLines={4}
-              error={errors.bio}
-              helperText={`${form.bio.length}/${BIO_MAX_LENGTH} caracteres`}
-            />
-          </Card>
-
-          <Pressable
-            onPress={handleSave}
-            disabled={updateProfileMutation.isPending}
-            style={({ pressed }) => [
-              styles.saveButton,
-              (pressed || updateProfileMutation.isPending) && styles.pressed,
-            ]}
-          >
-            {updateProfileMutation.isPending ? (
-              <ActivityIndicator size="small" color={colors.white} />
-            ) : (
-              <Text style={styles.saveButtonText}>Salvar Alteracoes</Text>
-            )}
-          </Pressable>
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+      <Pressable
+        onPress={handleSave}
+        disabled={updateProfileMutation.isPending}
+        style={({ pressed }) => [
+          styles.saveButton,
+          (pressed || updateProfileMutation.isPending) && styles.pressed,
+        ]}
+      >
+        {updateProfileMutation.isPending ? (
+          <ActivityIndicator size="small" color={colors.white} />
+        ) : (
+          <Text style={styles.saveButtonText}>Salvar Alterações</Text>
+        )}
+      </Pressable>
+    </PageShell>
   );
 }
 
@@ -488,6 +495,8 @@ type ProfileFieldProps = {
   helperText?: string;
   trailing?: ReactNode;
   onBlur?: () => void;
+  colors: AppColors;
+  styles: ReturnType<typeof createStyles>;
 };
 
 function ProfileField({
@@ -505,6 +514,8 @@ function ProfileField({
   helperText,
   trailing,
   onBlur,
+  colors,
+  styles,
 }: ProfileFieldProps) {
   return (
     <View style={styles.fieldWrap}>
@@ -536,56 +547,16 @@ function ProfileField({
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+const createStyles = (colors: AppColors) => StyleSheet.create({
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.md,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  headerTitle: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
-    gap: spacing.lg,
   },
   avatarWrap: {
     alignItems: 'center',
     gap: spacing.sm,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.xs,
   },
   avatar: {
     width: 88,
@@ -690,7 +661,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   noticeCard: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.warningSoft,
     borderColor: '#F59E0B',
     gap: spacing.xs,
   },

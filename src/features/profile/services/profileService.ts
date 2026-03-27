@@ -41,7 +41,7 @@ function normalizeBirthDate(birthDate: string | null): string | null {
 
   const parsed = parseDateBR(normalized);
   if (!parsed) {
-    throw new Error('Data de nascimento invalida.');
+    throw new Error('Data de nascimento inválida.');
   }
 
   return toIsoDateString(parsed);
@@ -91,7 +91,7 @@ export async function getProfile(userId: string): Promise<UserProfile> {
   }
 
   if (!data) {
-    throw new Error('Perfil nao encontrado.');
+    throw new Error('Perfil não encontrado.');
   }
 
   return mapProfileRow(data as ProfileRow);

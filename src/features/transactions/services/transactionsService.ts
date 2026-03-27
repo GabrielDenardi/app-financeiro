@@ -93,6 +93,19 @@ function matchesSearch(item: TransactionFeedItem, search: string) {
   );
 }
 
+function formatPaymentMethodLabel(paymentMethod: string) {
+  switch (paymentMethod) {
+    case 'Transferencia':
+      return 'Transferência';
+    case 'Cartao de credito':
+      return 'Cartão de crédito';
+    case 'Cartao de debito':
+      return 'Cartão de débito';
+    default:
+      return paymentMethod;
+  }
+}
+
 function mapPersonalTransaction(row: PersonalTransactionRow): TransactionFeedItem {
   const occurredOn = row.occurred_on ?? row.occurred_at.slice(0, 10);
   const account = Array.isArray(row.personal_accounts) ? row.personal_accounts[0] : row.personal_accounts;
@@ -111,7 +124,7 @@ function mapPersonalTransaction(row: PersonalTransactionRow): TransactionFeedIte
     category,
     categoryId: categoryRow?.id ?? null,
     categoryColor: categoryRow?.color ?? '#94A3B8',
-    paymentMethod: row.payment_method,
+    paymentMethod: formatPaymentMethodLabel(row.payment_method),
     sourceType: row.source_type,
     occurredAt: row.occurred_at,
     occurredOn,
@@ -136,7 +149,7 @@ function mapCardInstallment(row: CardInstallmentRow): TransactionFeedItem {
     category: row.category_label ?? 'Sem categoria',
     categoryId: row.category_id,
     categoryColor: row.category_color ?? '#94A3B8',
-    paymentMethod: 'Cartao de credito',
+    paymentMethod: 'Cartão de crédito',
     sourceType: 'card_installment',
     occurredAt: row.due_date,
     occurredOn,
@@ -217,7 +230,7 @@ export async function listTransactionFeed(
     await Promise.all([personalQuery, installmentsQuery]);
 
   if (personalError || installmentError) {
-    throw new Error(personalError?.message ?? installmentError?.message ?? 'Nao foi possivel carregar as transacoes.');
+    throw new Error(personalError?.message ?? installmentError?.message ?? 'Não foi possível carregar as transações.');
   }
 
   const feed = [

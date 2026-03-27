@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 
 import { Card } from '../../../components/Card';
-import { colors, radius, spacing, typography } from '../../../theme';
+import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import type { AuthenticatedUserSummary } from '../../../types/auth';
 import { formatCurrencyBRL } from '../../../utils/format';
 import { useCreateGroupMutation, useGroups, useJoinGroupMutation } from '../hooks/useGroups';
@@ -38,6 +38,8 @@ function formatSignedAmount(value: number) {
 }
 
 export function GroupsScreen({ currentUser }: GroupsScreenProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [isJoinModalVisible, setIsJoinModalVisible] = useState(false);
@@ -65,13 +67,13 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
       setIsCreateModalVisible(false);
       navigation.navigate('GroupDetails', { groupId: newGroupId });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel criar o grupo.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível criar o grupo.');
     }
   };
 
   const handleJoinGroup = async () => {
     if (joinCode.trim().length < 6) {
-      Alert.alert('Grupo', 'Informe um codigo valido com 6 caracteres.');
+      Alert.alert('Grupo', 'Informe um código válido com 6 caracteres.');
       return;
     }
 
@@ -81,17 +83,17 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
       setIsJoinModalVisible(false);
       navigation.navigate('GroupDetails', { groupId: targetGroupId });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel entrar no grupo.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível entrar no grupo.');
     }
   };
 
   const handleShareCode = async (title: string, shareCode: string) => {
     try {
       await Share.share({
-        message: `Entre no grupo "${title}" com o codigo ${shareCode}.`,
+        message: `Entre no grupo "${title}" com o código ${shareCode}.`,
       });
     } catch (error) {
-      Alert.alert('Compartilhamento', 'Nao foi possivel abrir o compartilhamento agora.');
+      Alert.alert('Compartilhamento', 'Não foi possível abrir o compartilhamento agora.');
     }
   };
 
@@ -112,7 +114,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
         <Card style={styles.heroCard}>
           <Text style={styles.heroTitle}>Controle financeiro em conjunto</Text>
           <Text style={styles.heroDescription}>
-            Crie grupos, acompanhe saldos e confirme pagamentos entre os membros sem perder o historico.
+            Crie grupos, acompanhe saldos e confirme pagamentos entre os membros sem perder o histórico.
           </Text>
 
           <View style={styles.heroActions}>
@@ -131,7 +133,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
               style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
             >
               <Ionicons name="key-outline" size={18} color={colors.primary} />
-              <Text style={styles.secondaryButtonText}>Entrar por codigo</Text>
+              <Text style={styles.secondaryButtonText}>Entrar por código</Text>
             </Pressable>
           </View>
         </Card>
@@ -147,7 +149,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
             <Ionicons name="people-outline" size={28} color={colors.primary} />
             <Text style={styles.emptyTitle}>Nenhum grupo ainda</Text>
             <Text style={styles.emptyDescription}>
-              Crie seu primeiro grupo ou use um codigo para entrar em um grupo existente.
+              Crie seu primeiro grupo ou use um código para entrar em um grupo existente.
             </Text>
           </Card>
         ) : null}
@@ -163,7 +165,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
                 <View style={styles.groupHeaderCopy}>
                   <Text style={styles.groupTitle}>{item.group.title}</Text>
                   <Text style={styles.groupDescription} numberOfLines={2}>
-                    {item.group.description || 'Sem descricao.'}
+                    {item.group.description || 'Sem descrição.'}
                   </Text>
                 </View>
               </View>
@@ -217,7 +219,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
                 onPress={() => handleShareCode(item.group.title, item.group.shareCode)}
                 style={({ pressed }) => [styles.codeShareButton, pressed && styles.pressed]}
               >
-                <Text style={styles.codeShareText}>Compartilhar codigo</Text>
+                <Text style={styles.codeShareText}>Compartilhar código</Text>
               </Pressable>
             </View>
 
@@ -241,7 +243,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
         <View style={styles.modalBackdrop}>
           <Card style={styles.modalCard}>
             <Text style={styles.modalTitle}>Criar grupo</Text>
-            <Text style={styles.modalDescription}>Defina o nome e a descricao do grupo.</Text>
+            <Text style={styles.modalDescription}>Defina o nome e a descrição do grupo.</Text>
 
             <TextInput
               value={groupTitle}
@@ -253,7 +255,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
             <TextInput
               value={groupDescription}
               onChangeText={setGroupDescription}
-              placeholder="Descricao (opcional)"
+              placeholder="Descrição (opcional)"
               placeholderTextColor={colors.textSecondary}
               style={[styles.input, styles.multilineInput]}
               multiline
@@ -291,7 +293,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
         <View style={styles.modalBackdrop}>
           <Card style={styles.modalCard}>
             <Text style={styles.modalTitle}>Entrar em grupo</Text>
-            <Text style={styles.modalDescription}>Cole ou digite o codigo de compartilhamento.</Text>
+            <Text style={styles.modalDescription}>Cole ou digite o código de compartilhamento.</Text>
 
             <TextInput
               value={joinCode}
@@ -328,7 +330,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -337,8 +339,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingHorizontal: layout.pageHorizontal,
+    paddingTop: layout.pageHeaderTop,
     paddingBottom: spacing.md,
   },
   backButton: {
@@ -367,8 +369,8 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   scrollContent: {
-    padding: spacing.lg,
-    gap: spacing.lg,
+    padding: layout.pageHorizontal,
+    gap: layout.pageSectionGap,
     paddingBottom: spacing.xxl,
   },
   heroCard: {
@@ -453,7 +455,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radius.md,
-    backgroundColor: '#DBEAFE',
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -476,7 +478,7 @@ const styles = StyleSheet.create({
   roleBadge: {
     alignSelf: 'flex-start',
     borderRadius: radius.pill,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.successSoft,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
@@ -570,7 +572,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.55)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     padding: spacing.lg,
   },

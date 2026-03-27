@@ -1,4 +1,4 @@
-import type { ArticleHelp } from "../types/finance";
+import type { ArticleHelp } from '../types/finance';
 
 export const helpMock: ArticleHelp[] = [
   {
@@ -14,7 +14,7 @@ export const helpMock: ArticleHelp[] = [
       { id: 4, text: 'Opcionalmente, vincule a uma conta e adicione uma descrição.' },
       { id: 5, text: 'Toque em "Salvar" para registrar a transação.' },
     ],
-    tip: 'Você também pode usar o microfone 🎙️ para registrar transações por voz, basta falar "gastei 50 reais no mercado".',
+    tip: 'Você também pode usar o microfone para registrar transações por voz, basta falar "gastei 50 reais no mercado".',
   },
   {
     id: 'edit-delete-transaction',
@@ -68,7 +68,7 @@ export const helpMock: ArticleHelp[] = [
     steps: [
       { id: 1, text: 'Dentro do grupo, toque no botão de divisão (ícone de garfo/divide).' },
       { id: 2, text: 'Informe o valor total da despesa e quem pagou.' },
-      { id: 3, text: 'Escolha o tipo de divisão: Igual, Por porcentagem ou Valores personalizados.' },
+      { id: 3, text: 'Escolha o tipo de divisão: Igual, por porcentagem ou valores personalizados.' },
       { id: 4, text: 'Selecione quais membros participam da despesa.' },
       { id: 5, text: 'Confirme e os saldos do grupo serão atualizados.' },
     ],
@@ -117,5 +117,5 @@ export const helpMock: ArticleHelp[] = [
       { id: 5, text: 'Use os filtros de período para analisar intervalos específicos.' },
     ],
     tip: 'Use os filtros de período para analisar intervalos específicos.',
-  }
+  },
 ];

@@ -67,7 +67,7 @@ export async function listAccounts(): Promise<AccountBalanceSnapshot[]> {
     ]);
 
   if (accountsError || balancesError) {
-    throw new Error(accountsError?.message ?? balancesError?.message ?? 'Nao foi possivel carregar as contas.');
+    throw new Error(accountsError?.message ?? balancesError?.message ?? 'Não foi possível carregar as contas.');
   }
 
   const balanceById = new Map(

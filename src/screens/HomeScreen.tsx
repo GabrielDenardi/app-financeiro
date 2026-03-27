@@ -27,7 +27,7 @@ import { useHomeDashboard } from '../features/dashboard/hooks/useDashboard';
 import { usePreferences } from '../features/preferences/hooks/usePreferences';
 import { useProfile } from '../features/profile/hooks/useProfile';
 import { useCreateTransactionMutation, useFinanceCategories } from '../features/transactions/hooks/useTransactions';
-import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
+import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import type { AuthenticatedUserSummary } from '../types/auth';
 import { HIDDEN_CURRENCY_TEXT, formatCurrencyBRL } from '../utils/format';
 
@@ -44,7 +44,7 @@ function getDisplayName(fullName?: string | null, email?: string | null) {
     return email.split('@')[0];
   }
 
-  return 'Usuario';
+  return 'Usuário';
 }
 
 function formatVisibleCurrency(value: number, visible: boolean) {
@@ -109,7 +109,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
     await createTransactionMutation.mutateAsync({
       accountId,
       categoryId,
-      title: title.trim() || 'Lancamento rapido',
+      title: title.trim() || 'Lançamento rápido',
       amount: Number(amount.replace(/\./g, '').replace(',', '.') || 0),
       type,
       paymentMethod,
@@ -129,7 +129,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Ola, {displayName}</Text>
+          <Text style={styles.greeting}>Olá, {displayName}</Text>
           <Text style={styles.subtitle}>Seu resumo financeiro com dados reais.</Text>
         </View>
         <Pressable style={styles.visibilityButton} onPress={() => setShowValues((current) => !current)}>
@@ -143,7 +143,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
       >
         <BalanceCard
           summary={{
-            monthLabel: summary?.monthLabel ?? 'Mes atual',
+            monthLabel: summary?.monthLabel ?? 'Mês atual',
             balance: summary?.balance ?? 0,
             income: summary?.income ?? 0,
             expense: summary?.expense ?? 0,
@@ -162,7 +162,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
             hideAmounts={!showValues}
           />
           <SummaryStatCard
-            label="Saidas"
+            label="Saídas"
             amount={summary?.expense ?? 0}
             type="expense"
             style={styles.summaryStatCard}
@@ -199,7 +199,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
               <View>
                 <Text style={styles.accountName}>{primaryAccount.name}</Text>
                 <Text style={styles.accountMeta}>
-                  {primaryAccount.institution || 'Instituicao nao informada'}
+                  {primaryAccount.institution || 'Instituição não informada'}
                 </Text>
               </View>
               <Text style={styles.accountAmount}>
@@ -213,8 +213,8 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
 
         <Card style={styles.sectionCard}>
           <SectionHeader
-            title="Categorias do mes"
-            actionLabel="Relatorios"
+            title="Categorias do mês"
+            actionLabel="Relatórios"
             onActionPress={() => navigation.navigate('Reports')}
           />
           {dashboardQuery.isLoading ? (
@@ -237,14 +237,14 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
               </View>
             ))
           ) : (
-            <Text style={styles.emptyText}>Nenhum gasto reportavel neste periodo.</Text>
+            <Text style={styles.emptyText}>Nenhum gasto reportável neste período.</Text>
           )}
         </Card>
 
         <Card noPadding style={styles.sectionCard}>
           <View style={styles.sectionInner}>
             <SectionHeader
-              title="Ultimas movimentacoes"
+              title="Últimas movimentações"
               actionLabel="Ver todas"
               onActionPress={() => navigation.navigate('Transactions')}
             />
@@ -264,7 +264,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
             ))
           ) : (
             <View style={styles.sectionInner}>
-              <Text style={styles.emptyText}>As novas transacoes vao aparecer aqui.</Text>
+              <Text style={styles.emptyText}>As novas transações vão aparecer aqui.</Text>
             </View>
           )}
         </Card>
@@ -276,7 +276,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setQuickAddVisible(false)} />
           <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Lancamento rapido</Text>
+            <Text style={styles.modalTitle}>Lançamento rápido</Text>
 
             <View style={styles.typeRow}>
               <Pressable
@@ -294,7 +294,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
             </View>
 
             <TextInput
-              placeholder="Descricao"
+              placeholder="Descrição"
               value={title}
               onChangeText={setTitle}
               style={styles.modalInput}
@@ -339,9 +339,9 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
               ))}
             </View>
 
-            <Text style={styles.modalLabel}>Metodo</Text>
+            <Text style={styles.modalLabel}>Método</Text>
             <View style={styles.chipsWrap}>
-              {['Pix', 'Transferencia', 'Dinheiro', 'Cartao de debito', 'Cartao de credito', 'Boleto'].map((method) => (
+              {['Pix', 'Transferência', 'Dinheiro', 'Cartão de débito', 'Cartão de crédito', 'Boleto'].map((method) => (
                 <Pressable
                   key={method}
                   onPress={() => setPaymentMethod(method)}
@@ -355,7 +355,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
             </View>
 
             <TextInput
-              placeholder="Observacoes"
+              placeholder="Observações"
               value={notes}
               onChangeText={setNotes}
               style={styles.modalInput}
@@ -402,12 +402,12 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+      paddingHorizontal: layout.pageHorizontal,
+      paddingTop: layout.pageHeaderTop,
   },
   content: {
-    padding: spacing.lg,
-    gap: spacing.lg,
+      padding: layout.pageHorizontal,
+      gap: layout.pageSectionGap,
     paddingBottom: BOTTOM_TAB_BAR_HEIGHT + 72,
   },
   greeting: {
@@ -535,12 +535,12 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   fab: {
     position: 'absolute',
     right: spacing.lg,
-    bottom: BOTTOM_TAB_BAR_HEIGHT + 10,
+    bottom: BOTTOM_TAB_BAR_HEIGHT - spacing.lg,
   },
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    backgroundColor: colors.overlay,
   },
   modalBackdrop: {
     flex: 1,
@@ -616,7 +616,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   filterChipActive: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: colors.primarySoft,
     borderColor: colors.primary,
   },
   filterChipText: {

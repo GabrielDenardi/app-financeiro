@@ -25,7 +25,7 @@ import {
   useRecordCardChargeMutation,
 } from '../features/cards/hooks/useCards';
 import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
-import { colors, radius, spacing, typography } from '../theme';
+import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { formatCurrencyBRL } from '../utils/format';
 
 function getGradient(color: string): [string, string] {
@@ -37,6 +37,8 @@ function getGradient(color: string): [string, string] {
 }
 
 export default function CardsScreen({ navigation }: any) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const currentUser = useAuthenticatedUser();
   const cardsQuery = useCards(currentUser?.id);
   const invoicesQuery = useCardInvoices(currentUser?.id);
@@ -70,7 +72,7 @@ export default function CardsScreen({ navigation }: any) {
       await createCardMutation.mutateAsync(input);
       setCardModalVisible(false);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel criar o cartao.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível criar o cartão.');
     }
   };
 
@@ -79,13 +81,13 @@ export default function CardsScreen({ navigation }: any) {
       await recordChargeMutation.mutateAsync(input);
       setChargeModalVisible(false);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel lancar a compra.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível lançar a compra.');
     }
   };
 
   const handlePayInvoice = async (cardId: string, invoiceMonth: string) => {
     if (!paymentAccountId) {
-      Alert.alert('Conta necessaria', 'Selecione uma conta para pagar a fatura.');
+      Alert.alert('Conta necessária', 'Selecione uma conta para pagar a fatura.');
       return;
     }
 
@@ -96,7 +98,7 @@ export default function CardsScreen({ navigation }: any) {
         accountId: paymentAccountId,
       });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel pagar a fatura.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível pagar a fatura.');
     }
   };
 
@@ -117,7 +119,7 @@ export default function CardsScreen({ navigation }: any) {
                     <ChevronLeft color={colors.white} size={24} />
                   </Pressable>
 
-                  <Text style={styles.headerTitle}>Meus Cartoes</Text>
+                  <Text style={styles.headerTitle}>Meus Cartões</Text>
 
                   <Pressable style={styles.addButton} onPress={() => setCardModalVisible(true)}>
                     <Plus color={colors.white} size={20} />
@@ -199,7 +201,7 @@ export default function CardsScreen({ navigation }: any) {
             )}
           </View>
 
-          <Text style={styles.sectionLabel}>Cartoes Ativos</Text>
+          <Text style={styles.sectionLabel}>Cartões Ativos</Text>
 
           {cardsQuery.isLoading ? (
             <View style={styles.loadingWrap}>
@@ -222,7 +224,7 @@ export default function CardsScreen({ navigation }: any) {
                       <View style={styles.cardDecorator2} />
                       <View style={styles.cardHeader}>
                         <View>
-                          <Text style={styles.cardInst}>{card.institution || 'Cartao'}</Text>
+                          <Text style={styles.cardInst}>{card.institution || 'Cartão'}</Text>
                           <Text style={styles.cardName}>{card.name}</Text>
                         </View>
                         <Text style={styles.cardNetwork}>{card.network}</Text>
@@ -234,7 +236,7 @@ export default function CardsScreen({ navigation }: any) {
                           <Text style={styles.cardInfo}>Dia {card.dueDay}</Text>
                         </View>
                         <View style={styles.cardFooterRight}>
-                          <Text style={styles.cardLabel}>Limite Disp.</Text>
+                          <Text style={styles.cardLabel}>Limite disp.</Text>
                           <Text style={styles.cardInfo}>{formatCurrencyBRL(card.availableLimitAmount)}</Text>
                         </View>
                       </View>
@@ -259,8 +261,8 @@ export default function CardsScreen({ navigation }: any) {
             })
           ) : (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>Nenhum cartao cadastrado</Text>
-              <Text style={styles.emptyText}>Cadastre seu primeiro cartao para gerar compras parceladas e faturas reais.</Text>
+              <Text style={styles.emptyTitle}>Nenhum cartão cadastrado</Text>
+              <Text style={styles.emptyText}>Cadastre seu primeiro cartão para gerar compras parceladas e faturas reais.</Text>
             </View>
           )}
 
@@ -289,13 +291,13 @@ export default function CardsScreen({ navigation }: any) {
                 </View>
               ))
             ) : (
-              <Text style={styles.emptyText}>As faturas geradas pelas compras vao aparecer aqui.</Text>
+              <Text style={styles.emptyText}>As faturas geradas pelas compras vão aparecer aqui.</Text>
             )}
           </View>
 
           <Pressable style={styles.quickAddExpense} onPress={() => setChargeModalVisible(true)}>
             <Receipt size={20} color={colors.primary} />
-            <Text style={styles.quickAddText}>Lancar compra</Text>
+            <Text style={styles.quickAddText}>Lançar compra</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -319,7 +321,7 @@ export default function CardsScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -343,17 +345,17 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: radius.lg * 1.5,
   },
   headerContent: {
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: layout.pageHorizontal,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: spacing.md,
+    marginTop: layout.pageHeaderTop,
     marginBottom: spacing.xl,
   },
   headerTitle: {
-    ...typography.h2,
+    ...typography.h1,
     color: colors.white,
   },
   backButton: {
@@ -401,24 +403,24 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
   },
   mainContent: {
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: layout.pageHorizontal,
     marginTop: -28,
     gap: spacing.md,
   },
   alertCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF7ED',
+    backgroundColor: colors.warningSoft,
     borderRadius: radius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#FED7AA',
+    borderColor: '#FDBA74',
   },
   alertIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFEDD5',
+    backgroundColor: '#FDE68A',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -442,7 +444,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#FDBA74',
+    borderColor: '#F59E0B',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
@@ -479,7 +481,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   paymentChipActive: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: colors.primarySoft,
     borderColor: colors.primary,
   },
   paymentChipText: {

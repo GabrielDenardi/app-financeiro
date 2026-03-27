@@ -1,12 +1,18 @@
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { CheckCircle2, ChevronLeft, FileSpreadsheet, Upload, X } from 'lucide-react-native';
+import { CheckCircle2, FileSpreadsheet, Upload, X } from 'lucide-react-native';
 
+import { Card } from '../components/Card';
+import { PageHeader } from '../components/PageHeader';
+import { PageShell } from '../components/PageShell';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { useImportBatches, useImportTransactionsMutation } from '../features/imports/hooks/useImports';
+import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 export default function ImportScreen({ navigation }: any) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const user = useAuthenticatedUser();
   const batchesQuery = useImportBatches(user?.id);
   const importMutation = useImportTransactionsMutation(user?.id);
@@ -20,14 +26,20 @@ export default function ImportScreen({ navigation }: any) {
         type: ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
         copyToCacheDirectory: true,
       });
-      if (!result.canceled) setAsset(result.assets[0]);
+
+      if (!result.canceled) {
+        setAsset(result.assets[0]);
+      }
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel selecionar o arquivo.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível selecionar o arquivo.');
     }
   };
 
   const doImport = async () => {
-    if (!asset) return;
+    if (!asset) {
+      return;
+    }
+
     try {
       const result = await importMutation.mutateAsync({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType });
       setSummary({
@@ -38,68 +50,272 @@ export default function ImportScreen({ navigation }: any) {
       setDoneOpen(true);
       setAsset(null);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel importar o arquivo.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível importar o arquivo.');
     }
   };
 
   return (
-    <SafeAreaView style={s.bg}>
-      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-        <View style={s.head}><Pressable onPress={() => navigation.goBack()} style={s.back}><ChevronLeft color="#1e293b" size={24} /></Pressable><Text style={s.title}>Importar Dados</Text></View>
+    <PageShell>
+      <PageHeader title="Importar Dados" onBackPress={() => navigation.goBack()} />
 
-        <View style={s.card}>
-          <View style={s.icon}><FileSpreadsheet color="#10b981" size={30} /></View>
-          <Text style={s.cardTitle}>Importar Transacoes</Text>
-          <Text style={s.cardSub}>Envie um arquivo CSV ou Excel com suas transacoes e o backend processa o lote real.</Text>
-
-          <Pressable style={[s.drop, asset ? s.dropOn : s.dropOff]} onPress={pickFile}>
-            {asset ? (
-              <View style={s.center}>
-                <FileSpreadsheet color="#10b981" size={30} />
-                <Text style={s.file} numberOfLines={1}>{asset.name}</Text>
-                <Pressable style={s.remove} onPress={() => setAsset(null)}><X size={14} color="#ef4444" /><Text style={s.removeText}>Remover</Text></Pressable>
-              </View>
-            ) : (
-              <View style={s.center}>
-                <Upload color="#94a3b8" size={30} />
-                <Text style={s.dropText}>Clique para selecionar</Text>
-                <Text style={s.dropSub}>CSV, XLS ou XLSX</Text>
-              </View>
-            )}
-          </Pressable>
-
-          <Pressable style={[s.primary, (!asset || importMutation.isPending) && s.dim]} onPress={doImport} disabled={!asset || importMutation.isPending}>
-            {importMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>{asset ? 'Confirmar Importacao' : 'Importar Transacoes'}</Text>}
-          </Pressable>
+      <Card style={styles.card}>
+        <View style={styles.icon}>
+          <FileSpreadsheet color={colors.success} size={28} />
         </View>
+        <Text style={styles.cardTitle}>Importar Transações</Text>
+        <Text style={styles.cardSub}>
+          Envie um arquivo CSV ou Excel com suas transações e o backend processa o lote real.
+        </Text>
 
-        <View style={s.card}>
-          <Text style={s.section}>Formato esperado</Text>
-          <Text style={s.desc}>O arquivo deve conter colunas com as informacoes das transacoes:</Text>
-          <Text style={s.item}>• description - Descricao da transacao</Text>
-          <Text style={s.item}>• amount - Valor numerico</Text>
-          <Text style={s.item}>• type - income ou expense</Text>
-          <Text style={s.item}>• category - Categoria</Text>
-          <Text style={s.item}>• payment_method - Metodo de pagamento</Text>
-          <Text style={s.item}>• date - Data em YYYY-MM-DD</Text>
-        </View>
+        <Pressable style={[styles.drop, asset ? styles.dropOn : styles.dropOff]} onPress={pickFile}>
+          {asset ? (
+            <View style={styles.center}>
+              <FileSpreadsheet color={colors.success} size={30} />
+              <Text style={styles.file} numberOfLines={1}>
+                {asset.name}
+              </Text>
+              <Pressable style={styles.remove} onPress={() => setAsset(null)}>
+                <X size={14} color={colors.danger} />
+                <Text style={styles.removeText}>Remover</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.center}>
+              <Upload color={colors.textSecondary} size={30} />
+              <Text style={styles.dropText}>Clique para selecionar</Text>
+              <Text style={styles.dropSub}>CSV, XLS ou XLSX</Text>
+            </View>
+          )}
+        </Pressable>
 
-        <View style={s.card}>
-          <Text style={s.section}>Ultimos lotes</Text>
-          {batchesQuery.isLoading ? <ActivityIndicator color="#10b981" /> : null}
-          {batchesQuery.isError ? <Text style={s.desc}>Nao foi possivel carregar o historico.</Text> : null}
-          {!batchesQuery.isLoading && !batchesQuery.isError && !(batchesQuery.data?.length) ? <Text style={s.desc}>Nenhum arquivo importado ainda.</Text> : null}
-          {(batchesQuery.data ?? []).map((batch) => <View key={batch.id} style={s.batch}><View style={s.flex}><Text style={s.batchFile}>{batch.fileName}</Text><Text style={s.batchMeta}>{batch.importedCount} importadas • {batch.duplicateCount} duplicadas • {batch.failedCount} falhas</Text></View><Text style={s.batchStatus}>{batch.status}</Text></View>)}
-        </View>
-      </ScrollView>
+        <Pressable
+          style={[styles.primary, (!asset || importMutation.isPending) && styles.dim]}
+          onPress={doImport}
+          disabled={!asset || importMutation.isPending}
+        >
+          {importMutation.isPending ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <Text style={styles.primaryText}>{asset ? 'Confirmar Importação' : 'Importar Transações'}</Text>
+          )}
+        </Pressable>
+      </Card>
+
+      <Card style={styles.card}>
+        <Text style={styles.section}>Formato esperado</Text>
+        <Text style={styles.desc}>O arquivo deve conter colunas com as informações das transações:</Text>
+        <Text style={styles.item}>description - Descrição da transação</Text>
+        <Text style={styles.item}>amount - Valor numérico</Text>
+        <Text style={styles.item}>type - income ou expense</Text>
+        <Text style={styles.item}>category - Categoria</Text>
+        <Text style={styles.item}>payment_method - Método de pagamento</Text>
+        <Text style={styles.item}>date - Data em YYYY-MM-DD</Text>
+      </Card>
+
+      <Card style={styles.card}>
+        <Text style={styles.section}>Últimos lotes</Text>
+        {batchesQuery.isLoading ? <ActivityIndicator color={colors.primaryLight} /> : null}
+        {batchesQuery.isError ? <Text style={styles.desc}>Não foi possível carregar o histórico.</Text> : null}
+        {!batchesQuery.isLoading && !batchesQuery.isError && !(batchesQuery.data?.length) ? (
+          <Text style={styles.desc}>Nenhum arquivo importado ainda.</Text>
+        ) : null}
+        {(batchesQuery.data ?? []).map((batch) => (
+          <View key={batch.id} style={styles.batch}>
+            <View style={styles.flex}>
+              <Text style={styles.batchFile}>{batch.fileName}</Text>
+              <Text style={styles.batchMeta}>
+                {batch.importedCount} importadas, {batch.duplicateCount} duplicadas, {batch.failedCount} falhas
+              </Text>
+            </View>
+            <Text style={styles.batchStatus}>{batch.status}</Text>
+          </View>
+        ))}
+      </Card>
 
       <Modal visible={doneOpen} transparent animationType="fade" onRequestClose={() => setDoneOpen(false)}>
-        <View style={s.overlay}><View style={s.modal}><View style={s.ok}><CheckCircle2 size={40} color="#fff" /></View><Text style={s.modalTitle}>Concluido</Text><Text style={s.modalText}>{summary?.accepted ?? 0} aceitas, {summary?.duplicate ?? 0} duplicadas e {summary?.failed ?? 0} com falha.</Text><Pressable style={s.primary} onPress={() => setDoneOpen(false)}><Text style={s.primaryText}>OK</Text></Pressable></View></View>
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <View style={styles.ok}>
+              <CheckCircle2 size={40} color={colors.white} />
+            </View>
+            <Text style={styles.modalTitle}>Concluído</Text>
+            <Text style={styles.modalText}>
+              {summary?.accepted ?? 0} aceitas, {summary?.duplicate ?? 0} duplicadas e {summary?.failed ?? 0} com falha.
+            </Text>
+            <Pressable style={styles.primary} onPress={() => setDoneOpen(false)}>
+              <Text style={styles.primaryText}>OK</Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
-const s = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#f8fafc' }, content: { paddingHorizontal: 20, paddingBottom: 30 }, head: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 20 }, back: { padding: 4 }, title: { fontSize: 18, fontWeight: '800', color: '#1e293b' }, card: { backgroundColor: '#fff', borderRadius: 22, padding: 24, marginBottom: 20 }, icon: { width: 54, height: 54, borderRadius: 27, backgroundColor: '#dcfce7', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }, cardTitle: { textAlign: 'center', fontSize: 16, fontWeight: '800', color: '#1e293b' }, cardSub: { textAlign: 'center', fontSize: 13, color: '#64748b', lineHeight: 19, marginTop: 6, marginBottom: 20 }, drop: { borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', minHeight: 150, justifyContent: 'center', alignItems: 'center', marginBottom: 20, padding: 18 }, dropOff: { borderColor: '#cbd5e1', backgroundColor: '#f8fafc' }, dropOn: { borderColor: '#10b981', backgroundColor: '#f0fdf4' }, center: { alignItems: 'center' }, dropText: { fontSize: 14, fontWeight: '700', color: '#475569', marginTop: 10 }, dropSub: { fontSize: 11, color: '#94a3b8', marginTop: 2 }, file: { fontSize: 13, fontWeight: '800', color: '#1e293b', marginTop: 8 }, remove: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }, removeText: { fontSize: 12, fontWeight: '700', color: '#ef4444' }, primary: { minHeight: 50, borderRadius: 12, backgroundColor: '#10b981', alignItems: 'center', justifyContent: 'center' }, dim: { opacity: 0.6 }, primaryText: { color: '#fff', fontWeight: '800', fontSize: 15 }, section: { fontSize: 15, fontWeight: '800', color: '#1e293b', marginBottom: 10 }, desc: { fontSize: 13, color: '#64748b', lineHeight: 19, marginBottom: 10 }, item: { fontSize: 13, color: '#64748b', marginBottom: 8 }, batch: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 12 }, flex: { flex: 1 }, batchFile: { fontSize: 13, fontWeight: '800', color: '#1e293b' }, batchMeta: { fontSize: 12, color: '#64748b', marginTop: 4, lineHeight: 17 }, batchStatus: { fontSize: 11, fontWeight: '800', color: '#10b981', textTransform: 'uppercase' }, overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }, modal: { width: '100%', maxWidth: 340, backgroundColor: '#fff', borderRadius: 24, padding: 28, alignItems: 'center' }, ok: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#10b981', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }, modalTitle: { fontSize: 20, fontWeight: '800', color: '#1e293b' }, modalText: { fontSize: 14, color: '#64748b', textAlign: 'center', lineHeight: 20, marginVertical: 12 },
-});
+const createStyles = (colors: AppColors) =>
+  StyleSheet.create({
+    card: {
+      gap: spacing.md,
+    },
+    icon: {
+      width: 56,
+      height: 56,
+      borderRadius: radius.pill,
+      backgroundColor: colors.successSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'center',
+    },
+    cardTitle: {
+      ...typography.h2,
+      color: colors.textPrimary,
+      textAlign: 'center',
+    },
+    cardSub: {
+      ...typography.body,
+      color: colors.textSecondary,
+      lineHeight: 19,
+      textAlign: 'center',
+    },
+    drop: {
+      minHeight: 150,
+      borderRadius: radius.lg,
+      borderWidth: 1.5,
+      borderStyle: 'dashed',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: spacing.lg,
+    },
+    dropOff: {
+      borderColor: colors.border,
+      backgroundColor: colors.mutedSurface,
+    },
+    dropOn: {
+      borderColor: colors.success,
+      backgroundColor: colors.successSoft,
+    },
+    center: {
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    dropText: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: '700',
+      marginTop: spacing.sm,
+    },
+    dropSub: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    file: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: '700',
+      marginTop: spacing.xs,
+    },
+    remove: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginTop: spacing.xs,
+    },
+    removeText: {
+      ...typography.caption,
+      color: colors.danger,
+      fontWeight: '700',
+    },
+    primary: {
+      minHeight: 50,
+      borderRadius: radius.md,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dim: {
+      opacity: 0.6,
+    },
+    primaryText: {
+      ...typography.body,
+      color: colors.white,
+      fontWeight: '800',
+    },
+    section: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    desc: {
+      ...typography.body,
+      color: colors.textSecondary,
+      lineHeight: 19,
+    },
+    item: {
+      ...typography.body,
+      color: colors.textSecondary,
+    },
+    batch: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    flex: {
+      flex: 1,
+    },
+    batchFile: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: '800',
+    },
+    batchMeta: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      marginTop: spacing.xs,
+      lineHeight: 17,
+    },
+    batchStatus: {
+      ...typography.caption,
+      color: colors.success,
+      fontWeight: '800',
+      textTransform: 'uppercase',
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: spacing.xl,
+    },
+    modal: {
+      width: '100%',
+      maxWidth: 340,
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      padding: 28,
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    ok: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.success,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.sm,
+    },
+    modalTitle: {
+      ...typography.h1,
+      color: colors.textPrimary,
+    },
+    modalText: {
+      ...typography.body,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+      marginBottom: spacing.sm,
+    },
+  });
