@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
   Bell,
@@ -14,24 +14,37 @@ import {
 import { Card } from '../components/Card';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
-import { useNotifications } from '../hooks/useNotifications';
+import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import {
+  useDeleteAllNotificationsMutation,
+  useDeleteNotificationMutation,
+  useMarkAllNotificationsAsReadMutation,
+  useMarkNotificationAsReadMutation,
+  useUserNotifications,
+} from '../features/notifications/hooks/useNotifications';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
-import type { NotificationItem } from '../types/notifications';
+import type { UserNotification } from '../features/notifications/types';
 
 export function NotificationsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
-  const {
-    notifications,
-    loading,
-    deleteNotification,
-    deleteAllNotifications,
-    markAsRead,
-    markAllAsRead,
-  } = useNotifications();
+  const user = useAuthenticatedUser();
+  const notificationsQuery = useUserNotifications(user?.id);
+  const markAllMutation = useMarkAllNotificationsAsReadMutation(user?.id);
+  const markOneMutation = useMarkNotificationAsReadMutation(user?.id);
+  const deleteOneMutation = useDeleteNotificationMutation(user?.id);
+  const deleteAllMutation = useDeleteAllNotificationsMutation(user?.id);
 
-  function renderIcon(type: NotificationItem['icon']) {
+  const notifications = notificationsQuery.data ?? [];
+  const loading =
+    notificationsQuery.isLoading ||
+    markAllMutation.isPending ||
+    markOneMutation.isPending ||
+    deleteOneMutation.isPending ||
+    deleteAllMutation.isPending;
+
+  function renderIcon(type: UserNotification['icon']) {
     switch (type) {
       case 'success':
         return <CircleCheck size={18} color={colors.success} />;
@@ -49,18 +62,22 @@ export function NotificationsScreen() {
       <PageHeader title="Notificações" onBackPress={() => navigation.goBack()} />
 
       <View style={styles.actionsRow}>
-        <Pressable style={styles.topActionBtn} onPress={markAllAsRead}>
+        <Pressable style={styles.topActionBtn} onPress={() => markAllMutation.mutate()} disabled={loading}>
           <Check size={16} color={colors.textPrimary} />
           <Text style={styles.topActionText}>Marcar todas como lidas</Text>
         </Pressable>
 
-        <Pressable style={[styles.topActionBtn, styles.deleteAction]} onPress={deleteAllNotifications}>
+        <Pressable
+          style={[styles.topActionBtn, styles.deleteAction]}
+          onPress={() => deleteAllMutation.mutate()}
+          disabled={loading}
+        >
           <Trash2 size={16} color={colors.danger} />
           <Text style={[styles.topActionText, styles.deleteText]}>Excluir todas</Text>
         </Pressable>
       </View>
 
-      {loading ? (
+      {notificationsQuery.isLoading ? (
         <Text style={styles.stateText}>Carregando notificações...</Text>
       ) : notifications.length === 0 ? (
         <Card style={styles.emptyState}>
@@ -77,21 +94,25 @@ export function NotificationsScreen() {
               <View style={styles.cardText}>
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.description}>{item.description}</Text>
-                <Text style={styles.date}>{item.date}</Text>
+                <Text style={styles.date}>{new Date(item.date).toLocaleString('pt-BR')}</Text>
               </View>
             </View>
 
             <View style={styles.cardActions}>
               <Pressable
                 style={[styles.actionBtn, item.read && styles.disabledBtn]}
-                onPress={() => markAsRead(item.id)}
-                disabled={item.read}
+                onPress={() => markOneMutation.mutate(item.id)}
+                disabled={item.read || loading}
               >
                 <Check size={16} color={colors.textPrimary} />
                 <Text style={styles.actionText}>{item.read ? 'Visualizada' : 'Marcar visualização'}</Text>
               </Pressable>
 
-              <Pressable style={[styles.actionBtn, styles.deleteAction]} onPress={() => deleteNotification(item.id)}>
+              <Pressable
+                style={[styles.actionBtn, styles.deleteAction]}
+                onPress={() => deleteOneMutation.mutate(item.id)}
+                disabled={loading}
+              >
                 <Trash2 size={16} color={colors.danger} />
                 <Text style={[styles.actionText, styles.deleteText]}>Excluir</Text>
               </Pressable>

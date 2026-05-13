@@ -1,18 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+
+import { Card } from '../components/Card';
+import { FloatingActionButton } from '../components/FloatingActionButton';
+import { BOTTOM_TAB_BAR_HEIGHT } from '../components/BottomTabBarMock';
+import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import {
+  useCreateSupportConversationMutation,
+  useSupportConversations,
+} from '../features/support/hooks/useSupport';
+import type { SupportConversationStatus } from '../features/support/types';
 import {
   layout,
   radius,
@@ -20,73 +29,55 @@ import {
   typography,
   type AppColors,
   useThemeColors,
-} from "../theme";
-import { Ionicons } from "@expo/vector-icons";
-import { Card } from "../components/Card";
-import { FloatingActionButton } from "../components/FloatingActionButton";
-import { BOTTOM_TAB_BAR_HEIGHT } from "../components/BottomTabBarMock";
+} from '../theme';
 
-type DetailsTab = "all" | "active" | "working" | "done";
+type DetailsTab = 'all' | SupportConversationStatus;
 
 const TABS: Array<{ key: DetailsTab; label: string }> = [
-  { key: "all", label: "Todos" },
-  { key: "active", label: "Ativo" },
-  { key: "working", label: "Em andamento" },
-  { key: "done", label: "Encerrado" },
+  { key: 'all', label: 'Todos' },
+  { key: 'active', label: 'Ativo' },
+  { key: 'working', label: 'Em andamento' },
+  { key: 'done', label: 'Encerrado' },
 ];
 
 export default function ListChatScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
-  //Search
-  const [searchText, setSearchText] = useState("");
-  //Modal
+  const user = useAuthenticatedUser();
+  const conversationsQuery = useSupportConversations(user?.id);
+  const createConversationMutation = useCreateSupportConversationMutation(user?.id);
+  const [searchText, setSearchText] = useState('');
   const [addTalkVisible, setAddTalkVisible] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  //Tabs
-  const [activeTab, setActiveTab] = useState<DetailsTab>("all");
-
-  const chatList = [
-    {
-      id: "1",
-      title: "Bug Meta",
-      lastMessage: "Eu tentei acessar...",
-      unreadCount: 1,
-      isMe: true,
-      status: "active",
-    },
-    {
-      id: "2",
-      title: "Suporte Técnico",
-      lastMessage: "Pode enviar o print do erro?",
-      unreadCount: 3,
-      isMe: false,
-      status: "working",
-    },
-    {
-      id: "3",
-      title: "Projeto Mobile",
-      lastMessage: "A API já está disponível.",
-      unreadCount: 0,
-      isMe: true,
-      status: "done",
-    },
-  ];
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [activeTab, setActiveTab] = useState<DetailsTab>('all');
 
   const filteredData = useMemo(() => {
-    return chatList.filter((item) => {
-      const matchesTab = activeTab === "all" || item.status === activeTab;
-      const matchesSearch = item.title
-        .toLowerCase()
-        .includes(searchText.toLowerCase());
+    return (conversationsQuery.data ?? []).filter((item) => {
+      const matchesTab = activeTab === 'all' || item.status === activeTab;
+      const matchesSearch = item.title.toLowerCase().includes(searchText.toLowerCase());
       return matchesTab && matchesSearch;
     });
-  }, [searchText, activeTab]);
+  }, [activeTab, conversationsQuery.data, searchText]);
 
-  const openChat = (id: any, title: string) =>
-    navigation.navigate("Chat", { chatId: id, chatTitle: title });
+  const openChat = (id: string, chatTitle: string) =>
+    navigation.navigate('Chat', { chatId: id, chatTitle });
+
+  const handleCreateConversation = async () => {
+    try {
+      const conversationId = await createConversationMutation.mutateAsync({
+        title,
+        message: description,
+      });
+      setAddTalkVisible(false);
+      setTitle('');
+      setDescription('');
+      navigation.navigate('Chat', { chatId: conversationId, chatTitle: title });
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -117,12 +108,10 @@ export default function ListChatScreen() {
             placeholder="Buscar conversa..."
             placeholderTextColor={colors.textSecondary}
             value={searchText}
-            onChangeText={(t) => {
-              setSearchText(t);
-            }}
+            onChangeText={setSearchText}
           />
-          {searchText !== "" && (
-            <TouchableOpacity onPress={() => setSearchText("")}>
+          {searchText !== '' && (
+            <TouchableOpacity onPress={() => setSearchText('')}>
               <Ionicons
                 name="close-outline"
                 size={18}
@@ -160,7 +149,9 @@ export default function ListChatScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {filteredData.length > 0 ? (
+        {conversationsQuery.isLoading ? (
+          <Text style={styles.emptyText}>Carregando conversas...</Text>
+        ) : filteredData.length > 0 ? (
           filteredData.map((item) => (
             <TouchableOpacity
               key={item.id}
@@ -174,7 +165,6 @@ export default function ListChatScreen() {
                     <View>
                       <Text style={styles.conversationTitle}>{item.title}</Text>
                       <Text style={styles.conversationSubtitle}>
-                        {item.isMe ? "me: " : ""}
                         {item.lastMessage}
                       </Text>
                     </View>
@@ -192,7 +182,7 @@ export default function ListChatScreen() {
             </TouchableOpacity>
           ))
         ) : (
-          <Text style={styles.emptyText}>Nada Encontrado.</Text>
+          <Text style={styles.emptyText}>Nenhuma conversa encontrada.</Text>
         )}
       </ScrollView>
 
@@ -233,14 +223,14 @@ export default function ListChatScreen() {
             <TextInput
               placeholder="Título"
               value={title}
-              onChangeText={(t) => setTitle(t)}
+              onChangeText={setTitle}
               style={styles.modalInput}
               placeholderTextColor={colors.textSecondary}
             />
             <TextInput
               placeholder="Descrição"
               value={description}
-              onChangeText={(t) => setDescription(t)}
+              onChangeText={setDescription}
               style={styles.modalInputDescription}
               placeholderTextColor={colors.textSecondary}
               multiline={true}
@@ -256,11 +246,15 @@ export default function ListChatScreen() {
               <Pressable
                 style={[
                   styles.primaryButton,
-                  (!title || !description) && styles.primaryButtonDisabled,
+                  (!title || !description || createConversationMutation.isPending) &&
+                    styles.primaryButtonDisabled,
                 ]}
-                disabled={!title || !description}
+                disabled={!title || !description || createConversationMutation.isPending}
+                onPress={handleCreateConversation}
               >
-                <Text style={styles.primaryButtonText}>Iniciar</Text>
+                <Text style={styles.primaryButtonText}>
+                  {createConversationMutation.isPending ? 'Iniciando...' : 'Iniciar'}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -276,13 +270,11 @@ const createStyles = (colors: AppColors) =>
       flex: 1,
       backgroundColor: colors.background,
     },
-
-    //Title
     header: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: spacing.md,
-        paddingHorizontal: layout.pageHorizontal,
+      paddingHorizontal: layout.pageHorizontal,
       paddingTop: layout.pageHeaderTop,
       paddingBottom: spacing.md,
     },
@@ -291,8 +283,8 @@ const createStyles = (colors: AppColors) =>
       height: 40,
       borderRadius: radius.pill,
       backgroundColor: colors.surface,
-      alignItems: "center",
-      justifyContent: "center",
+      alignItems: 'center',
+      justifyContent: 'center',
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -311,15 +303,13 @@ const createStyles = (colors: AppColors) =>
       ...typography.body,
       color: colors.textSecondary,
     },
-
-    //Search
     searchContainer: {
       paddingHorizontal: spacing.lg,
       marginTop: spacing.sm,
     },
     search: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       backgroundColor: colors.surface,
       height: 56,
       borderRadius: 18,
@@ -337,27 +327,23 @@ const createStyles = (colors: AppColors) =>
       fontSize: 16,
       color: colors.textPrimary,
     },
-
-    //Add Talk
     fab: {
-      position: "absolute",
+      position: 'absolute',
       right: spacing.lg,
       bottom: BOTTOM_TAB_BAR_HEIGHT - 40,
     },
-
-    //Modal
     modalOverlay: {
       flex: 1,
-      justifyContent: "flex-end",
+      justifyContent: 'flex-end',
       backgroundColor: colors.overlay,
     },
     modalBackdrop: {
       flex: 1,
     },
     modalHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
     },
     modalSheet: {
       flex: 1,
@@ -379,7 +365,7 @@ const createStyles = (colors: AppColors) =>
     modalLabel: {
       ...typography.caption,
       color: colors.textSecondary,
-      fontWeight: "700",
+      fontWeight: '700',
       marginTop: 10,
     },
     modalInputDescription: {
@@ -390,7 +376,7 @@ const createStyles = (colors: AppColors) =>
       backgroundColor: colors.surface,
       paddingHorizontal: spacing.md,
       color: colors.textPrimary,
-      textAlignVertical: "top",
+      textAlignVertical: 'top',
     },
     modalInput: {
       minHeight: 48,
@@ -400,17 +386,15 @@ const createStyles = (colors: AppColors) =>
       backgroundColor: colors.surface,
       paddingHorizontal: spacing.md,
       color: colors.textPrimary,
-      textAlignVertical: "top",
+      textAlignVertical: 'top',
     },
-
-    //Modal Actions
     modalActions: {
-      flexDirection: "row",
+      flexDirection: 'row',
       gap: spacing.md,
       borderTopWidth: 1,
       borderColor: colors.border,
       paddingTop: 20,
-      position: "absolute",
+      position: 'absolute',
       bottom: 0,
       left: 0,
       right: 0,
@@ -423,20 +407,20 @@ const createStyles = (colors: AppColors) =>
       borderRadius: radius.md,
       borderWidth: 1,
       borderColor: colors.border,
-      alignItems: "center",
-      justifyContent: "center",
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     secondaryButtonText: {
       ...typography.body,
       color: colors.textPrimary,
-      fontWeight: "600",
+      fontWeight: '600',
     },
     primaryButton: {
       flex: 1,
       minHeight: 48,
       borderRadius: radius.md,
-      alignItems: "center",
-      justifyContent: "center",
+      alignItems: 'center',
+      justifyContent: 'center',
       backgroundColor: colors.primaryLight,
     },
     primaryButtonDisabled: {
@@ -445,10 +429,8 @@ const createStyles = (colors: AppColors) =>
     primaryButtonText: {
       ...typography.body,
       color: colors.white,
-      fontWeight: "700",
+      fontWeight: '700',
     },
-
-    //Conversations
     content: {
       padding: layout.pageHorizontal,
       gap: layout.pageSectionGap,
@@ -456,16 +438,16 @@ const createStyles = (colors: AppColors) =>
     },
     conversationCard: {
       minHeight: 42,
-      justifyContent: "center",
+      justifyContent: 'center',
       flex: 1,
     },
     conversationInner: {
-      flexDirection: "row",
-      justifyContent: "space-between",
+      flexDirection: 'row',
+      justifyContent: 'space-between',
       flex: 1,
     },
     conversationText: {
-      flexDirection: "row",
+      flexDirection: 'row',
       gap: 10,
     },
     conversationTitle: {
@@ -475,15 +457,16 @@ const createStyles = (colors: AppColors) =>
     conversationSubtitle: {
       fontSize: 12,
       color: colors.textSecondary,
+      maxWidth: 220,
     },
     conversationNotification: {
       backgroundColor: colors.primary,
       borderRadius: radius.pill,
       height: 20,
       width: 20,
-      justifyContent: "center",
-      alignItems: "center",
-      position: "absolute",
+      justifyContent: 'center',
+      alignItems: 'center',
+      position: 'absolute',
       right: 0,
       bottom: 8,
     },
@@ -494,14 +477,14 @@ const createStyles = (colors: AppColors) =>
     emptyText: {
       ...typography.body,
       color: colors.textSecondary,
-      fontSize: 10,
+      fontSize: 12,
     },
     tabsRow: {
-      flexDirection: "row",
+      flexDirection: 'row',
       gap: spacing.sm,
-      flexWrap: "wrap",
+      flexWrap: 'wrap',
       marginTop: spacing.lg,
-      margin: "auto",
+      margin: 'auto',
     },
     tabButton: {
       paddingHorizontal: spacing.md,
@@ -518,7 +501,7 @@ const createStyles = (colors: AppColors) =>
     tabButtonText: {
       ...typography.caption,
       color: colors.textSecondary,
-      fontWeight: "700",
+      fontWeight: '700',
     },
     tabButtonTextActive: {
       color: colors.white,

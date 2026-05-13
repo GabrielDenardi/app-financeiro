@@ -5,6 +5,8 @@ import { ChevronRight, LogOut, User } from 'lucide-react-native';
 import { Card } from '../components/Card';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
+import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import { useUserNotifications } from '../features/notifications/hooks/useNotifications';
 import { useProfile } from '../features/profile/hooks/useProfile';
 import { registerLoginEvent } from '../features/preferences/services/preferencesService';
 import { supabase } from '../lib/supabase';
@@ -23,6 +25,7 @@ const IMPLEMENTED_ROUTES = new Set([
   'Goals',
   'Help',
   'Privacy',
+  'Notifications',
   'Import',
   'About',
   'Budgets',
@@ -34,10 +37,22 @@ const IMPLEMENTED_ROUTES = new Set([
 export function MenuScreen({ navigation, user }: MenuScreenProps) {
   const { colors, isDarkMode, setDarkMode } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const profileQuery = useProfile(user?.id);
-  const profileName = profileQuery.data?.fullName || user?.fullName || 'Usuário';
-  const profileEmail = profileQuery.data?.email || user?.email || 'usuario@email.com';
+  const currentUser = useAuthenticatedUser();
+  const resolvedUserId = currentUser?.id ?? user?.id;
+  const profileQuery = useProfile(resolvedUserId);
+  const notificationsQuery = useUserNotifications(resolvedUserId);
+  const profileName = profileQuery.data?.fullName || currentUser?.fullName || user?.fullName || 'Usuário';
+  const profileEmail = profileQuery.data?.email || currentUser?.email || user?.email || 'usuario@email.com';
   const parentNavigation = navigation?.getParent?.();
+  const unreadNotifications = (notificationsQuery.data ?? []).filter((item) => !item.read).length;
+  const sections = menuMock.map((section) => ({
+    ...section,
+    items: section.items.map((item) =>
+      item.page === 'Notifications'
+        ? { ...item, value: unreadNotifications > 0 ? String(unreadNotifications) : '0' }
+        : item,
+    ),
+  }));
 
   const handleLogout = async () => {
     try {
@@ -102,7 +117,7 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
         </TouchableOpacity>
       </Card>
 
-      {menuMock.map((section) => (
+      {sections.map((section) => (
         <View key={section.title} style={styles.section}>
           <Text style={styles.sectionTitle}>{section.title}</Text>
           <Card style={styles.menuGroup} noPadding>

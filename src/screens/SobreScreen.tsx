@@ -11,12 +11,28 @@ import {
 } from 'react-native';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 
+import { useAboutContent } from '../features/about/hooks/useAbout';
 import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
+
+function iconNameFromKey(key: string): keyof typeof FontAwesome5.glyphMap {
+  switch (key) {
+    case 'instagram':
+      return 'instagram';
+    case 'twitter':
+      return 'twitter';
+    case 'github':
+      return 'github';
+    default:
+      return 'link';
+  }
+}
 
 export default function SobreScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [rating, setRating] = useState(0);
+  const aboutQuery = useAboutContent();
+  const about = aboutQuery.data;
 
   const openLink = (url: string) => {
     Linking.openURL(url).catch((error) => console.error('Erro ao abrir link', error));
@@ -35,85 +51,81 @@ export default function SobreScreen({ navigation }: any) {
           <View style={styles.logoContainer}>
             <MaterialCommunityIcons name="piggy-bank" size={50} color={colors.white} />
           </View>
-          <Text style={styles.h1}>Finance Control</Text>
-          <Text style={styles.captionHeader}>Versão 1.0.0</Text>
+          <Text style={styles.h1}>{about?.appName ?? 'Finance Control'}</Text>
+          <Text style={styles.captionHeader}>Versão {about?.version ?? '1.0.0'}</Text>
         </View>
 
         <View style={styles.bodyWrapper}>
-          <View style={styles.card}>
-            <Text style={styles.bodyTextCenter}>
-              O Finance Control é o seu parceiro ideal para organizar suas finanças pessoais. Com uma interface moderna e
-              intuitiva, você pode controlar gastos, definir metas, dividir despesas com amigos e família e ter uma visão
-              completa da sua vida financeira.
-            </Text>
-          </View>
+          {aboutQuery.isLoading ? <View style={styles.card}><Text style={styles.bodyTextCenter}>Carregando conteúdo...</Text></View> : null}
+          {aboutQuery.isError ? <View style={styles.card}><Text style={styles.bodyTextCenter}>Não foi possível carregar o conteúdo institucional.</Text></View> : null}
 
-          <View style={styles.card}>
-            <Text style={styles.h2}>Funcionalidades</Text>
-            {[
-              'Controle completo de receitas e despesas',
-              'Metas financeiras personalizadas',
-              'Orçamentos mensais com alertas',
-              'Grupos para dividir despesas',
-              'Relatórios e gráficos detalhados',
-              'Múltiplas contas e cartões',
-              'Sincronização em tempo real',
-            ].map((item, index) => (
-              <View key={index} style={styles.listItem}>
-                <View style={styles.bullet} />
-                <Text style={styles.bodyText}>{item}</Text>
+          {about ? (
+            <>
+              <View style={styles.card}>
+                <Text style={styles.bodyTextCenter}>{about.heroBody}</Text>
               </View>
-            ))}
-          </View>
 
-          <View style={styles.starsContainer}>
-            {[1, 2, 3, 4, 5].map((item) => (
-              <TouchableOpacity key={item} onPress={() => setRating(item)} activeOpacity={0.7}>
-                <FontAwesome5
-                  name="star"
-                  size={32}
-                  color={item <= rating ? '#FBBF24' : colors.border}
-                  solid={item <= rating}
-                  style={styles.star}
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
+              <View style={styles.card}>
+                <Text style={styles.h2}>Funcionalidades</Text>
+                {about.features.map((item) => (
+                  <View key={item.id} style={styles.listItem}>
+                    <View style={styles.bullet} />
+                    <Text style={styles.bodyText}>{item.title}</Text>
+                  </View>
+                ))}
+              </View>
 
-          <TouchableOpacity
-            style={[styles.buttonSuccess, { opacity: rating === 0 ? 0.5 : 1 }]}
-            disabled={rating === 0}
-            onPress={() => alert(`Obrigado pela nota ${rating}!`)}
-          >
-            <Text style={styles.buttonText}>Avaliar App</Text>
-          </TouchableOpacity>
+              <View style={styles.starsContainer}>
+                {[1, 2, 3, 4, 5].map((item) => (
+                  <TouchableOpacity key={item} onPress={() => setRating(item)} activeOpacity={0.7}>
+                    <FontAwesome5
+                      name="star"
+                      size={32}
+                      color={item <= rating ? '#FBBF24' : colors.border}
+                      solid={item <= rating}
+                      style={styles.star}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-          <View style={[styles.card, styles.centerCard]}>
-            <Text style={styles.h2}>Siga-nos</Text>
-            <View style={styles.socialIconsContainer}>
-              <TouchableOpacity onPress={() => openLink('https://instagram.com')}>
-                <FontAwesome5 name="instagram" size={28} color={colors.textPrimary} style={styles.socialIcon} />
+              <TouchableOpacity
+                style={[styles.buttonSuccess, { opacity: rating === 0 ? 0.5 : 1 }]}
+                disabled={rating === 0}
+                onPress={() => alert(`Obrigado pela nota ${rating}!`)}
+              >
+                <Text style={styles.buttonText}>{about.ratingTitle}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => openLink('https://twitter.com')}>
-                <FontAwesome5 name="twitter" size={28} color={colors.textPrimary} style={styles.socialIcon} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => openLink('https://github.com')}>
-                <FontAwesome5 name="github" size={28} color={colors.textPrimary} style={styles.socialIcon} />
-              </TouchableOpacity>
-            </View>
-          </View>
 
-          <View style={styles.card}>
-            <TouchableOpacity style={styles.legalLink} onPress={() => openLink('https://seusite.com/termos')}>
-              <Text style={styles.legalText}>Termos de Uso</Text>
-              <Feather name="external-link" size={16} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <View style={styles.divider} />
-            <TouchableOpacity style={styles.legalLink} onPress={() => openLink('https://seusite.com/privacidade')}>
-              <Text style={styles.legalText}>Política de Privacidade</Text>
-              <Feather name="external-link" size={16} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
+              <View style={[styles.card, styles.centerCard]}>
+                <Text style={styles.h2}>Siga-nos</Text>
+                <View style={styles.socialIconsContainer}>
+                  {about.socialLinks.map((link) => (
+                    <TouchableOpacity key={link.id} onPress={() => openLink(link.url)}>
+                      <FontAwesome5
+                        name={iconNameFromKey(link.key)}
+                        size={28}
+                        color={colors.textPrimary}
+                        style={styles.socialIcon}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.card}>
+                {about.legalLinks.map((link, index) => (
+                  <React.Fragment key={link.id}>
+                    <TouchableOpacity style={styles.legalLink} onPress={() => openLink(link.url)}>
+                      <Text style={styles.legalText}>{link.label}</Text>
+                      <Feather name="external-link" size={16} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                    {index < about.legalLinks.length - 1 ? <View style={styles.divider} /> : null}
+                  </React.Fragment>
+                ))}
+              </View>
+            </>
+          ) : null}
         </View>
       </ScrollView>
     </SafeAreaView>
