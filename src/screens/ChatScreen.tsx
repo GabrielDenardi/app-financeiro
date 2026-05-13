@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -12,8 +11,8 @@ import {
   TouchableOpacity,
   View,
   Platform,
-} from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+} from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   layout,
   radius,
@@ -21,115 +20,56 @@ import {
   typography,
   type AppColors,
   useThemeColors,
-} from "../theme";
-import { Ionicons } from "@expo/vector-icons";
-import { AlignJustify, FileInput, HeartIcon } from "lucide-react-native";
-import { Card } from "../components/Card";
-import { timeoutManager } from "@tanstack/react-query";
+} from '../theme';
+import { Ionicons } from '@expo/vector-icons';
+import { Card } from '../components/Card';
+import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import {
+  useMarkSupportConversationReadMutation,
+  useSendSupportMessageMutation,
+  useSupportMessages,
+} from '../features/support/hooks/useSupport';
 
 interface ChatRouteParams {
   chatId: string;
   chatTitle: string;
 }
 
-const chatMessages = [
-  {
-    id: "1",
-    sender: "user_1",
-    text: "Olá! Tudo bem? Como está o progresso do projeto?",
-    side: "left",
-    timestamp: "10:00",
-    status: "read",
-  },
-  {
-    id: "2",
-    sender: "me",
-    text: "Oi! Está indo muito bem. Acabei de finalizar a parte do front-end do chat.",
-    side: "right",
-    timestamp: "10:01",
-    status: "read",
-  },
-  {
-    id: "3",
-    sender: "me",
-    text: "O que você achou do layout que te mandei mais cedo?",
-    side: "right",
-    timestamp: "10:01",
-    status: "read",
-  },
-  {
-    id: "4",
-    sender: "user_1",
-    text: "Ficou excelente! As cores e o espaçamento estão bem profissionais. Só precisamos ajustar o ícone de anexo.",
-    side: "left",
-    timestamp: "10:05",
-    status: "read",
-  },
-  {
-    id: "5",
-    sender: "me",
-    text: "Perfeito, vou mexer nisso agora mesmo! 🚀",
-    side: "right",
-    timestamp: "10:06",
-    status: "delivered",
-  },
-  {
-    id: "6",
-    sender: "user_1",
-    text: "Combinado! Aproveita e dá uma olhada no fluxo de notificações também.",
-    side: "left",
-    timestamp: "10:10",
-    status: "read",
-  },
-  {
-    id: "7",
-    sender: "user_1",
-    text: "Ah, outra coisa: você acha que conseguimos implementar o modo escuro ainda essa semana?",
-    side: "left",
-    timestamp: "10:11",
-    status: "read",
-  },
-  {
-    id: "8",
-    sender: "me",
-    text: "Acredito que sim! Já deixei as variáveis de cores preparadas para o tema dark.",
-    side: "right",
-    timestamp: "10:15",
-    status: "sent",
-  },
-  {
-    id: "9",
-    sender: "me",
-    text: "Vou subir o primeiro commit com essas correções em 20 minutos.",
-    side: "right",
-    timestamp: "10:16",
-    status: "sent",
-  },
-  {
-    id: "10",
-    sender: "user_1",
-    text: "Show! Fico no aguardo aqui para testar.",
-    side: "left",
-    timestamp: "10:20",
-    status: "read",
-  },
-];
-
 export default function ChatScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
-
+  const user = useAuthenticatedUser();
   const route = useRoute();
   const params = route.params as ChatRouteParams;
-
+  const messagesQuery = useSupportMessages(user?.id, params.chatId);
+  const markReadMutation = useMarkSupportConversationReadMutation(user?.id);
+  const sendMessageMutation = useSendSupportMessageMutation(user?.id);
   const [settingsMenu, setSettingsMenu] = useState(false);
-
+  const [messageText, setMessageText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (params.chatId) {
+      markReadMutation.mutate(params.chatId);
+    }
+  }, [markReadMutation, params.chatId]);
+
+  const handleSend = async () => {
+    if (!messageText.trim()) {
+      return;
+    }
+
+    await sendMessageMutation.mutateAsync({
+      conversationId: params.chatId,
+      body: messageText,
+    });
+    setMessageText('');
+  };
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1 }}
       keyboardVerticalOffset={25}
     >
@@ -167,26 +107,35 @@ export default function ChatScreen() {
             scrollViewRef.current?.scrollToEnd({ animated: false })
           }
         >
-          {chatMessages.map((item) => (
-            <View
-              style={
-                item.side === "left"
-                  ? styles.groupMessageLeft
-                  : styles.groupMessageRight
-              }
-              key={item.id}
-            >
-              <Ionicons
-                name="person-outline"
-                size={20}
-                style={{ marginTop: 15 }}
-              />
-              <Card style={styles.cardMessage}>
-                <Text style={styles.textMessage}>{item.text}</Text>
-                <Text style={styles.timeMessage}>{item.timestamp}</Text>
-              </Card>
-            </View>
-          ))}
+          {messagesQuery.isLoading ? <ActivityIndicator style={{ marginTop: 20 }} /> : null}
+          {(messagesQuery.data ?? []).map((item) => {
+            const isCurrentUser = item.senderUserId === user?.id || item.senderRole === 'user';
+            return (
+              <View
+                style={
+                  isCurrentUser
+                    ? styles.groupMessageRight
+                    : styles.groupMessageLeft
+                }
+                key={item.id}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={20}
+                  style={{ marginTop: 15 }}
+                />
+                <Card style={styles.cardMessage}>
+                  <Text style={styles.textMessage}>{item.body}</Text>
+                  <Text style={styles.timeMessage}>
+                    {new Date(item.createdAt).toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                </Card>
+              </View>
+            );
+          })}
         </ScrollView>
 
         {settingsMenu && (
@@ -212,17 +161,23 @@ export default function ChatScreen() {
               placeholder="Escreva sua mensagem."
               multiline={true}
               scrollEnabled={true}
+              value={messageText}
+              onChangeText={setMessageText}
             />
-            <TouchableOpacity>
-              <Ionicons name="attach-outline" size={25} />
+            <TouchableOpacity disabled>
+              <Ionicons name="attach-outline" size={25} color={colors.border} />
             </TouchableOpacity>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={handleSend}>
               <View style={styles.sendInput}>
-                <Ionicons
-                  name="send-outline"
-                  size={25}
-                  style={{ color: colors.white }}
-                />
+                {sendMessageMutation.isPending ? (
+                  <ActivityIndicator color={colors.white} />
+                ) : (
+                  <Ionicons
+                    name="send-outline"
+                    size={25}
+                    style={{ color: colors.white }}
+                  />
+                )}
               </View>
             </TouchableOpacity>
           </View>
@@ -238,13 +193,11 @@ const createStyles = (colors: AppColors) =>
       flex: 1,
       backgroundColor: colors.background,
     },
-
-    //Title
     header: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: spacing.md,
-        paddingHorizontal: layout.pageHorizontal,
+      paddingHorizontal: layout.pageHorizontal,
       paddingTop: layout.pageHeaderTop,
       paddingBottom: spacing.md,
       borderBottomWidth: 1,
@@ -255,8 +208,8 @@ const createStyles = (colors: AppColors) =>
       height: 40,
       borderRadius: radius.pill,
       backgroundColor: colors.surface,
-      alignItems: "center",
-      justifyContent: "center",
+      alignItems: 'center',
+      justifyContent: 'center',
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -266,36 +219,34 @@ const createStyles = (colors: AppColors) =>
     headerCopy: {
       flex: 1,
       gap: spacing.xs,
-      flexDirection: "row",
-      justifyContent: "space-between",
+      flexDirection: 'row',
+      justifyContent: 'space-between',
     },
     headerTitle: {
       ...typography.h1,
       color: colors.textPrimary,
     },
     headerUser: {
-      flexDirection: "row",
+      flexDirection: 'row',
       gap: spacing.sm,
-      justifyContent: "center",
+      justifyContent: 'center',
     },
-
-    //Massages
     scrollSection: {
       marginBottom: 75,
     },
     groupMessageLeft: {
-      flexDirection: "row",
+      flexDirection: 'row',
       gap: 10,
       padding: 10,
     },
     groupMessageRight: {
-      flexDirection: "row-reverse",
+      flexDirection: 'row-reverse',
       gap: 10,
       padding: 10,
     },
     cardMessage: {
-      maxWidth: "80%",
-      minWidth: "50%",
+      maxWidth: '80%',
+      minWidth: '50%',
       minHeight: 30,
       maxHeight: 300,
     },
@@ -304,19 +255,17 @@ const createStyles = (colors: AppColors) =>
       marginBottom: 10,
     },
     timeMessage: {
-      position: "absolute",
+      position: 'absolute',
       right: 10,
       bottom: 5,
       ...typography.caption,
       fontSize: 10,
     },
-
-    //Actions
     actionsSection: {
-      flexDirection: "row",
-      position: "absolute",
+      flexDirection: 'row',
+      position: 'absolute',
       bottom: 0,
-      width: "100%",
+      width: '100%',
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.xs,
       backgroundColor: colors.surface,
@@ -325,8 +274,8 @@ const createStyles = (colors: AppColors) =>
     },
     inputSection: {
       flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.border,
@@ -347,26 +296,24 @@ const createStyles = (colors: AppColors) =>
       width: 45,
       height: 45,
       borderRadius: radius.pill,
-      justifyContent: "center",
-      alignItems: "center",
+      justifyContent: 'center',
+      alignItems: 'center',
       elevation: 2,
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.2,
       shadowRadius: 2,
     },
-
-    //Modal
     settingsModal: {
-      position: "absolute",
+      position: 'absolute',
       right: 10,
       top: 70,
       minWidth: 120,
     },
     itemModal: {
-      flexDirection: "row",
+      flexDirection: 'row',
       gap: 5,
-      alignItems: "center",
+      alignItems: 'center',
     },
     borderModal: {
       borderWidth: 0.6,
@@ -376,6 +323,6 @@ const createStyles = (colors: AppColors) =>
     },
     textModal: {
       ...typography.body,
-      fontWeight: "500",
+      fontWeight: '500',
     },
   });

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Modal,
@@ -28,28 +29,52 @@ import { useNavigation } from '@react-navigation/native';
 import { Card } from '../components/Card';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
+import { useAccounts } from '../features/accounts/hooks/useAccounts';
+import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import {
+  useConfirmRecurringTransactionMutation,
+  useCreateRecurringTransactionMutation,
+  useDeleteRecurringTransactionMutation,
+  useRecurringTransactions,
+  useUpdateRecurringTransactionMutation,
+} from '../features/recurring/hooks/useRecurring';
+import type { RecurringTransaction } from '../features/recurring/types';
+import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
+import { formatCurrencyBRL } from '../utils/format';
 
-interface RecurringTransaction {
-  id: string;
-  title: string;
-  value: string;
-  type: 'income' | 'expense';
-  day: string;
-  category: string;
-  isActive: boolean;
-  isVariable: boolean;
+function moneyMask(v: string) {
+  const raw = v.replace(/\D/g, '');
+  if (!raw) return '';
+  return (Number(raw) / 100).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function moneyValue(v: string) {
+  return Number((v || '0').replace(/\./g, '').replace(',', '.'));
+}
+
+function ruleMonthDate(dayOfMonth: number) {
+  const now = new Date();
+  const safeDay = Math.min(Math.max(dayOfMonth, 1), 28);
+  return new Date(now.getFullYear(), now.getMonth(), safeDay).toISOString().slice(0, 10);
 }
 
 export default function RecurringTransactionsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
-  const [transactions, setTransactions] = useState<RecurringTransaction[]>([
-    { id: '1', title: 'Salário', value: '2.200,00', type: 'income', day: '5', category: 'Trabalho', isActive: true, isVariable: false },
-    { id: '2', title: 'Conta de Luz', value: '150,00', type: 'expense', day: '10', category: 'Casa', isActive: true, isVariable: true },
-    { id: '3', title: 'Aluguel', value: '2.500,00', type: 'expense', day: '5', category: 'Moradia', isActive: true, isVariable: false },
-  ]);
+  const user = useAuthenticatedUser();
+  const recurringQuery = useRecurringTransactions(user?.id);
+  const accountsQuery = useAccounts(user?.id);
+  const categoriesQuery = useFinanceCategories(user?.id);
+  const createMutation = useCreateRecurringTransactionMutation(user?.id);
+  const updateMutation = useUpdateRecurringTransactionMutation(user?.id);
+  const deleteMutation = useDeleteRecurringTransactionMutation(user?.id);
+  const confirmMutation = useConfirmRecurringTransactionMutation(user?.id);
+
+  const transactions = recurringQuery.data ?? [];
+  const accounts = (accountsQuery.data ?? []).filter((account) => account.isActive);
+  const categories = (categoriesQuery.data ?? []).filter((category) => category.kind !== 'both');
 
   const [mainModalVisible, setMainModalVisible] = useState(false);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
@@ -60,46 +85,34 @@ export default function RecurringTransactionsScreen() {
   const [amount, setAmount] = useState('');
   const [day, setDay] = useState('1');
   const [isVariable, setIsVariable] = useState(false);
+  const [accountId, setAccountId] = useState('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
   const [adjustmentValue, setAdjustmentValue] = useState('');
 
-  const handleSave = () => {
-    if (!title || !amount) {
-      Alert.alert('Erro', 'Preencha os campos obrigatórios.');
-      return;
-    }
+  const summary = useMemo(() => {
+    return transactions.reduce(
+      (accumulator, item) => {
+        if (!item.isActive) {
+          return accumulator;
+        }
 
-    const data = { title, value: amount, type, day, isVariable, category: 'Geral', isActive: true };
+        if (item.type === 'income') {
+          accumulator.income += item.amount;
+        } else {
+          accumulator.expense += item.amount;
+        }
 
-    if (editingId) {
-      setTransactions((prev) => prev.map((item) => (item.id === editingId ? { ...item, ...data } : item)));
-    } else {
-      setTransactions((prev) => [{ id: Math.random().toString(), ...data }, ...prev]);
-    }
+        return accumulator;
+      },
+      { income: 0, expense: 0 },
+    );
+  }, [transactions]);
 
-    closeMainModal();
-  };
-
-  const handleConfirmMonthly = (item: RecurringTransaction) => {
-    setSelectedItem(item);
-    setAdjustmentValue(item.value);
-    setConfirmModalVisible(true);
-  };
-
-  const finalizeTransaction = () => {
-    Alert.alert('Sucesso', `Lançamento de R$ ${adjustmentValue} confirmado no extrato.`);
-    setConfirmModalVisible(false);
-  };
-
-  const togglePause = (id: string) => {
-    setTransactions((prev) => prev.map((item) => (item.id === id ? { ...item, isActive: !item.isActive } : item)));
-  };
-
-  const deleteTransaction = (id: string) => {
-    Alert.alert('Excluir', 'Deseja remover esta recorrência?', [
-      { text: 'Não' },
-      { text: 'Sim', onPress: () => setTransactions((prev) => prev.filter((item) => item.id !== id)) },
-    ]);
-  };
+  const filteredCategories = useMemo(
+    () => categories.filter((category) => category.kind !== (type === 'income' ? 'expense' : 'income')),
+    [categories, type],
+  );
 
   const closeMainModal = () => {
     setMainModalVisible(false);
@@ -108,6 +121,107 @@ export default function RecurringTransactionsScreen() {
     setAmount('');
     setDay('1');
     setIsVariable(false);
+    setAccountId(accounts[0]?.id ?? '');
+    setCategoryId(filteredCategories[0]?.id ?? null);
+    setNotes('');
+  };
+
+  const handleOpenCreate = () => {
+    closeMainModal();
+    setMainModalVisible(true);
+  };
+
+  const handleSave = async () => {
+    if (!title || !amount || !accountId) {
+      Alert.alert('Erro', 'Preencha os campos obrigatórios.');
+      return;
+    }
+
+    const payload = {
+      accountId,
+      categoryId,
+      title,
+      notes,
+      amount: moneyValue(amount),
+      type,
+      paymentMethod: 'Transferencia' as const,
+      dayOfMonth: Number(day || 1),
+      isVariable,
+    };
+
+    try {
+      if (editingId) {
+        await updateMutation.mutateAsync({ id: editingId, ...payload });
+      } else {
+        await createMutation.mutateAsync(payload);
+      }
+      closeMainModal();
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível salvar a recorrência.');
+    }
+  };
+
+  const handleConfirmMonthly = (item: RecurringTransaction) => {
+    setSelectedItem(item);
+    setAdjustmentValue(item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    setConfirmModalVisible(true);
+  };
+
+  const finalizeTransaction = async () => {
+    if (!selectedItem) {
+      return;
+    }
+
+    try {
+      await confirmMutation.mutateAsync({
+        ruleId: selectedItem.id,
+        amount: moneyValue(adjustmentValue),
+        note: selectedItem.notes,
+        executionMonth: ruleMonthDate(selectedItem.dayOfMonth),
+      });
+      Alert.alert('Sucesso', `Lançamento de ${formatCurrencyBRL(moneyValue(adjustmentValue))} confirmado no extrato.`);
+      setConfirmModalVisible(false);
+      setSelectedItem(null);
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível confirmar o lançamento.');
+    }
+  };
+
+  const togglePause = async (item: RecurringTransaction) => {
+    try {
+      await updateMutation.mutateAsync({ id: item.id, isActive: !item.isActive });
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível atualizar a recorrência.');
+    }
+  };
+
+  const handleEdit = (item: RecurringTransaction) => {
+    setEditingId(item.id);
+    setTitle(item.title);
+    setAmount(item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    setType(item.type);
+    setDay(String(item.dayOfMonth));
+    setIsVariable(item.isVariable);
+    setAccountId(item.accountId);
+    setCategoryId(item.categoryId);
+    setNotes(item.notes);
+    setMainModalVisible(true);
+  };
+
+  const handleDelete = (id: string) => {
+    Alert.alert('Excluir', 'Deseja remover esta recorrência?', [
+      { text: 'Não' },
+      {
+        text: 'Sim',
+        onPress: async () => {
+          try {
+            await deleteMutation.mutateAsync(id);
+          } catch (error) {
+            Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível remover a recorrência.');
+          }
+        },
+      },
+    ]);
   };
 
   return (
@@ -124,24 +238,26 @@ export default function RecurringTransactionsScreen() {
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Receitas</Text>
-              <Text style={[styles.summaryValue, { color: colors.success }]}>R$ 2.200</Text>
+              <Text style={[styles.summaryValue, { color: colors.success }]}>{formatCurrencyBRL(summary.income)}</Text>
             </View>
             <View style={styles.vDivider} />
             <View style={styles.summaryItem}>
               <Text style={styles.summaryLabel}>Despesas</Text>
-              <Text style={[styles.summaryValue, { color: colors.danger }]}>R$ 2.650</Text>
+              <Text style={[styles.summaryValue, { color: colors.danger }]}>{formatCurrencyBRL(summary.expense)}</Text>
             </View>
           </View>
         </Card>
 
         <Card style={styles.buttonCard}>
-          <Pressable style={styles.newButton} onPress={() => setMainModalVisible(true)}>
+          <Pressable style={styles.newButton} onPress={handleOpenCreate}>
             <Plus size={20} color={colors.white} />
             <Text style={styles.newButtonText}>Adicionar Transação</Text>
           </Pressable>
         </Card>
 
-        {transactions.map((item) => (
+        {recurringQuery.isLoading ? <Card style={styles.card}><ActivityIndicator /></Card> : null}
+
+        {!recurringQuery.isLoading && transactions.map((item) => (
           <Card key={item.id} style={styles.card}>
             <View style={[styles.cardInfo, !item.isActive && styles.inactive]}>
               <View style={[styles.iconBox, item.type === 'income' ? styles.iconIncome : styles.iconExpense]}>
@@ -160,10 +276,13 @@ export default function RecurringTransactionsScreen() {
                     </View>
                   ) : null}
                 </View>
-                <Text style={styles.cardSubtitle}>Mensal - Dia {item.day}</Text>
+                <Text style={styles.cardSubtitle}>
+                  Mensal - Dia {item.dayOfMonth} - {item.accountName}
+                </Text>
+                <Text style={styles.cardSubtitle}>{item.categoryLabel}</Text>
               </View>
               <Text style={[styles.cardAmount, { color: item.type === 'income' ? colors.success : colors.danger }]}>
-                R$ {item.value}
+                {formatCurrencyBRL(item.amount)}
               </Text>
             </View>
 
@@ -174,34 +293,33 @@ export default function RecurringTransactionsScreen() {
               </Pressable>
             ) : null}
 
+            {item.lastExecutionMonth ? (
+              <Text style={styles.executionText}>Última confirmação: {item.lastExecutionMonth.split('-').reverse().join('/')}</Text>
+            ) : null}
+
             <View style={styles.cardFooter}>
-              <Pressable style={styles.actionBtn} onPress={() => togglePause(item.id)}>
+              <Pressable style={styles.actionBtn} onPress={() => togglePause(item)}>
                 {item.isActive ? <Pause size={16} color={colors.textPrimary} /> : <Play size={16} color={colors.success} />}
                 <Text style={styles.actionBtnText}>{item.isActive ? 'Pausar' : 'Retomar'}</Text>
               </Pressable>
 
-              <Pressable
-                style={[styles.actionBtn, !item.isActive && styles.inactive]}
-                onPress={() => {
-                  setEditingId(item.id);
-                  setTitle(item.title);
-                  setAmount(item.value);
-                  setType(item.type);
-                  setDay(item.day);
-                  setIsVariable(item.isVariable);
-                  setMainModalVisible(true);
-                }}
-              >
+              <Pressable style={[styles.actionBtn, !item.isActive && styles.inactive]} onPress={() => handleEdit(item)}>
                 <Pencil size={16} color={colors.textPrimary} />
                 <Text style={styles.actionBtnText}>Editar</Text>
               </Pressable>
 
-              <Pressable onPress={() => deleteTransaction(item.id)} style={!item.isActive ? styles.inactive : undefined}>
+              <Pressable onPress={() => handleDelete(item.id)} style={!item.isActive ? styles.inactive : undefined}>
                 <Trash2 size={16} color={colors.danger} />
               </Pressable>
             </View>
           </Card>
         ))}
+
+        {!recurringQuery.isLoading && transactions.length === 0 ? (
+          <Card style={styles.card}>
+            <Text style={styles.emptyText}>Nenhuma recorrência cadastrada ainda.</Text>
+          </Card>
+        ) : null}
       </PageShell>
 
       <Modal visible={mainModalVisible} animationType="slide" transparent onRequestClose={closeMainModal}>
@@ -209,7 +327,7 @@ export default function RecurringTransactionsScreen() {
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalTitle}>{editingId ? 'Editar Conta' : 'Nova Transação Recorrente'}</Text>
+                <Text style={styles.modalTitle}>{editingId ? 'Editar Recorrência' : 'Nova Transação Recorrente'}</Text>
                 <Text style={styles.modalSubTitle}>
                   {editingId ? 'Edite sua transação recorrente' : 'Crie uma nova transação recorrente'}
                 </Text>
@@ -242,11 +360,37 @@ export default function RecurringTransactionsScreen() {
               <TextInput
                 style={styles.input}
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={(value) => setAmount(moneyMask(value))}
                 keyboardType="numeric"
                 placeholder="0,00"
                 placeholderTextColor={colors.textSecondary}
               />
+
+              <Text style={styles.label}>Conta</Text>
+              <View style={styles.wrapRow}>
+                {accounts.map((account) => (
+                  <Pressable
+                    key={account.id}
+                    style={[styles.choiceChip, accountId === account.id && styles.choiceChipActive]}
+                    onPress={() => setAccountId(account.id)}
+                  >
+                    <Text style={[styles.choiceChipText, accountId === account.id && styles.choiceChipTextActive]}>{account.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Categoria</Text>
+              <View style={styles.wrapRow}>
+                {filteredCategories.map((category) => (
+                  <Pressable
+                    key={category.id}
+                    style={[styles.choiceChip, categoryId === category.id && styles.choiceChipActive]}
+                    onPress={() => setCategoryId(category.id)}
+                  >
+                    <Text style={[styles.choiceChipText, categoryId === category.id && styles.choiceChipTextActive]}>{category.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
 
               <Text style={styles.label}>Dia do mês</Text>
               <TextInput
@@ -255,6 +399,15 @@ export default function RecurringTransactionsScreen() {
                 onChangeText={setDay}
                 keyboardType="numeric"
                 placeholder="1"
+                placeholderTextColor={colors.textSecondary}
+              />
+
+              <Text style={styles.label}>Observação</Text>
+              <TextInput
+                style={styles.input}
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Observação opcional"
                 placeholderTextColor={colors.textSecondary}
               />
 
@@ -296,7 +449,7 @@ export default function RecurringTransactionsScreen() {
               <TextInput
                 style={styles.miniInput}
                 value={adjustmentValue}
-                onChangeText={setAdjustmentValue}
+                onChangeText={(value) => setAdjustmentValue(moneyMask(value))}
                 keyboardType="numeric"
                 autoFocus
               />
@@ -307,7 +460,11 @@ export default function RecurringTransactionsScreen() {
                 <Text style={styles.cancelMiniText}>Cancelar</Text>
               </Pressable>
               <Pressable style={styles.confirmMiniBtn} onPress={finalizeTransaction}>
-                <Text style={styles.confirmMiniText}>Confirmar</Text>
+                {confirmMutation.isPending ? (
+                  <ActivityIndicator color={colors.white} />
+                ) : (
+                  <Text style={styles.confirmMiniText}>Confirmar</Text>
+                )}
               </Pressable>
             </View>
           </View>
@@ -423,6 +580,10 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
       marginTop: 2,
     },
+    executionText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
     cardAmount: {
       ...typography.body,
       fontWeight: '700',
@@ -461,6 +622,10 @@ const createStyles = (colors: AppColors) =>
       ...typography.caption,
       color: colors.textPrimary,
       fontWeight: '600',
+    },
+    emptyText: {
+      ...typography.body,
+      color: colors.textSecondary,
     },
     modalOverlay: {
       flex: 1,
@@ -534,6 +699,31 @@ const createStyles = (colors: AppColors) =>
       paddingHorizontal: spacing.md,
       color: colors.textPrimary,
       backgroundColor: colors.surface,
+    },
+    wrapRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    choiceChip: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    choiceChipActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primarySoft,
+    },
+    choiceChipText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      fontWeight: '700',
+    },
+    choiceChipTextActive: {
+      color: colors.primary,
     },
     inputSubtitle: {
       ...typography.caption,

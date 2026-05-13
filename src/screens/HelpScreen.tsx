@@ -30,24 +30,28 @@ import {
   Zap,
 } from 'lucide-react-native';
 
-import { helpMock } from '../data/helpMock';
+import { useHelpArticles, useHelpCategories } from '../features/help/hooks/useHelp';
+import type { HelpArticle } from '../features/help/types';
 import { colors } from '../theme';
-import type { ArticleHelp, HelpCategory } from '../types/finance';
 
 const { width } = Dimensions.get('window');
 
 const CATEGORY_CONFIG: Record<string, { color: string; bgColor: string; icon: any }> = {
-  'Transações': { color: '#10b981', bgColor: '#ecfdf5', icon: ArrowLeftRight },
-  'Cartões': { color: colors.primaryLight, bgColor: '#eff6ff', icon: CreditCard },
-  Metas: { color: '#f59e0b', bgColor: '#fffbeb', icon: PiggyBank },
-  Grupos: { color: '#8b5cf6', bgColor: '#f5f3ff', icon: MessageCircle },
-  'Orçamentos': { color: colors.danger, bgColor: '#fef2f2', icon: ChartPie },
-  Contas: { color: colors.primary, bgColor: '#eef2ff', icon: Receipt },
-  Voz: { color: '#ec4899', bgColor: '#fdf2f8', icon: Mic },
-  'Relatórios': { color: '#06b6d4', bgColor: '#ecfeff', icon: Newspaper },
+  transactions: { color: '#10b981', bgColor: '#ecfdf5', icon: ArrowLeftRight },
+  cards: { color: colors.primaryLight, bgColor: '#eff6ff', icon: CreditCard },
+  goals: { color: '#f59e0b', bgColor: '#fffbeb', icon: PiggyBank },
+  groups: { color: '#8b5cf6', bgColor: '#f5f3ff', icon: MessageCircle },
+  budgets: { color: colors.danger, bgColor: '#fef2f2', icon: ChartPie },
+  accounts: { color: colors.primary, bgColor: '#eef2ff', icon: Receipt },
+  voice: { color: '#ec4899', bgColor: '#fdf2f8', icon: Mic },
+  reports: { color: '#06b6d4', bgColor: '#ecfeff', icon: Newspaper },
 };
 
-function ArticleDetail({ article, onBack }: { article: ArticleHelp; onBack: () => void }) {
+function getCategoryVisual(code: string) {
+  return CATEGORY_CONFIG[code] ?? { color: colors.primary, bgColor: '#eef2ff', icon: BookOpen };
+}
+
+function ArticleDetail({ article, onBack }: { article: HelpArticle; onBack: () => void }) {
   return (
     <View style={styles.container}>
       <View style={styles.detailHeader}>
@@ -109,18 +113,18 @@ function ArticleDetail({ article, onBack }: { article: ArticleHelp; onBack: () =
 
 export function HelpScreen({ navigation }: any) {
   const [searchText, setSearchText] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<HelpCategory | null>(null);
-  const [selectedArticle, setSelectedArticle] = useState<ArticleHelp | null>(null);
+  const [selectedCategoryCode, setSelectedCategoryCode] = useState<string | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<HelpArticle | null>(null);
 
-  const filteredArticles = useMemo(() => {
-    return helpMock.filter((article) => {
-      const matchesSearch = article.title.toLowerCase().includes(searchText.toLowerCase());
-      const matchesCategory = selectedCategory ? article.category === selectedCategory : true;
-      return matchesSearch && matchesCategory;
-    });
-  }, [searchText, selectedCategory]);
+  const categoriesQuery = useHelpCategories();
+  const articlesQuery = useHelpArticles(searchText, selectedCategoryCode);
 
-  const popularArticles = useMemo(() => helpMock.filter((article) => article.popular).slice(0, 3), []);
+  const articles = articlesQuery.data ?? [];
+  const categories = categoriesQuery.data ?? [];
+  const popularArticles = useMemo(
+    () => articles.filter((article) => article.popular).slice(0, 3),
+    [articles],
+  );
 
   if (selectedArticle) {
     return <ArticleDetail article={selectedArticle} onBack={() => setSelectedArticle(null)} />;
@@ -153,7 +157,7 @@ export function HelpScreen({ navigation }: any) {
                   value={searchText}
                   onChangeText={(value) => {
                     setSearchText(value);
-                    setSelectedCategory(null);
+                    setSelectedCategoryCode(null);
                   }}
                 />
                 {searchText ? (
@@ -167,36 +171,45 @@ export function HelpScreen({ navigation }: any) {
         </View>
 
         <View style={styles.bodyContent}>
-          {(searchText || selectedCategory) ? (
+          {(searchText || selectedCategoryCode) ? (
             <View style={styles.resultsCard}>
               <View
                 style={[
                   styles.resultsHeader,
-                  { backgroundColor: selectedCategory ? CATEGORY_CONFIG[selectedCategory].color : colors.primary },
+                  {
+                    backgroundColor: selectedCategoryCode
+                      ? getCategoryVisual(selectedCategoryCode).color
+                      : colors.primary,
+                  },
                 ]}
               >
                 <View style={styles.resultsHeaderLeft}>
                   <View style={styles.resultsHeaderIcon}>
-                    {selectedCategory
-                      ? React.createElement(CATEGORY_CONFIG[selectedCategory].icon, { size: 20, color: colors.white })
+                    {selectedCategoryCode
+                      ? React.createElement(getCategoryVisual(selectedCategoryCode).icon, {
+                          size: 20,
+                          color: colors.white,
+                        })
                       : <Search size={20} color={colors.white} />}
                   </View>
                   <View>
                     <Text style={styles.resultsHeaderTitle}>
-                      {selectedCategory || 'Resultados'}
+                      {categories.find((category) => category.code === selectedCategoryCode)?.label || 'Resultados'}
                     </Text>
                     <Text style={styles.resultsHeaderSub}>
-                      {filteredArticles.length} {filteredArticles.length === 1 ? 'artigo' : 'artigos'}
+                      {articles.length} {articles.length === 1 ? 'artigo' : 'artigos'}
                     </Text>
                   </View>
                 </View>
-                <TouchableOpacity onPress={() => { setSearchText(''); setSelectedCategory(null); }}>
+                <TouchableOpacity onPress={() => { setSearchText(''); setSelectedCategoryCode(null); }}>
                   <X size={20} color={colors.white} />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.resultsList}>
-                {filteredArticles.map((article) => (
+                {articlesQuery.isLoading ? <Text style={styles.emptyText}>Carregando artigos...</Text> : null}
+                {articlesQuery.isError ? <Text style={styles.emptyText}>Não foi possível carregar os artigos.</Text> : null}
+                {!articlesQuery.isLoading && !articlesQuery.isError && articles.map((article) => (
                   <TouchableOpacity
                     key={article.id}
                     style={styles.resultItem}
@@ -227,14 +240,14 @@ export function HelpScreen({ navigation }: any) {
                   </TouchableOpacity>
                 ))}
 
-                {filteredArticles.length === 0 ? (
+                {!articlesQuery.isLoading && !articlesQuery.isError && articles.length === 0 ? (
                   <Text style={styles.emptyText}>Nenhum artigo encontrado.</Text>
                 ) : null}
               </View>
             </View>
           ) : null}
 
-          {!searchText && !selectedCategory ? (
+          {!searchText && !selectedCategoryCode ? (
             <>
               <View style={styles.card}>
                 <View style={styles.sectionTitleRow}>
@@ -244,8 +257,9 @@ export function HelpScreen({ navigation }: any) {
                   <Text style={styles.cardTitle}>Mais acessados</Text>
                 </View>
 
-                {popularArticles.map((article) => {
-                  const CategoryIcon = CATEGORY_CONFIG[article.category].icon;
+                {articlesQuery.isLoading ? <Text style={styles.emptyText}>Carregando destaques...</Text> : null}
+                {!articlesQuery.isLoading && popularArticles.map((article) => {
+                  const visual = getCategoryVisual(article.categoryCode);
 
                   return (
                     <TouchableOpacity
@@ -253,18 +267,13 @@ export function HelpScreen({ navigation }: any) {
                       style={styles.articleItem}
                       onPress={() => setSelectedArticle(article)}
                     >
-                      <View
-                        style={[
-                          styles.categoryCircle,
-                          { backgroundColor: CATEGORY_CONFIG[article.category].bgColor },
-                        ]}
-                      >
-                        <CategoryIcon size={18} color={CATEGORY_CONFIG[article.category].color} />
+                      <View style={[styles.categoryCircle, { backgroundColor: visual.bgColor }]}>
+                        {React.createElement(visual.icon, { size: 18, color: visual.color })}
                       </View>
                       <View style={styles.flex}>
                         <Text style={styles.articleItemText}>{article.title}</Text>
                         <Text style={styles.articleSub}>
-                          {article.category} - {article.steps.length} passos
+                          {article.categoryLabel} - {article.steps.length} passos
                         </Text>
                       </View>
                       <ChevronRight size={18} color={colors.border} />
@@ -275,22 +284,24 @@ export function HelpScreen({ navigation }: any) {
 
               <Text style={styles.gridLabel}>Categorias</Text>
               <View style={styles.grid}>
-                {(Object.keys(CATEGORY_CONFIG) as HelpCategory[]).map((category) => (
-                  <TouchableOpacity key={category} style={styles.gridItem} onPress={() => setSelectedCategory(category)}>
-                    <View
-                      style={[
-                        styles.gridIcon,
-                        { backgroundColor: CATEGORY_CONFIG[category].bgColor },
-                      ]}
+                {categories.map((category) => {
+                  const visual = getCategoryVisual(category.code);
+                  return (
+                    <TouchableOpacity
+                      key={category.id}
+                      style={styles.gridItem}
+                      onPress={() => setSelectedCategoryCode(category.code)}
                     >
-                      {React.createElement(CATEGORY_CONFIG[category].icon, {
-                        size: 18,
-                        color: CATEGORY_CONFIG[category].color,
-                      })}
-                    </View>
-                    <Text style={styles.gridText}>{category}</Text>
-                  </TouchableOpacity>
-                ))}
+                      <View style={[styles.gridIcon, { backgroundColor: visual.bgColor }]}>
+                        {React.createElement(visual.icon, {
+                          size: 18,
+                          color: visual.color,
+                        })}
+                      </View>
+                      <Text style={styles.gridText}>{category.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               <View style={styles.contactCard}>
@@ -305,7 +316,7 @@ export function HelpScreen({ navigation }: any) {
 
                     <View style={styles.contactTextContainer}>
                       <Text style={styles.contactButtonText}>Chat ao vivo</Text>
-                      <Text style={styles.contactButtonSubText}>Resposta em minutos</Text>
+                      <Text style={styles.contactButtonSubText}>Abra uma conversa com suporte</Text>
                     </View>
 
                     <ChevronRight size={18} color={colors.border} />

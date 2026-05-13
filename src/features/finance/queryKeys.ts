@@ -48,4 +48,28 @@ export const financeQueryKeys = {
     detail: (userId?: string | null) => ['finance', 'preferences', 'detail', userId] as const,
     loginEvents: (userId?: string | null) => ['finance', 'preferences', 'login-events', userId] as const,
   },
+  help: {
+    all: ['finance', 'help'] as const,
+    categories: () => ['finance', 'help', 'categories'] as const,
+    articles: (search?: string | null, categoryCode?: string | null) =>
+      ['finance', 'help', 'articles', search ?? null, categoryCode ?? null] as const,
+  },
+  about: {
+    all: ['finance', 'about'] as const,
+    content: () => ['finance', 'about', 'content'] as const,
+  },
+  support: {
+    all: ['finance', 'support'] as const,
+    conversations: (userId?: string | null) => ['finance', 'support', 'conversations', userId] as const,
+    messages: (userId?: string | null, conversationId?: string | null) =>
+      ['finance', 'support', 'messages', userId, conversationId] as const,
+  },
+  recurring: {
+    all: ['finance', 'recurring'] as const,
+    list: (userId?: string | null) => ['finance', 'recurring', 'list', userId] as const,
+  },
+  notifications: {
+    all: ['finance', 'notifications'] as const,
+    list: (userId?: string | null) => ['finance', 'notifications', 'list', userId] as const,
+  },
 };
