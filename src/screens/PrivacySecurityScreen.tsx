@@ -57,25 +57,28 @@ export function PrivacySecurityScreen({ navigation }: any) {
   const prefs = preferencesQuery.data;
   const mfaBusy = enrollTotp.isPending || verifyTotp.isPending || disableTotp.isPending;
 
-  const onTogglePref = async (key: 'hideValuesHome' | 'loginAlertsEnabled' | 'shareAnonymousStats', value: boolean) => {
+  const onTogglePref = async (
+    key: 'hideValuesHome' | 'loginAlertsEnabled' | 'shareAnonymousStats' | 'requireGroupExpenseReceipt',
+    value: boolean,
+  ) => {
     try {
       await updatePref.mutateAsync({ [key]: value });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível atualizar a preferência.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar a preferencia.');
     }
   };
 
   const onToggleBiometric = async (value: boolean) => {
     try {
       if (value && !(await canUseBiometricLock())) {
-        Alert.alert('Biometria indisponível', 'O dispositivo não possui biometria configurada.');
+        Alert.alert('Biometria indisponivel', 'O dispositivo nao possui biometria configurada.');
         return;
       }
 
       await setBiometricLockEnabled(value);
       await updatePref.mutateAsync({ biometricEnabled: value });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível atualizar a biometria.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar a biometria.');
     }
   };
 
@@ -94,7 +97,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
         await disableTotp.mutateAsync(factor.id);
       }
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível atualizar o MFA.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar o MFA.');
     }
   };
 
@@ -109,7 +112,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
       setEnrollment(null);
       setMfaCode('');
     } catch (error) {
-      Alert.alert('Código inválido', error instanceof Error ? error.message : 'Não foi possível validar o TOTP.');
+      Alert.alert('Codigo invalido', error instanceof Error ? error.message : 'Nao foi possivel validar o TOTP.');
     }
   };
 
@@ -117,14 +120,14 @@ export function PrivacySecurityScreen({ navigation }: any) {
     try {
       const url = await exportData.mutateAsync();
       if (!url) {
-        Alert.alert('Exportação solicitada', 'A requisição foi registrada, mas o link ainda não ficou disponível.');
+        Alert.alert('Exportacao solicitada', 'A requisicao foi registrada, mas o link ainda nao ficou disponivel.');
         return;
       }
 
       await Linking.openURL(url);
-      Alert.alert('Exportação pronta', 'O download foi iniciado.');
+      Alert.alert('Exportacao pronta', 'O download foi iniciado.');
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível solicitar a exportação.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel solicitar a exportacao.');
     }
   };
 
@@ -134,26 +137,26 @@ export function PrivacySecurityScreen({ navigation }: any) {
       setDeleteOpen(false);
       setReason('');
       setPassword('');
-      Alert.alert('Conta excluída', 'Sua conta foi removida e a sessão atual foi encerrada.');
+      Alert.alert('Conta excluida', 'Sua conta foi removida e a sessao atual foi encerrada.');
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível solicitar a exclusão.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel solicitar a exclusao.');
     }
   };
 
   const onOpenPolicy = () => {
     if (!appEnv.privacyPolicyUrl) {
-      Alert.alert('Link indisponível', 'Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a política.');
+      Alert.alert('Link indisponivel', 'Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a politica.');
       return;
     }
 
     Linking.openURL(appEnv.privacyPolicyUrl).catch(() => {
-      Alert.alert('Erro', 'Não foi possível abrir a política de privacidade.');
+      Alert.alert('Erro', 'Nao foi possivel abrir a politica de privacidade.');
     });
   };
 
   return (
     <PageShell>
-      <PageHeader title="Privacidade e Segurança" onBackPress={() => navigation.goBack()} />
+      <PageHeader title="Privacidade e Seguranca" onBackPress={() => navigation.goBack()} />
 
       {preferencesQuery.isLoading && !prefs ? (
         <Card style={styles.cardCenter}>
@@ -162,7 +165,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
       ) : null}
       {preferencesQuery.isError ? (
         <Card style={styles.cardCenter}>
-          <Text style={styles.desc}>Não foi possível carregar suas preferências.</Text>
+          <Text style={styles.desc}>Nao foi possivel carregar suas preferencias.</Text>
           <Pressable style={styles.linkBtn} onPress={() => preferencesQuery.refetch()}>
             <Text style={styles.linkBtnText}>Tentar novamente</Text>
           </Pressable>
@@ -172,13 +175,13 @@ export function PrivacySecurityScreen({ navigation }: any) {
       {prefs ? (
         <>
           <Section
-            title="Segurança"
+            title="Seguranca"
             icon={<ShieldCheck size={18} color={colors.textPrimary} />}
             styles={styles}
           >
             <PrefRow
-              label="Autenticação em duas etapas"
-              desc="Adiciona uma camada extra de segurança."
+              label="Autenticacao em duas etapas"
+              desc="Adiciona uma camada extra de seguranca."
               value={prefs.twoFactorEnabled}
               loading={mfaBusy}
               onChange={onToggleTwoFactor}
@@ -205,18 +208,26 @@ export function PrivacySecurityScreen({ navigation }: any) {
           <Section title="Privacidade" icon={<Lock size={18} color={colors.textPrimary} />} styles={styles}>
             <PrefRow
               label="Ocultar valores na tela inicial"
-              desc="Protege seus dados em público."
+              desc="Protege seus dados em publico."
               value={prefs.hideValuesHome}
               loading={updatePref.isPending}
               onChange={(value) => onTogglePref('hideValuesHome', value)}
               styles={styles}
             />
             <PrefRow
-              label="Compartilhar estatísticas anônimas"
+              label="Compartilhar estatisticas anonimas"
               desc="Ajuda a melhorar o app."
               value={prefs.shareAnonymousStats}
               loading={updatePref.isPending}
               onChange={(value) => onTogglePref('shareAnonymousStats', value)}
+              styles={styles}
+            />
+            <PrefRow
+              label="Exigir comprovante em despesas de grupo"
+              desc="Quando ativo, novos lancamentos de despesa em grupo exigem NF ou notinha."
+              value={prefs.requireGroupExpenseReceipt}
+              loading={updatePref.isPending}
+              onChange={(value) => onTogglePref('requireGroupExpenseReceipt', value)}
               styles={styles}
             />
           </Section>
@@ -238,7 +249,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
       <Card style={styles.card}>
         <Text style={styles.sectionTitle}>Acessos recentes</Text>
         {loginEventsQuery.isLoading ? <ActivityIndicator color={colors.primaryLight} /> : null}
-        {loginEventsQuery.isError ? <Text style={styles.desc}>Não foi possível carregar os acessos.</Text> : null}
+        {loginEventsQuery.isError ? <Text style={styles.desc}>Nao foi possivel carregar os acessos.</Text> : null}
         {!loginEventsQuery.isLoading && !loginEventsQuery.isError && !(loginEventsQuery.data?.length) ? (
           <Text style={styles.desc}>Nenhum evento registrado ainda.</Text>
         ) : null}
@@ -253,13 +264,13 @@ export function PrivacySecurityScreen({ navigation }: any) {
       </Card>
 
       <View style={styles.policy}>
-        <Text style={styles.policyTitle}>Política de Privacidade</Text>
+        <Text style={styles.policyTitle}>Politica de Privacidade</Text>
         <Text style={styles.policyText}>
-          Levamos sua privacidade a sério. Seus dados financeiros são protegidos, você pode exportá-los a qualquer momento
-          e o controle das preferências fica sempre com sua conta.
+          Levamos sua privacidade a serio. Seus dados financeiros sao protegidos, voce pode exporta-los a qualquer momento
+          e o controle das preferencias fica sempre com sua conta.
         </Text>
         <Pressable onPress={onOpenPolicy}>
-          <Text style={styles.policyLink}>Ler política completa</Text>
+          <Text style={styles.policyLink}>Ler politica completa</Text>
         </Pressable>
       </View>
 
@@ -282,7 +293,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
                   value={mfaCode}
                   onChangeText={setMfaCode}
                   keyboardType="number-pad"
-                  placeholder="Código de 6 dígitos"
+                  placeholder="Codigo de 6 digitos"
                   placeholderTextColor={colors.textSecondary}
                   style={styles.input}
                 />

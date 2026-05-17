@@ -30,6 +30,14 @@
     "plugins": [
       "@react-native-community/datetimepicker",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permita o acesso as suas fotos para anexar comprovantes e notas fiscais.",
+          "cameraPermission": "Permita o uso da camera para fotografar comprovantes e notas fiscais.",
+          "microphonePermission": "Permita o uso do microfone para gravar comprovantes em audio."
+        }
+      ],
+      [
         "expo-local-authentication",
         {
           "faceIDPermission": "Permita o uso da biometria para proteger seus dados financeiros."
@@ -37,7 +45,14 @@
       ],
       "expo-secure-store",
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Permita o uso do microfone para registrar transacoes por voz."
+        }
+      ],
+      "expo-asset"
     ]
   }
 }

@@ -1,3 +1,6 @@
+/// <reference path="../deno-globals.d.ts" />
+/// <reference path="../deno-npm-modules.d.ts" />
+
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -69,6 +72,7 @@ Deno.serve(async (request) => {
       'credit_card_installments',
       'import_batches',
       'import_batch_rows',
+      'transaction_attachments',
       'groups',
       'group_members',
       'group_splits',

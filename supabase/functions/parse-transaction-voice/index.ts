@@ -1,0 +1,105 @@
+/// <reference path="../deno-globals.d.ts" />
+
+import {
+  callOpenAIJson,
+  corsHeaders,
+  normalizeDraft,
+  requireAuthenticatedUser,
+  transcribeAudio,
+} from '../_shared/transactionParsing.ts';
+
+const VOICE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    title: { type: 'string' },
+    amount: { type: ['number', 'null'] },
+    type: { type: ['string', 'null'], enum: ['income', 'expense', null] },
+    paymentMethod: { type: 'string' },
+    occurredAt: { type: ['string', 'null'] },
+    suggestedCategoryCode: { type: ['string', 'null'] },
+    notes: { type: 'string' },
+    merchantOrIssuer: { type: ['string', 'null'] },
+    documentNumber: { type: ['string', 'null'] },
+    warnings: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    confidence: { type: ['number', 'null'] },
+  },
+  required: [
+    'title',
+    'amount',
+    'type',
+    'paymentMethod',
+    'occurredAt',
+    'suggestedCategoryCode',
+    'notes',
+    'merchantOrIssuer',
+    'documentNumber',
+    'warnings',
+    'confidence',
+  ],
+};
+
+Deno.serve(async (request) => {
+  if (request.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    await requireAuthenticatedUser(request);
+
+    const payload = await request.json();
+    const base64Data = String(payload.base64Data ?? '');
+    const fileName = String(payload.fileName ?? 'gravacao.webm');
+    const mimeType = String(payload.mimeType ?? 'audio/webm');
+
+    if (!base64Data) {
+      return new Response(JSON.stringify({ error: 'Audio nao enviado para transcricao.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const transcript = await transcribeAudio({ base64Data, fileName, mimeType });
+
+    const parsed = await callOpenAIJson<Record<string, unknown>>({
+      model: Deno.env.get('OPENAI_PARSER_MODEL') ?? 'gpt-4.1-mini',
+      instructions: [
+        'Voce recebe uma transcricao em portugues de uma pessoa descrevendo uma transacao financeira.',
+        'Converta a fala em um rascunho de transacao.',
+        'Se nao houver certeza sobre valor, tipo ou data, devolva null no campo e explique em warnings.',
+        'Use paymentMethod entre: Pix, Transferencia, Dinheiro, Cartao de credito, Cartao de debito, Boleto.',
+        'Para gastos, prefira type expense; para recebimentos, prefira income.',
+        'Use suggestedCategoryCode entre: food, transport, housing, shopping, health, education, leisure, services, taxes, salary, freelance, investments, gifts, other.',
+        'Use occurredAt em ISO 8601 quando a fala indicar uma data; se nao indicar, devolva null e inclua aviso.',
+        'notes deve preservar contexto util da fala.',
+      ].join(' '),
+      userContent: [
+        {
+          type: 'input_text',
+          text: transcript,
+        },
+      ],
+      schema: VOICE_SCHEMA,
+      schemaName: 'parsed_transaction_voice',
+    });
+
+    const draft = normalizeDraft(parsed, transcript, 'Lancamento por voz');
+
+    return new Response(JSON.stringify({ draft }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    if (error instanceof Response) {
+      return error;
+    }
+
+    const message = error instanceof Error ? error.message : 'Falha ao processar a voz.';
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});

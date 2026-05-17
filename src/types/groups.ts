@@ -45,6 +45,7 @@ export interface GroupSplit {
   totalAmount: number;
   occurredAt: string;
   createdAt: string;
+  receiptAttachmentId?: string | null;
   shares: GroupSplitShare[];
 }
 
@@ -114,6 +115,7 @@ export interface CreateGroupSplitInput {
   totalAmount: number;
   ownerUserId: string;
   occurredAt: string;
+  attachmentId?: string | null;
   shares: SplitParticipantInput[];
 }
 

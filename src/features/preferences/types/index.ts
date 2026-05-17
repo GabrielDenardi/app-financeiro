@@ -5,6 +5,7 @@ export type UserPreferences = {
   loginAlertsEnabled: boolean;
   shareAnonymousStats: boolean;
   twoFactorEnabled: boolean;
+  requireGroupExpenseReceipt: boolean;
 };
 
 export type LoginEvent = {

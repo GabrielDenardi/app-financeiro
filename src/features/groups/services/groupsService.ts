@@ -66,6 +66,11 @@ type GroupSplitShareRow = {
   share_percentage: number | string | null;
 };
 
+type GroupSplitAttachmentRow = {
+  id: string;
+  group_split_id: string | null;
+};
+
 type GroupSettlementRow = {
   id: string;
   group_id: string;
@@ -156,7 +161,11 @@ function mapGroupShare(row: GroupSplitShareRow): GroupSplitShare {
   };
 }
 
-function mapGroupSplit(row: GroupSplitRow, sharesBySplitId: Map<string, GroupSplitShare[]>): GroupSplit {
+function mapGroupSplit(
+  row: GroupSplitRow,
+  sharesBySplitId: Map<string, GroupSplitShare[]>,
+  attachmentIdBySplitId: Map<string, string>,
+): GroupSplit {
   return {
     id: row.id,
     groupId: row.group_id,
@@ -169,6 +178,7 @@ function mapGroupSplit(row: GroupSplitRow, sharesBySplitId: Map<string, GroupSpl
     totalAmount: Number(row.total_amount),
     occurredAt: row.occurred_at,
     createdAt: row.created_at,
+    receiptAttachmentId: attachmentIdBySplitId.get(row.id) ?? null,
     shares: sharesBySplitId.get(row.id) ?? [],
   };
 }
@@ -284,6 +294,17 @@ async function fetchGroupGraph(groupIds: string[]) {
     throw new GroupsServiceError('unknown', sharesError.message);
   }
 
+  const { data: attachmentData, error: attachmentError } = splitIds.length
+    ? await supabase
+        .from('transaction_attachments')
+        .select('id, group_split_id')
+        .in('group_split_id', splitIds)
+    : { data: [], error: null };
+
+  if (attachmentError) {
+    throw new GroupsServiceError('unknown', attachmentError.message);
+  }
+
   const userIds = [...new Set(memberRows.map((row) => row.user_id))];
   const profilesById = await fetchProfiles(userIds);
 
@@ -302,9 +323,16 @@ async function fetchGroupGraph(groupIds: string[]) {
     sharesBySplitId.set(row.split_id, current);
   });
 
+  const attachmentIdBySplitId = new Map<string, string>();
+  ((attachmentData as GroupSplitAttachmentRow[]) ?? []).forEach((row) => {
+    if (row.group_split_id) {
+      attachmentIdBySplitId.set(row.group_split_id, row.id);
+    }
+  });
+
   const splitsByGroupId = new Map<string, GroupSplit[]>();
   splitRows.forEach((row) => {
-    const mapped = mapGroupSplit(row, sharesBySplitId);
+    const mapped = mapGroupSplit(row, sharesBySplitId, attachmentIdBySplitId);
     const current = splitsByGroupId.get(row.group_id) ?? [];
     current.push(mapped);
     splitsByGroupId.set(row.group_id, current);
