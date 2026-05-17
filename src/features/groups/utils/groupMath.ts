@@ -301,6 +301,7 @@ export function serializeSplitPayload(input: CreateGroupSplitInput) {
     total_amount: Number(input.totalAmount.toFixed(2)),
     owner_user_id: input.ownerUserId,
     occurred_at: input.occurredAt,
+    attachment_id: input.attachmentId ?? null,
     shares: input.shares.map((share) => ({
       user_id: share.userId,
       amount: Number(share.amount.toFixed(2)),

@@ -16,6 +16,15 @@ import {
 } from 'react-native';
 
 import { Card } from '../../../components/Card';
+import { usePreferences } from '../../preferences/hooks/usePreferences';
+import {
+  deleteTransactionAttachment,
+  pickDocumentFile,
+  pickImageFromCamera,
+  pickImageFromLibrary,
+  uploadTransactionAttachment,
+  type LocalCaptureFile,
+} from '../../transactions/services/transactionCaptureService';
 import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import type { AuthenticatedUserSummary } from '../../../types/auth';
 import type {
@@ -57,7 +66,7 @@ const TABS: Array<{ key: DetailsTab; label: string }> = [
 const PAYMENT_METHODS: Array<{ value: SettlementPaymentMethod; label: string }> = [
   { value: 'PIX', label: 'PIX' },
   { value: 'Dinheiro', label: 'Dinheiro' },
-  { value: 'Transferencia', label: 'Transferência' },
+  { value: 'Transferencia', label: 'Transferencia' },
 ];
 
 function parseDecimal(value: string) {
@@ -87,6 +96,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
   const navigation = useNavigation<any>();
   const currentUserId = currentUser?.id ?? null;
   const groupDetailsQuery = useGroupDetails(currentUserId, groupId);
+  const preferencesQuery = usePreferences(currentUserId);
   const createSplitMutation = useCreateGroupSplitMutation(currentUserId, groupId);
   const requestSettlementMutation = useRequestSettlementMutation(currentUserId, groupId);
   const confirmSettlementMutation = useConfirmSettlementMutation(currentUserId, groupId);
@@ -101,6 +111,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
   const [splitMode, setSplitMode] = useState<SplitMode>('equal');
   const [splitTotal, setSplitTotal] = useState('');
   const [splitOwnerUserId, setSplitOwnerUserId] = useState(currentUserId ?? '');
+  const [splitReceiptFile, setSplitReceiptFile] = useState<LocalCaptureFile | null>(null);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [percentageByUserId, setPercentageByUserId] = useState<Record<string, string>>({});
   const [customAmountByUserId, setCustomAmountByUserId] = useState<Record<string, string>>({});
@@ -115,6 +126,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
     [groupData?.members],
   );
   const membersById = useMemo(() => new Map(members.map((member) => [member.userId, member])), [members]);
+  const requireGroupExpenseReceipt = preferencesQuery.data?.requireGroupExpenseReceipt ?? false;
 
   const resetSplitForm = () => {
     setSplitTitle('');
@@ -123,6 +135,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
     setSplitMode('equal');
     setSplitTotal('');
     setSplitOwnerUserId(currentUserId ?? members[0]?.userId ?? '');
+    setSplitReceiptFile(null);
     setSelectedMemberIds(members.map((member) => member.userId));
     setPercentageByUserId({});
     setCustomAmountByUserId({});
@@ -130,7 +143,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
   const resolveMemberName = (userId: string) => {
     if (userId === currentUserId) {
-      return 'Você';
+      return 'Voce';
     }
 
     return membersById.get(userId)?.fullName ?? 'Membro';
@@ -174,7 +187,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
     } catch (error) {
       return {
         shares: [],
-        error: error instanceof Error ? error.message : 'Não foi possível calcular a divisão.',
+        error: error instanceof Error ? error.message : 'Nao foi possivel calcular a divisao.',
       };
     }
   }, [customAmountByUserId, percentageByUserId, selectedMemberIds, splitMode, splitTotal]);
@@ -197,10 +210,43 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
     try {
       await Share.share({
-        message: `Entre no grupo "${groupData.group.title}" com o código ${groupData.group.shareCode}.`,
+        message: `Entre no grupo "${groupData.group.title}" com o codigo ${groupData.group.shareCode}.`,
       });
-    } catch (_error) {
-      Alert.alert('Compartilhamento', 'Não foi possível compartilhar o código agora.');
+    } catch {
+      Alert.alert('Compartilhamento', 'Nao foi possivel compartilhar o codigo agora.');
+    }
+  };
+
+  const handlePickSplitReceiptFromCamera = async () => {
+    try {
+      const file = await pickImageFromCamera();
+      if (file) {
+        setSplitReceiptFile(file);
+      }
+    } catch (error) {
+      Alert.alert('Comprovante', error instanceof Error ? error.message : 'Nao foi possivel abrir a camera.');
+    }
+  };
+
+  const handlePickSplitReceiptFromLibrary = async () => {
+    try {
+      const file = await pickImageFromLibrary();
+      if (file) {
+        setSplitReceiptFile(file);
+      }
+    } catch (error) {
+      Alert.alert('Comprovante', error instanceof Error ? error.message : 'Nao foi possivel abrir a galeria.');
+    }
+  };
+
+  const handlePickSplitReceiptDocument = async () => {
+    try {
+      const file = await pickDocumentFile();
+      if (file) {
+        setSplitReceiptFile(file);
+      }
+    } catch (error) {
+      Alert.alert('Comprovante', error instanceof Error ? error.message : 'Nao foi possivel abrir o documento.');
     }
   };
 
@@ -210,21 +256,42 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
     }
 
     if (!splitTitle.trim()) {
-      Alert.alert('Divisão', 'Informe um título.');
+      Alert.alert('Divisao', 'Informe um titulo.');
       return;
     }
 
     if (!splitOwnerUserId) {
-      Alert.alert('Divisão', 'Selecione quem pagou ou recebeu.');
+      Alert.alert('Divisao', 'Selecione quem pagou ou recebeu.');
       return;
     }
 
     if (splitPreview.error) {
-      Alert.alert('Divisão', splitPreview.error);
+      Alert.alert('Divisao', splitPreview.error);
       return;
     }
 
+    if (requireGroupExpenseReceipt && splitKind === 'expense' && !splitReceiptFile) {
+      Alert.alert('Divisao', 'Esta despesa em grupo exige comprovante.');
+      return;
+    }
+
+    let uploadedAttachment:
+      | Awaited<ReturnType<typeof uploadTransactionAttachment>>
+      | null = null;
+
     try {
+      if (splitReceiptFile) {
+        uploadedAttachment = await uploadTransactionAttachment({
+          file: splitReceiptFile,
+          attachmentKind: 'receipt',
+          sourceType: 'manual',
+          groupId,
+          captureMetadata: {
+            splitKind,
+          },
+        });
+      }
+
       await createSplitMutation.mutateAsync({
         groupId,
         title: splitTitle,
@@ -234,12 +301,21 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         totalAmount: parseDecimal(splitTotal),
         ownerUserId: splitOwnerUserId,
         occurredAt: new Date().toISOString(),
+        attachmentId: uploadedAttachment?.id ?? null,
         shares: splitPreview.shares,
       });
       setIsSplitModalVisible(false);
       resetSplitForm();
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível registrar a divisão.');
+      if (uploadedAttachment) {
+        try {
+          await deleteTransactionAttachment(uploadedAttachment);
+        } catch {
+          // Best-effort cleanup for orphan attachments.
+        }
+      }
+
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel registrar a divisao.');
     }
   };
 
@@ -258,7 +334,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
     const amount = parseDecimal(settlementAmount);
     if (amount <= 0 || amount > Math.abs(selectedBalance.amount) + 0.009) {
-      Alert.alert('Acerto', 'Informe um valor válido dentro do saldo pendente.');
+      Alert.alert('Acerto', 'Informe um valor valido dentro do saldo pendente.');
       return;
     }
 
@@ -273,7 +349,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
       setIsSettlementModalVisible(false);
       setSelectedBalance(null);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível solicitar o acerto.');
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel solicitar o acerto.');
     }
   };
 
@@ -291,7 +367,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
             } catch (error) {
               Alert.alert(
                 'Erro',
-                error instanceof Error ? error.message : 'Não foi possível confirmar o acerto.',
+                error instanceof Error ? error.message : 'Nao foi possivel confirmar o acerto.',
               );
             }
           },
@@ -313,7 +389,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
             try {
               await removeMemberMutation.mutateAsync(member.userId);
             } catch (error) {
-              Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível remover o membro.');
+              Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel remover o membro.');
             }
           },
         },
@@ -340,7 +416,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
         <View style={styles.headerCopy}>
           <Text style={styles.headerTitle}>{groupData.group.title}</Text>
-          <Text style={styles.headerSubtitle}>{groupData.group.description || 'Sem descrição.'}</Text>
+          <Text style={styles.headerSubtitle}>{groupData.group.description || 'Sem descricao.'}</Text>
         </View>
 
         <Pressable onPress={handleShareCode} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
@@ -352,13 +428,13 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         <Card style={styles.heroCard}>
           <View style={styles.rowBetween}>
             <View>
-              <Text style={styles.heroMuted}>Código</Text>
+              <Text style={styles.heroMuted}>Codigo</Text>
               <Text style={styles.heroCode}>{groupData.group.shareCode}</Text>
             </View>
 
             <Pressable onPress={handleOpenSplitModal} style={({ pressed }) => [styles.primaryChipButton, pressed && styles.pressed]}>
               <Ionicons name="add" size={16} color={colors.white} />
-              <Text style={styles.primaryChipButtonText}>Nova divisão</Text>
+              <Text style={styles.primaryChipButtonText}>Nova divisao</Text>
             </Pressable>
           </View>
 
@@ -396,9 +472,9 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
         {activeTab === 'balances' ? (
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Saldos entre você e os outros membros</Text>
+            <Text style={styles.sectionTitle}>Saldos entre voce e os outros membros</Text>
             <Text style={styles.sectionDescription}>
-              Positivo indica crédito. Negativo indica que você deve para o membro.
+              Positivo indica credito. Negativo indica que voce deve para o membro.
             </Text>
 
             {groupData.balances.map((balance) => (
@@ -429,9 +505,9 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                 <View style={styles.rowBetween}>
                   <View style={styles.listCopy}>
                     <Text style={styles.listTitle}>{split.title}</Text>
-                      <Text style={styles.sectionDescription}>
-                        {split.kind === 'expense' ? 'Despesa' : 'Receita'} {' - '}{resolveMemberName(split.ownerUserId)}
-                      </Text>
+                    <Text style={styles.sectionDescription}>
+                      {split.kind === 'expense' ? 'Despesa' : 'Receita'} {' - '}{resolveMemberName(split.ownerUserId)}
+                    </Text>
                   </View>
 
                   <Text style={[styles.listAmount, split.kind === 'income' ? styles.positive : styles.negative]}>
@@ -442,12 +518,15 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                 <Text style={styles.sectionDescription}>
                   {split.description || `${split.shares.length} participante(s) - modo ${split.splitMode}`}
                 </Text>
+                {split.receiptAttachmentId ? (
+                  <Text style={styles.receiptHint}>Comprovante anexado</Text>
+                ) : null}
               </Card>
             ))}
 
             {groupData.splits.length === 0 ? (
               <Card style={styles.sectionCard}>
-                <Text style={styles.emptyText}>Nenhuma divisão registrada.</Text>
+                <Text style={styles.emptyText}>Nenhuma divisao registrada.</Text>
               </Card>
             ) : null}
           </>
@@ -465,7 +544,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                     <View style={styles.listCopy}>
                       <Text style={styles.listTitle}>
                         {resolveMemberName(settlement.fromUserId)}
-                        {' → '}
+                        {' -> '}
                         {resolveMemberName(settlement.toUserId)}
                       </Text>
                       <Text style={styles.sectionDescription}>
@@ -487,7 +566,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                       </Text>
                     </Pressable>
                   ) : isOutgoing && settlement.status === 'pending' ? (
-                    <Text style={styles.awaitingText}>Aguardando confirmação do recebedor.</Text>
+                    <Text style={styles.awaitingText}>Aguardando confirmacao do recebedor.</Text>
                   ) : null}
                 </Card>
               );
@@ -516,7 +595,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                   </View>
 
                   <View style={styles.listCopy}>
-                    <Text style={styles.listTitle}>{member.userId === currentUserId ? 'Você' : member.fullName}</Text>
+                    <Text style={styles.listTitle}>{member.userId === currentUserId ? 'Voce' : member.fullName}</Text>
                     <Text style={styles.sectionDescription}>
                       {member.role === 'admin' ? 'Administrador' : 'Membro'}
                     </Text>
@@ -543,14 +622,14 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
           <Card style={styles.modalCard}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalContent}>
               <View style={styles.rowBetween}>
-                <Text style={styles.modalTitle}>Registrar divisão</Text>
+                <Text style={styles.modalTitle}>Registrar divisao</Text>
                 <Pressable onPress={() => setIsSplitModalVisible(false)} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
                   <Ionicons name="close-outline" size={20} color={colors.textPrimary} />
                 </Pressable>
               </View>
 
-              <TextInput value={splitTitle} onChangeText={setSplitTitle} placeholder="Título" placeholderTextColor={colors.textSecondary} style={styles.input} />
-              <TextInput value={splitDescription} onChangeText={setSplitDescription} placeholder="Descrição (opcional)" placeholderTextColor={colors.textSecondary} style={[styles.input, styles.multilineInput]} multiline />
+              <TextInput value={splitTitle} onChangeText={setSplitTitle} placeholder="Titulo" placeholderTextColor={colors.textSecondary} style={styles.input} />
+              <TextInput value={splitDescription} onChangeText={setSplitDescription} placeholder="Descricao (opcional)" placeholderTextColor={colors.textSecondary} style={[styles.input, styles.multilineInput]} multiline />
               <TextInput value={splitTotal} onChangeText={setSplitTotal} placeholder="Valor total" placeholderTextColor={colors.textSecondary} style={styles.input} keyboardType="decimal-pad" />
 
               <View style={styles.choiceRow}>
@@ -566,7 +645,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                 ))}
               </View>
 
-              <Text style={styles.fieldLabel}>Modo de divisão</Text>
+              <Text style={styles.fieldLabel}>Modo de divisao</Text>
               <View style={styles.wrapRow}>
                 <ChoiceButton label="Igual" selected={splitMode === 'equal'} onPress={() => setSplitMode('equal')} styles={styles} />
                 <ChoiceButton label="Por porcentagem" selected={splitMode === 'percentage'} onPress={() => setSplitMode('percentage')} styles={styles} />
@@ -579,6 +658,29 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                   <ChoiceButton key={member.userId} label={resolveMemberName(member.userId)} selected={selectedMemberIds.includes(member.userId)} onPress={() => toggleMember(member.userId)} styles={styles} />
                 ))}
               </View>
+
+              <Text style={styles.fieldLabel}>Comprovante</Text>
+              <Text style={styles.receiptHelper}>
+                {requireGroupExpenseReceipt && splitKind === 'expense'
+                  ? 'Obrigatorio para despesas neste usuario.'
+                  : 'Opcional. Anexe uma NF ou notinha para comprovar a despesa.'}
+              </Text>
+              <View style={styles.wrapRow}>
+                <ChoiceButton label="Camera" selected={false} onPress={handlePickSplitReceiptFromCamera} styles={styles} />
+                <ChoiceButton label="Galeria" selected={false} onPress={handlePickSplitReceiptFromLibrary} styles={styles} />
+                <ChoiceButton label="PDF" selected={false} onPress={handlePickSplitReceiptDocument} styles={styles} />
+              </View>
+              {splitReceiptFile ? (
+                <View style={styles.receiptCard}>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>Arquivo selecionado</Text>
+                    <Text style={styles.sectionDescription}>{splitReceiptFile.name}</Text>
+                  </View>
+                  <Pressable onPress={() => setSplitReceiptFile(null)} style={({ pressed }) => [styles.removeButton, pressed && styles.pressed]}>
+                    <Ionicons name="close-outline" size={16} color={colors.danger} />
+                  </Pressable>
+                </View>
+              ) : null}
 
               {splitMode !== 'equal' ? (
                 <View style={styles.dynamicInputs}>
@@ -625,7 +727,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                   <Text style={styles.secondaryButtonText}>Cancelar</Text>
                 </Pressable>
                 <Pressable onPress={handleSaveSplit} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-                  <Text style={styles.primaryButtonText}>{createSplitMutation.isPending ? 'Salvando...' : 'Salvar divisão'}</Text>
+                  <Text style={styles.primaryButtonText}>{createSplitMutation.isPending ? 'Salvando...' : 'Salvar divisao'}</Text>
                 </Pressable>
               </View>
             </ScrollView>
@@ -655,7 +757,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
               ))}
             </View>
 
-            <TextInput value={settlementNote} onChangeText={setSettlementNote} placeholder="Observação (opcional)" placeholderTextColor={colors.textSecondary} style={[styles.input, styles.multilineInput]} multiline />
+            <TextInput value={settlementNote} onChangeText={setSettlementNote} placeholder="Observacao (opcional)" placeholderTextColor={colors.textSecondary} style={[styles.input, styles.multilineInput]} multiline />
 
             <View style={styles.modalActions}>
               <Pressable onPress={() => setIsSettlementModalVisible(false)} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
@@ -751,6 +853,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   listCopy: { flex: 1, gap: spacing.xs },
   listTitle: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },
   listAmount: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },
+  receiptHint: { ...typography.caption, color: colors.primary, fontWeight: '700' },
   smallActionButton: { minHeight: 38, paddingHorizontal: spacing.md, borderRadius: radius.md, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   smallActionButtonText: { ...typography.caption, color: colors.white, fontWeight: '700' },
   emptyText: { ...typography.body, color: colors.textSecondary },
@@ -780,6 +883,8 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   dynamicInput: { width: 110, minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface, paddingHorizontal: spacing.md, color: colors.textPrimary },
   previewCard: { gap: spacing.sm, backgroundColor: colors.mutedSurface },
   errorText: { ...typography.body, color: colors.danger },
+  receiptHelper: { ...typography.caption, color: colors.textSecondary, lineHeight: 17 },
+  receiptCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, backgroundColor: colors.surface },
   modalActions: { flexDirection: 'row', gap: spacing.sm },
   secondaryButton: { flex: 1, minHeight: 46, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   secondaryButtonText: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },

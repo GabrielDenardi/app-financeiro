@@ -11,6 +11,7 @@ type PreferencesRow = {
   login_alerts_enabled: boolean;
   share_anonymous_stats: boolean;
   two_factor_enabled: boolean;
+  require_group_expense_receipt: boolean;
 };
 
 type LoginEventRow = {
@@ -29,6 +30,7 @@ function mapPreferences(row: PreferencesRow): UserPreferences {
     loginAlertsEnabled: Boolean(row.login_alerts_enabled),
     shareAnonymousStats: Boolean(row.share_anonymous_stats),
     twoFactorEnabled: Boolean(row.two_factor_enabled),
+    requireGroupExpenseReceipt: Boolean(row.require_group_expense_receipt),
   };
 }
 
@@ -46,7 +48,7 @@ export async function getPreferences(): Promise<UserPreferences> {
   const userId = await requireCurrentUserId();
   const { data, error } = await supabase
     .from('user_preferences')
-    .select('user_id, hide_values_home, biometric_enabled, login_alerts_enabled, share_anonymous_stats, two_factor_enabled')
+    .select('user_id, hide_values_home, biometric_enabled, login_alerts_enabled, share_anonymous_stats, two_factor_enabled, require_group_expense_receipt')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -93,11 +95,15 @@ export async function updatePreferences(patch: Partial<UserPreferences>): Promis
     payload.two_factor_enabled = patch.twoFactorEnabled;
   }
 
+  if (typeof patch.requireGroupExpenseReceipt === 'boolean') {
+    payload.require_group_expense_receipt = patch.requireGroupExpenseReceipt;
+  }
+
   const { data, error } = await supabase
     .from('user_preferences')
     .update(payload)
     .eq('user_id', userId)
-    .select('user_id, hide_values_home, biometric_enabled, login_alerts_enabled, share_anonymous_stats, two_factor_enabled')
+    .select('user_id, hide_values_home, biometric_enabled, login_alerts_enabled, share_anonymous_stats, two_factor_enabled, require_group_expense_receipt')
     .single();
 
   if (error) {

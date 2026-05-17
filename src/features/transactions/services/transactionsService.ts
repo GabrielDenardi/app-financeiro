@@ -265,13 +265,10 @@ export async function listTransactionSections(
 }
 
 export async function createTransaction(input: CreateTransactionInput): Promise<string> {
-  const userId = await requireCurrentUserId();
+  await requireCurrentUserId();
   const occurredAt = input.occurredAt || new Date().toISOString();
-
-  const { data, error } = await supabase
-    .from('personal_transactions')
-    .insert({
-      user_id: userId,
+  const { data, error } = await supabase.rpc('create_personal_transaction', {
+    p_payload: {
       account_id: input.accountId,
       category_id: input.categoryId,
       type: input.type,
@@ -279,41 +276,33 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
       amount: Number(input.amount.toFixed(2)),
       payment_method: input.paymentMethod,
       occurred_at: occurredAt,
-      occurred_on: occurredAt.slice(0, 10),
       notes: input.notes?.trim() ?? '',
-      description: input.notes?.trim() ?? '',
-      source_type: 'manual',
-      include_in_reports: true,
-    })
-    .select('id')
-    .single();
+      is_recurring: Boolean(input.isRecurring),
+      source_type: input.sourceType ?? 'manual',
+      attachment_id: input.attachmentId ?? null,
+      capture_metadata: {
+        ...(input.captureMetadata?.transcript ? { transcript: input.captureMetadata.transcript } : {}),
+        ...(input.captureMetadata?.ocrText ? { ocrText: input.captureMetadata.ocrText } : {}),
+        ...(input.captureMetadata?.warnings ? { warnings: input.captureMetadata.warnings } : {}),
+        ...(typeof input.captureMetadata?.confidence !== 'undefined'
+          ? { confidence: input.captureMetadata.confidence }
+          : {}),
+        ...(input.captureMetadata?.merchantOrIssuer
+          ? { merchantOrIssuer: input.captureMetadata.merchantOrIssuer }
+          : {}),
+        ...(input.captureMetadata?.documentNumber
+          ? { documentNumber: input.captureMetadata.documentNumber }
+          : {}),
+        provider: input.captureMetadata?.provider ?? 'openai',
+      },
+    },
+  });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  if (input.isRecurring) {
-    const date = new Date(occurredAt);
-    const { error: recurringError } = await supabase.from('recurring_transaction_rules').insert({
-      user_id: userId,
-      account_id: input.accountId,
-      category_id: input.categoryId,
-      type: input.type,
-      title: input.title.trim(),
-      notes: input.notes?.trim() ?? '',
-      payment_method: input.paymentMethod,
-      amount: Number(input.amount.toFixed(2)),
-      day_of_month: date.getDate(),
-      cadence: 'monthly',
-      is_active: true,
-    });
-
-    if (recurringError) {
-      throw new Error(recurringError.message);
-    }
-  }
-
-  return (data as { id: string }).id;
+  return data as string;
 }
 
 export function summarizeTransactions(items: TransactionFeedItem[]) {

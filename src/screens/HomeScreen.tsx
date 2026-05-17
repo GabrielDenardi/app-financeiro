@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { Eye, EyeOff, Landmark, Target, Users } from 'lucide-react-native';
@@ -26,8 +23,9 @@ import { useAccounts } from '../features/accounts/hooks/useAccounts';
 import { useHomeDashboard } from '../features/dashboard/hooks/useDashboard';
 import { usePreferences } from '../features/preferences/hooks/usePreferences';
 import { useProfile } from '../features/profile/hooks/useProfile';
-import { useCreateTransactionMutation, useFinanceCategories } from '../features/transactions/hooks/useTransactions';
-import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
+import { QuickAddTransactionSheet } from '../features/transactions/components/QuickAddTransactionSheet';
+import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
+import { layout, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import type { AuthenticatedUserSummary } from '../types/auth';
 import { HIDDEN_CURRENCY_TEXT, formatCurrencyBRL } from '../utils/format';
 
@@ -44,7 +42,7 @@ function getDisplayName(fullName?: string | null, email?: string | null) {
     return email.split('@')[0];
   }
 
-  return 'Usuário';
+  return 'Usuario';
 }
 
 function formatVisibleCurrency(value: number, visible: boolean) {
@@ -60,18 +58,9 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
   const accountsQuery = useAccounts(currentUser?.id);
   const categoriesQuery = useFinanceCategories(currentUser?.id);
   const preferencesQuery = usePreferences(currentUser?.id);
-  const createTransactionMutation = useCreateTransactionMutation(currentUser?.id);
 
   const [showValues, setShowValues] = useState(true);
   const [quickAddVisible, setQuickAddVisible] = useState(false);
-  const [type, setType] = useState<'income' | 'expense'>('expense');
-  const [amount, setAmount] = useState('');
-  const [title, setTitle] = useState('');
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [accountId, setAccountId] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Pix');
-  const [notes, setNotes] = useState('');
-  const [recurring, setRecurring] = useState(false);
 
   const dashboard = dashboardQuery.data;
   const accounts = accountsQuery.data ?? [];
@@ -85,51 +74,17 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
   );
   const primaryAccount = accounts.find((account) => account.isActive) ?? accounts[0] ?? null;
 
-  const quickAddCategories = useMemo(
-    () =>
-      (type === 'income'
-        ? categoriesQuery.data?.filter((category) => category.kind !== 'expense')
-        : categoriesQuery.data?.filter((category) => category.kind !== 'income')) ?? [],
-    [categoriesQuery.data, type],
-  );
-
   useEffect(() => {
     if (preferencesQuery.data?.hideValuesHome) {
       setShowValues(false);
     }
   }, [preferencesQuery.data?.hideValuesHome]);
 
-  const handleOpenQuickAdd = () => {
-    setQuickAddVisible(true);
-    setCategoryId(quickAddCategories[0]?.id ?? null);
-    setAccountId(primaryAccount?.id ?? '');
-  };
-
-  const handleSubmitQuickAdd = async () => {
-    await createTransactionMutation.mutateAsync({
-      accountId,
-      categoryId,
-      title: title.trim() || 'Lançamento rápido',
-      amount: Number(amount.replace(/\./g, '').replace(',', '.') || 0),
-      type,
-      paymentMethod,
-      occurredAt: new Date().toISOString(),
-      notes,
-      isRecurring: recurring,
-    });
-
-    setQuickAddVisible(false);
-    setAmount('');
-    setTitle('');
-    setNotes('');
-    setRecurring(false);
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Olá, {displayName}</Text>
+          <Text style={styles.greeting}>Ola, {displayName}</Text>
           <Text style={styles.subtitle}>Seu resumo financeiro com dados reais.</Text>
         </View>
         <Pressable style={styles.visibilityButton} onPress={() => setShowValues((current) => !current)}>
@@ -137,13 +92,10 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
         </Pressable>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <BalanceCard
           summary={{
-            monthLabel: summary?.monthLabel ?? 'Mês atual',
+            monthLabel: summary?.monthLabel ?? 'Mes atual',
             balance: summary?.balance ?? 0,
             income: summary?.income ?? 0,
             expense: summary?.expense ?? 0,
@@ -162,7 +114,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
             hideAmounts={!showValues}
           />
           <SummaryStatCard
-            label="Saídas"
+            label="Saidas"
             amount={summary?.expense ?? 0}
             type="expense"
             style={styles.summaryStatCard}
@@ -199,7 +151,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
               <View>
                 <Text style={styles.accountName}>{primaryAccount.name}</Text>
                 <Text style={styles.accountMeta}>
-                  {primaryAccount.institution || 'Instituição não informada'}
+                  {primaryAccount.institution || 'Instituicao nao informada'}
                 </Text>
               </View>
               <Text style={styles.accountAmount}>
@@ -213,8 +165,8 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
 
         <Card style={styles.sectionCard}>
           <SectionHeader
-            title="Categorias do mês"
-            actionLabel="Relatórios"
+            title="Categorias do mes"
+            actionLabel="Relatorios"
             onActionPress={() => navigation.navigate('Reports')}
           />
           {dashboardQuery.isLoading ? (
@@ -237,14 +189,14 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
               </View>
             ))
           ) : (
-            <Text style={styles.emptyText}>Nenhum gasto reportável neste período.</Text>
+            <Text style={styles.emptyText}>Nenhum gasto reportavel neste periodo.</Text>
           )}
         </Card>
 
         <Card noPadding style={styles.sectionCard}>
           <View style={styles.sectionInner}>
             <SectionHeader
-              title="Últimas movimentações"
+              title="Ultimas movimentacoes"
               actionLabel="Ver todas"
               onActionPress={() => navigation.navigate('Transactions')}
             />
@@ -264,131 +216,22 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
             ))
           ) : (
             <View style={styles.sectionInner}>
-              <Text style={styles.emptyText}>As novas transações vão aparecer aqui.</Text>
+              <Text style={styles.emptyText}>As novas transacoes vao aparecer aqui.</Text>
             </View>
           )}
         </Card>
       </ScrollView>
 
-      <FloatingActionButton style={styles.fab} onPress={handleOpenQuickAdd} />
+      <FloatingActionButton style={styles.fab} onPress={() => setQuickAddVisible(true)} />
 
-      <Modal visible={quickAddVisible} transparent animationType="slide" onRequestClose={() => setQuickAddVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <Pressable style={styles.modalBackdrop} onPress={() => setQuickAddVisible(false)} />
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Lançamento rápido</Text>
-
-            <View style={styles.typeRow}>
-              <Pressable
-                onPress={() => setType('expense')}
-                style={[styles.typeChip, type === 'expense' && styles.typeChipExpense]}
-              >
-                <Text style={[styles.typeChipText, type === 'expense' && styles.typeChipTextExpense]}>Despesa</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setType('income')}
-                style={[styles.typeChip, type === 'income' && styles.typeChipIncome]}
-              >
-                <Text style={[styles.typeChipText, type === 'income' && styles.typeChipTextIncome]}>Receita</Text>
-              </Pressable>
-            </View>
-
-            <TextInput
-              placeholder="Descrição"
-              value={title}
-              onChangeText={setTitle}
-              style={styles.modalInput}
-              placeholderTextColor={colors.textSecondary}
-            />
-            <TextInput
-              placeholder="Valor"
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="decimal-pad"
-              style={styles.modalInput}
-              placeholderTextColor={colors.textSecondary}
-            />
-
-            <Text style={styles.modalLabel}>Conta</Text>
-            <View style={styles.chipsWrap}>
-              {accounts.map((account) => (
-                <Pressable
-                  key={account.id}
-                  onPress={() => setAccountId(account.id)}
-                  style={[styles.filterChip, accountId === account.id && styles.filterChipActive]}
-                >
-                  <Text style={[styles.filterChipText, accountId === account.id && styles.filterChipTextActive]}>
-                    {account.name}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={styles.modalLabel}>Categoria</Text>
-            <View style={styles.chipsWrap}>
-              {quickAddCategories.map((category) => (
-                <Pressable
-                  key={category.id}
-                  onPress={() => setCategoryId(category.id)}
-                  style={[styles.filterChip, categoryId === category.id && styles.filterChipActive]}
-                >
-                  <Text style={[styles.filterChipText, categoryId === category.id && styles.filterChipTextActive]}>
-                    {category.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={styles.modalLabel}>Método</Text>
-            <View style={styles.chipsWrap}>
-              {['Pix', 'Transferência', 'Dinheiro', 'Cartão de débito', 'Cartão de crédito', 'Boleto'].map((method) => (
-                <Pressable
-                  key={method}
-                  onPress={() => setPaymentMethod(method)}
-                  style={[styles.filterChip, paymentMethod === method && styles.filterChipActive]}
-                >
-                  <Text style={[styles.filterChipText, paymentMethod === method && styles.filterChipTextActive]}>
-                    {method}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <TextInput
-              placeholder="Observações"
-              value={notes}
-              onChangeText={setNotes}
-              style={styles.modalInput}
-              placeholderTextColor={colors.textSecondary}
-            />
-
-            <View style={styles.recurringRow}>
-              <View>
-                <Text style={styles.recurringTitle}>Criar regra recorrente</Text>
-                <Text style={styles.recurringSubtitle}>Mesma conta, categoria e valor.</Text>
-              </View>
-              <Switch value={recurring} onValueChange={setRecurring} />
-            </View>
-
-            <View style={styles.modalActions}>
-              <Pressable style={styles.secondaryButton} onPress={() => setQuickAddVisible(false)}>
-                <Text style={styles.secondaryButtonText}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.primaryButton, (!accountId || !amount || createTransactionMutation.isPending) && styles.primaryButtonDisabled]}
-                onPress={handleSubmitQuickAdd}
-                disabled={!accountId || !amount || createTransactionMutation.isPending}
-              >
-                {createTransactionMutation.isPending ? (
-                  <ActivityIndicator color={colors.white} />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Salvar</Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <QuickAddTransactionSheet
+        visible={quickAddVisible}
+        currentUserId={currentUser?.id}
+        accounts={accounts}
+        categories={categoriesQuery.data ?? []}
+        primaryAccountId={primaryAccount?.id ?? null}
+        onClose={() => setQuickAddVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -402,12 +245,12 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-      paddingHorizontal: layout.pageHorizontal,
-      paddingTop: layout.pageHeaderTop,
+    paddingHorizontal: layout.pageHorizontal,
+    paddingTop: layout.pageHeaderTop,
   },
   content: {
-      padding: layout.pageHorizontal,
-      gap: layout.pageSectionGap,
+    padding: layout.pageHorizontal,
+    gap: layout.pageSectionGap,
     paddingBottom: BOTTOM_TAB_BAR_HEIGHT + 72,
   },
   greeting: {
@@ -443,7 +286,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   kpiCard: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: spacing.md,
@@ -536,145 +379,5 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     position: 'absolute',
     right: spacing.lg,
     bottom: BOTTOM_TAB_BAR_HEIGHT - spacing.lg,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: colors.overlay,
-  },
-  modalBackdrop: {
-    flex: 1,
-  },
-  modalSheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  modalTitle: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  modalLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '700',
-  },
-  typeRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  typeChip: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  typeChipExpense: {
-    backgroundColor: 'rgba(220, 38, 38, 0.08)',
-    borderColor: 'rgba(220, 38, 38, 0.24)',
-  },
-  typeChipIncome: {
-    backgroundColor: 'rgba(22, 163, 74, 0.08)',
-    borderColor: 'rgba(22, 163, 74, 0.24)',
-  },
-  typeChipText: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  typeChipTextExpense: {
-    color: colors.danger,
-  },
-  typeChipTextIncome: {
-    color: colors.success,
-  },
-  modalInput: {
-    minHeight: 48,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    color: colors.textPrimary,
-  },
-  chipsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  filterChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  filterChipActive: {
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primary,
-  },
-  filterChipText: {
-    ...typography.caption,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  filterChipTextActive: {
-    color: colors.primary,
-  },
-  recurringRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  recurringTitle: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: '700',
-  },
-  recurringSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  secondaryButton: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryButtonText: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  primaryButton: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primaryLight,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.6,
-  },
-  primaryButtonText: {
-    ...typography.body,
-    color: colors.white,
-    fontWeight: '700',
   },
 });
