@@ -48,12 +48,43 @@ function normalizeText(value: unknown) {
     .toLowerCase();
 }
 
-function parseAmount(value: unknown) {
-  const raw = String(value ?? '')
-    .replace(/\s/g, '')
-    .replace(/\./g, '')
-    .replace(',', '.')
-    .replace(/[^0-9.-]/g, '');
+function normalizeNumericString(value: string) {
+  const sanitized = value.replace(/\s/g, '').replace(/[^0-9,.-]/g, '');
+
+  if (!sanitized) {
+    return '';
+  }
+
+  const isNegative = sanitized.includes('-');
+  const unsignedValue = sanitized.replace(/-/g, '');
+  const lastDot = unsignedValue.lastIndexOf('.');
+  const lastComma = unsignedValue.lastIndexOf(',');
+
+  let normalized = unsignedValue;
+
+  if (lastDot >= 0 && lastComma >= 0) {
+    const decimalSeparator = lastDot > lastComma ? '.' : ',';
+    const thousandsSeparator = decimalSeparator === '.' ? ',' : '.';
+    normalized = unsignedValue.replace(new RegExp(`\\${thousandsSeparator}`, 'g'), '').replace(decimalSeparator, '.');
+  } else if (lastDot >= 0 || lastComma >= 0) {
+    const separator = lastDot >= 0 ? '.' : ',';
+    const parts = unsignedValue.split(separator);
+    const decimalPart = parts[parts.length - 1] ?? '';
+    const hasDecimalPart = decimalPart.length > 0 && decimalPart.length <= 2;
+
+    normalized = hasDecimalPart ? `${parts.slice(0, -1).join('')}.${decimalPart}` : parts.join('');
+  }
+
+  const collapsed = normalized.replace(/(?!^)-/g, '');
+  return isNegative ? `-${collapsed}` : collapsed;
+}
+
+export function parseAmount(value: unknown) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const raw = normalizeNumericString(String(value ?? ''));
 
   const amount = Number(raw || 0);
   return Number.isFinite(amount) ? amount : 0;
@@ -139,7 +170,7 @@ function normalizeRawRow(rawRow: Record<string, unknown>): Record<string, unknow
   }, {});
 }
 
-function parseRow(rawRow: Record<string, unknown>): ParsedRow {
+export function parseRow(rawRow: Record<string, unknown>): ParsedRow {
   const row = normalizeRawRow(rawRow);
   const amount = parseAmount(row.amount ?? row.value ?? row.valor);
   const type = parseType(row.type ?? row.tipo, amount);
