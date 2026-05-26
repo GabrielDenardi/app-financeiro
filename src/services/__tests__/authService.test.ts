@@ -3,6 +3,7 @@ const mockSignInWithPassword = jest.fn();
 const mockSignUp = jest.fn();
 const mockResend = jest.fn();
 const mockResetPassword = jest.fn();
+const mockUpdateUser = jest.fn();
 
 jest.mock('../../config/env', () => ({
   hasSupabaseEnv: true,
@@ -22,6 +23,7 @@ jest.mock('../../lib/supabase', () => ({
       signUp: (...args: unknown[]) => mockSignUp(...args),
       resend: (...args: unknown[]) => mockResend(...args),
       resetPasswordForEmail: (...args: unknown[]) => mockResetPassword(...args),
+      updateUser: (...args: unknown[]) => mockUpdateUser(...args),
     },
   },
 }));
@@ -36,6 +38,7 @@ import {
   registerWithDraft,
   requestPasswordResetByCpf,
   signInWithCpf,
+  updatePassword,
 } from '../authService';
 
 describe('authService', () => {
@@ -136,10 +139,42 @@ describe('authService', () => {
     });
     mockResetPassword.mockResolvedValueOnce({ error: null });
 
-    await expect(requestPasswordResetByCpf('39053344705')).resolves.toBeUndefined();
+    await expect(requestPasswordResetByCpf('39053344705')).resolves.toBe('password_reset');
     expect(mockResetPassword).toHaveBeenCalledWith(
       'cliente@teste.com',
       expect.objectContaining({ redirectTo: 'appfinanceiro://auth/callback' }),
     );
+  });
+
+  it('resends confirmation instead of password reset for unconfirmed email', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: {
+        account_exists: true,
+        email: 'cliente@teste.com',
+        email_masked: 'cl***e@teste.com',
+        email_confirmed: false,
+      },
+      error: null,
+    });
+    mockResend.mockResolvedValueOnce({ error: null });
+
+    await expect(requestPasswordResetByCpf('39053344705')).resolves.toBe('confirmation_resent');
+    expect(mockResend).toHaveBeenCalledWith({
+      type: 'signup',
+      email: 'cliente@teste.com',
+      options: {
+        emailRedirectTo: 'appfinanceiro://auth/callback',
+      },
+    });
+    expect(mockResetPassword).not.toHaveBeenCalled();
+  });
+
+  it('updates the password for a recovery session', async () => {
+    mockUpdateUser.mockResolvedValueOnce({ error: null });
+
+    await expect(updatePassword('Senha123')).resolves.toBeUndefined();
+    expect(mockUpdateUser).toHaveBeenCalledWith({
+      password: 'Senha123',
+    });
   });
 });

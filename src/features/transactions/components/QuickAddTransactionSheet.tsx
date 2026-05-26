@@ -393,7 +393,7 @@ export function QuickAddTransactionSheet({
 
   const renderModeStep = () => (
     <View style={styles.contentBlock}>
-      <Text style={styles.sheetTitle}>Como voce quer preencher?</Text>
+      <Text style={styles.sheetTitle}>Como você quer preencher?</Text>
       <Text style={styles.sheetSubtitle}>Escolha o modo de captura. A revisao final acontece antes de salvar.</Text>
 
       <View style={styles.modeList}>
@@ -406,7 +406,11 @@ export function QuickAddTransactionSheet({
           <Text style={styles.modeTitle}>Por voz</Text>
           <Text style={styles.modeText}>Grave um resumo curto e deixe a IA montar o rascunho.</Text>
           <Pressable
-            style={[styles.primaryButton, recorderState.isRecording && styles.recordingButton]}
+            style={[
+              styles.primaryButton,
+              styles.modeCardActionButton,
+              recorderState.isRecording && styles.recordingButton,
+            ]}
             onPress={recorderState.isRecording ? handleStopRecording : handleStartRecording}
             disabled={isParsing}
           >
@@ -890,6 +894,11 @@ const createStyles = (colors: AppColors) =>
       borderRadius: radius.md,
       backgroundColor: colors.primaryLight,
       paddingHorizontal: spacing.md,
+    },
+    modeCardActionButton: {
+      flex: 0,
+      width: '100%',
+      marginTop: spacing.xs,
     },
     primaryButtonText: {
       ...typography.body,
