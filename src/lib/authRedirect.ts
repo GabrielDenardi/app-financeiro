@@ -6,6 +6,7 @@ import { appEnv } from '../config/env';
 import { supabase } from './supabase';
 
 const AUTH_CALLBACK_PATH = 'auth/callback';
+const NATIVE_AUTH_CALLBACK_URL = 'appfinanceiro://auth/callback';
 
 export type AuthCallbackOutcome = {
   type: 'signup' | 'recovery' | 'email_change' | 'magiclink' | 'invite' | 'unknown';
@@ -21,6 +22,10 @@ const supportedOtpTypes: EmailOtpType[] = [
 ];
 
 function createRuntimeRedirectUrl() {
+  if (Platform.OS !== 'web') {
+    return NATIVE_AUTH_CALLBACK_URL;
+  }
+
   return Linking.createURL(AUTH_CALLBACK_PATH);
 }
 
@@ -60,9 +65,13 @@ export function isAuthCallbackUrl(url: string) {
   const parsedUrl = new URL(url);
   const params = extractParams(url);
   const normalizedPath = parsedUrl.pathname.replace(/^\/+/, '');
+  const normalizedHostPath = [parsedUrl.hostname, parsedUrl.pathname.replace(/^\/+/, '')]
+    .filter(Boolean)
+    .join('/');
 
   return (
     normalizedPath.endsWith(AUTH_CALLBACK_PATH) ||
+    normalizedHostPath.endsWith(AUTH_CALLBACK_PATH) ||
     params.has('code') ||
     params.has('token_hash') ||
     params.has('access_token')
