@@ -5,6 +5,7 @@ import type { Session } from '@supabase/supabase-js';
 
 import { AuthCallbackResult } from '../features/auth/components/AuthCallbackResult';
 import { AuthFlowProvider } from '../features/auth/context/AuthFlowContext';
+import { PasswordRecoveryScreen } from '../features/auth/screens/AuthScreens';
 import {
   createSessionFromAuthUrl,
   isAuthCallbackUrl,
@@ -27,6 +28,10 @@ type CallbackNotice = {
   message: string;
   actionLabel: string;
 };
+
+function isRecoveryUrl(url: string): boolean {
+  return /(?:[?#&]|^)type=recovery(?:[&#]|$)/i.test(url);
+}
 
 function getSuccessNotice(type: AuthCallbackOutcome['type']): CallbackNotice {
   if (type === 'recovery') {
@@ -60,6 +65,7 @@ export function RootNavigator() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [sessionState, setSessionState] = useState<AuthSessionState>('loading');
   const [callbackNotice, setCallbackNotice] = useState<CallbackNotice | null>(null);
+  const [isPasswordRecoveryFlow, setIsPasswordRecoveryFlow] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthenticatedUserSummary | null>(null);
   const [isBiometricChecking, setIsBiometricChecking] = useState(false);
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
@@ -164,6 +170,9 @@ export function RootNavigator() {
 
     const syncSessionState = async () => {
       const { data } = await supabase.auth.getSession();
+      if (isMounted && data.session?.user) {
+        setIsBiometricChecking(true);
+      }
       await loadCurrentUser(data.session);
       await maybeRegisterLogin(data.session);
       await maybeRunBiometricCheck(data.session);
@@ -178,14 +187,26 @@ export function RootNavigator() {
         return;
       }
 
+      if (isMounted && isRecoveryUrl(url)) {
+        setIsPasswordRecoveryFlow(true);
+        setCallbackNotice(null);
+      }
+
       try {
         const outcome = await createSessionFromAuthUrl(url);
         if (isMounted && outcome) {
-          setCallbackNotice(getSuccessNotice(outcome.type));
+          if (outcome.type === 'recovery') {
+            setIsPasswordRecoveryFlow(true);
+            setCallbackNotice(null);
+          } else {
+            setIsPasswordRecoveryFlow(false);
+            setCallbackNotice(getSuccessNotice(outcome.type));
+          }
         }
       } catch (error) {
         console.error('Não foi possível concluir a autenticação pelo link.', error);
         if (isMounted) {
+          setIsPasswordRecoveryFlow(false);
           setCallbackNotice({
             variant: 'error',
             title: 'Link inválido ou expirado',
@@ -224,6 +245,13 @@ export function RootNavigator() {
     });
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (_event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecoveryFlow(true);
+        setCallbackNotice(null);
+      }
+      if (session && (_event === 'SIGNED_IN' || _event === 'USER_UPDATED')) {
+        setIsBiometricChecking(true);
+      }
       loadCurrentUser(session).catch(() => {
         if (isMounted) {
           setCurrentUser(null);
@@ -253,7 +281,13 @@ export function RootNavigator() {
 
       supabase.auth
         .getSession()
-        .then(({ data: sessionData }) => maybeRunBiometricCheck(sessionData.session))
+        .then(({ data: sessionData }) => {
+          if (sessionData.session?.user) {
+            setIsBiometricChecking(true);
+          }
+
+          return maybeRunBiometricCheck(sessionData.session);
+        })
         .catch(() => undefined);
     });
 
@@ -283,6 +317,10 @@ export function RootNavigator() {
         onContinue={() => setCallbackNotice(null)}
       />
     );
+  }
+
+  if (isPasswordRecoveryFlow) {
+    return <PasswordRecoveryScreen onComplete={() => setIsPasswordRecoveryFlow(false)} />;
   }
 
   if (sessionState === 'authenticated') {

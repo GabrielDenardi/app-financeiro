@@ -9,7 +9,10 @@ export type AuthServiceErrorCode =
   | 'cpf_not_found'
   | 'invalid_credentials'
   | 'email_not_confirmed'
+  | 'missing_recovery_session'
   | 'unknown';
+
+export type PasswordRecoveryResult = 'password_reset' | 'confirmation_resent';
 
 export class AuthServiceError extends Error {
   code: AuthServiceErrorCode;
@@ -68,6 +71,32 @@ function mapAuthError(errorMessage: string): AuthServiceError {
 
   if (text.includes('invalid login credentials') || text.includes('invalid')) {
     return new AuthServiceError('invalid_credentials', 'Senha inválida. Tente novamente.');
+  }
+
+  return new AuthServiceError('unknown', errorMessage);
+}
+
+function mapRecoveryError(errorMessage: string): AuthServiceError {
+  const text = errorMessage.toLowerCase();
+
+  if (text.includes('error sending recovery email')) {
+    return new AuthServiceError(
+      'unknown',
+      'Nao foi possivel enviar o e-mail de redefinicao agora. Se a conta ainda nao foi confirmada, reenvie primeiro o e-mail de confirmacao.',
+    );
+  }
+
+  return new AuthServiceError('unknown', errorMessage);
+}
+
+function mapPasswordUpdateError(errorMessage: string): AuthServiceError {
+  const text = errorMessage.toLowerCase();
+
+  if (text.includes('auth session missing') || text.includes('session_not_found')) {
+    return new AuthServiceError(
+      'missing_recovery_session',
+      'Sua sessao de recuperacao expirou. Solicite um novo e-mail para redefinir a senha.',
+    );
   }
 
   return new AuthServiceError('unknown', errorMessage);
@@ -180,11 +209,11 @@ export async function resendConfirmation(email: string): Promise<void> {
   });
 
   if (error) {
-    throw new AuthServiceError('unknown', error.message);
+    throw mapRecoveryError(error.message);
   }
 }
 
-export async function requestPasswordResetByCpf(cpfDigits: string): Promise<void> {
+export async function requestPasswordResetByCpf(cpfDigits: string): Promise<PasswordRecoveryResult> {
   ensureSupabaseEnv();
   const redirectTo = getAuthRedirectUrl();
 
@@ -193,11 +222,30 @@ export async function requestPasswordResetByCpf(cpfDigits: string): Promise<void
     throw new AuthServiceError('cpf_not_found', 'Não existe conta para este CPF.');
   }
 
+  if (!lookup.email_confirmed) {
+    await resendConfirmation(lookup.email);
+    return 'confirmation_resent';
+  }
+
   const { error } = await supabase.auth.resetPasswordForEmail(lookup.email, {
     redirectTo,
   });
 
   if (error) {
-    throw new AuthServiceError('unknown', error.message);
+    throw mapRecoveryError(error.message);
+  }
+
+  return 'password_reset';
+}
+
+export async function updatePassword(password: string): Promise<void> {
+  ensureSupabaseEnv();
+
+  const { error } = await supabase.auth.updateUser({
+    password,
+  });
+
+  if (error) {
+    throw mapPasswordUpdateError(error.message);
   }
 }

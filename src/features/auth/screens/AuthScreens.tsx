@@ -16,6 +16,7 @@ import {
   requestPasswordResetByCpf,
   resendConfirmation,
   signInWithCpf,
+  updatePassword,
 } from '../../../services/authService';
 import { lookupAddressByCep } from '../../../services/viaCepService';
 import { authTheme } from '../../../theme/authTheme';
@@ -25,6 +26,7 @@ import { AuthButtonRow } from './AuthScreensHelpers';
 import { birthCountries, brazilStates } from '../constants/locations';
 import { useAuthFlow } from '../context/AuthFlowContext';
 import { PrimaryButton, SecondaryButton } from '../components/AuthButton';
+import { AuthCallbackResult } from '../components/AuthCallbackResult';
 import { ConsentIllustration, HeroCardsIllustration, SecurityIllustration } from '../components/AuthIllustrations';
 import { AuthScaffold } from '../components/AuthScaffold';
 import { InlineMessage } from '../components/InlineMessage';
@@ -211,16 +213,21 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
     }
   };
 
-  const handleResetPassword = async () => {
+  const handleForgotPassword = async () => {
     setIsResetting(true);
     setError(null);
     setInfo(null);
 
     try {
-      await requestPasswordResetByCpf(existingAccount.cpf);
-      setInfo(`Enviamos um link de redefinição para ${existingAccount.emailMasked}.`);
+      const result = await requestPasswordResetByCpf(existingAccount.cpf);
+
+      if (result === 'confirmation_resent') {
+        setInfo(`Sua conta ainda nao foi confirmada. Reenviamos o e-mail de confirmação para ${existingAccount.emailMasked}.`);
+      } else {
+        setInfo(`Enviamos um link de redefinição para ${existingAccount.emailMasked}.`);
+      }
     } catch (resetError) {
-      setError(getReadableError(resetError, 'Não foi possível enviar a redefinição.'));
+      setError(getReadableError(resetError, 'Nao foi possivel enviar a redefinição.'));
     } finally {
       setIsResetting(false);
     }
@@ -250,7 +257,7 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
         <AuthButtonRow>
           <SecondaryButton
             title="Esqueci a senha"
-            onPress={handleResetPassword}
+            onPress={handleForgotPassword}
             loading={isResetting}
             style={styles.rowButton}
           />
@@ -282,6 +289,99 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
           {isResending ? '...' : ''}
         </Text>
       </Pressable>
+    </AuthScaffold>
+  );
+}
+
+type PasswordRecoveryScreenProps = {
+  onComplete: () => void;
+};
+
+export function PasswordRecoveryScreen({ onComplete }: PasswordRecoveryScreenProps) {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDone, setIsDone] = useState(false);
+
+  const handleSubmit = async () => {
+    const validationError = validatePassword(password);
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('As senhas nao coincidem.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setInfo(null);
+
+    try {
+      await updatePassword(password);
+      setIsDone(true);
+    } catch (updateError) {
+      setError(getReadableError(updateError, 'Nao foi possivel atualizar sua senha.'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isDone) {
+    return (
+      <AuthCallbackResult
+        variant="success"
+        title="Senha redefinida"
+        message="Sua nova senha foi salva com sucesso."
+        actionLabel="Continuar"
+        badgeLabel="Senha atualizada"
+        helperMessage="Agora voce ja pode continuar no aplicativo com a nova senha."
+        onContinue={onComplete}
+      />
+    );
+  }
+
+  return (
+    <AuthScaffold
+      title="Redefina sua senha"
+      subtitle="Escolha uma nova senha para continuar no App Financeiro."
+      scrollable={false}
+      footer={<PrimaryButton title="Salvar nova senha" onPress={handleSubmit} loading={isLoading} />}
+    >
+      <View style={styles.formContent}>
+        <MaskedTextInput
+          placeholder="Nova senha"
+          value={password}
+          onChangeText={(value) => {
+            setPassword(value);
+            setError(null);
+          }}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          error={error}
+          helperText="Use pelo menos 8 caracteres com letras e numeros."
+        />
+
+        <MaskedTextInput
+          placeholder="Confirme a nova senha"
+          value={confirmPassword}
+          onChangeText={(value) => {
+            setConfirmPassword(value);
+            setError(null);
+          }}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        {info ? <InlineMessage variant="info" message={info} /> : null}
+      </View>
     </AuthScaffold>
   );
 }
@@ -936,6 +1036,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingBottom: 20,
+  },
+  formContent: {
+    gap: 16,
   },
   linkButton: {
     alignSelf: 'flex-start',

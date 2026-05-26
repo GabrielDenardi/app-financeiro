@@ -11,6 +11,8 @@ type AuthCallbackResultProps = {
   message: string;
   actionLabel: string;
   onContinue: () => void;
+  badgeLabel?: string;
+  helperMessage?: string;
 };
 
 export function AuthCallbackResult({
@@ -19,6 +21,8 @@ export function AuthCallbackResult({
   message,
   actionLabel,
   onContinue,
+  badgeLabel,
+  helperMessage,
 }: AuthCallbackResultProps) {
   return (
     <AuthScaffold
@@ -40,16 +44,17 @@ export function AuthCallbackResult({
               variant === 'success' ? styles.successText : styles.errorText,
             ]}
           >
-            {variant === 'success' ? 'E-mail confirmado' : 'Não foi possível confirmar'}
+            {badgeLabel ?? (variant === 'success' ? 'E-mail confirmado' : 'Não foi possível confirmar')}
           </Text>
         </View>
 
         <InlineMessage
           variant={variant === 'success' ? 'success' : 'error'}
           message={
-            variant === 'success'
+            helperMessage ??
+            (variant === 'success'
               ? 'Seu cadastro foi validado. Agora você já pode continuar no aplicativo.'
-              : 'Tente abrir novamente o link mais recente enviado por e-mail ou solicite um novo envio.'
+              : 'Tente abrir novamente o link mais recente enviado por e-mail ou solicite um novo envio.')
           }
         />
       </View>
