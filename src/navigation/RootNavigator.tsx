@@ -287,16 +287,26 @@ export function RootNavigator() {
       if (_event === 'SIGNED_IN') {
         maybeRegisterLogin(session).catch(() => undefined);
       }
-      // Re-trigger biometric check on auth state changes
-      //if (_event === 'SIGNED_IN' || _event === 'USER_UPDATED') {
-        //performBiometricCheck(session).catch(() => undefined);
-      //}
       if (!session) {
         lastLoggedUserIdRef.current = null;
         setIsBiometricLocked(false);
         setAppUnlockState('locked');
       }
-      setSessionState(session ? 'authenticated' : 'unauthenticated');
+
+      const nextSessionState = session ? 'authenticated' : 'unauthenticated';
+
+      if (session && (_event === 'SIGNED_IN' || _event === 'USER_UPDATED')) {
+        performBiometricCheck(session)
+          .catch(() => undefined)
+          .finally(() => {
+            if (isMounted) {
+              setSessionState(nextSessionState);
+            }
+          });
+        return;
+      }
+
+      setSessionState(nextSessionState);
     });
 
     /**

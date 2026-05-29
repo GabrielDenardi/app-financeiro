@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { type AppColors, useThemeColors } from '../theme';
 
@@ -20,6 +20,22 @@ export function LockScreen({
 }: LockScreenProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async (): Promise<void> => {
+    setSignOutError(null);
+    setIsSigningOut(true);
+
+    try {
+      await onSignOut();
+    } catch (error) {
+      console.error('Não foi possível sair da conta.', error);
+      setSignOutError('Não foi possível sair da conta. Tente novamente.');
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   if (isCheckingBiometric) {
     return (
@@ -49,11 +65,13 @@ export function LockScreen({
 
         <Pressable
           style={({ pressed }) => [styles.signOutButton, pressed && styles.signOutButtonPressed]}
-          onPress={onSignOut}
-          disabled={isCheckingBiometric}
+          onPress={handleSignOut}
+          disabled={isCheckingBiometric || isSigningOut}
         >
-          <Text style={styles.signOutText}>Sair da conta</Text>
+          <Text style={styles.signOutText}>{isSigningOut ? 'Saindo...' : 'Sair da conta'}</Text>
         </Pressable>
+
+        {signOutError ? <Text style={styles.errorText}>{signOutError}</Text> : null}
       </View>
     </View>
   );
@@ -116,6 +134,12 @@ const createStyles = (colors: AppColors) =>
       color: colors.danger,
       fontWeight: '600',
       fontSize: 14,
+    },
+    errorText: {
+      color: colors.danger,
+      fontSize: 13,
+      lineHeight: 18,
+      textAlign: 'center',
     },
     checkingText: {
       marginTop: 16,
