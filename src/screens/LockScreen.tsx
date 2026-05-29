@@ -8,14 +8,12 @@ import { type AppColors, useThemeColors } from '../theme';
  * Serves as a visual shield during background→foreground transitions.
  */
 interface LockScreenProps {
-  isBiometricLocked: boolean;
   isCheckingBiometric: boolean;
   onManualUnlock: () => Promise<void>;
   onSignOut: () => Promise<void>;
 }
 
 export function LockScreen({
-  isBiometricLocked,
   isCheckingBiometric,
   onManualUnlock,
   onSignOut,

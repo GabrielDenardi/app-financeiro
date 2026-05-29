@@ -144,6 +144,19 @@ export function RootNavigator() {
       }
     };
 
+    const isBiometricLockRequired = async (session: Session | null): Promise<boolean> => {
+      if (!session?.user) {
+        return false;
+      }
+
+      const [preferences, biometricEnabledLocally] = await Promise.all([
+        getPreferences(),
+        isBiometricLockEnabledLocally(),
+      ]);
+
+      return preferences.biometricEnabled && biometricEnabledLocally;
+    };
+
     /**
      * SECURITY: Resolves lock state without auto-unlocking.
      * If biometric lock is enabled, the app stays locked until manual unlock action.
@@ -163,13 +176,10 @@ export function RootNavigator() {
       try {
         isCheckingRef.current = true; // Ativa a proteção contra duplicidade
 
-        const [preferences, biometricEnabledLocally] = await Promise.all([
-          getPreferences(),
-          isBiometricLockEnabledLocally(),
-        ]);
+        const shouldLock = await isBiometricLockRequired(session);
 
         // Se o usuário desativou a biometria nas configurações, libera o app direto
-        if (!preferences.biometricEnabled || !biometricEnabledLocally) {
+        if (!shouldLock) {
           if (isMounted) {
             setIsBiometricLocked(false);
             setAppUnlockState('unlocked');
@@ -290,34 +300,32 @@ export function RootNavigator() {
     });
 
     /**
- * SECURITY: AppState listener enforces unlock state reset on backgroundâ†’foreground transition.
- * Immediately locks the app and forces biometric re-verification before AppStack can render.
- * This prevents data leakage through visual glitches during app wake-up.
- */
-const appStateSubscription = AppState.addEventListener('change', (nextState) => {
-  const previousState = appStateRef.current;
-  appStateRef.current = nextState;
+     * SECURITY: AppState listener resolves lock state on background->foreground transition.
+     * It only locks users who have biometric lock enabled, avoiding trapping accounts that opted out.
+     */
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      const previousState = appStateRef.current;
+      appStateRef.current = nextState;
 
-  const becameActive = previousState.match(/inactive|background/) && nextState === 'active';
-  if (!becameActive) return;
+      const becameActive = previousState.match(/inactive|background/) && nextState === 'active';
+      if (!becameActive) return;
 
-  // 1. Bloqueia IMEDIATAMENTE
-  if (isMounted) {
-    setAppUnlockState('locked'); 
-    setIsBiometricLocked(true);
-  }
+      supabase.auth
+        .getSession()
+        .then(async ({ data: sessionData }) => {
+          const shouldLock = await isBiometricLockRequired(sessionData.session);
+          if (!isMounted) return;
 
-  // 2. Tenta disparar a biometria, mas SEM o gatilho que aceita sucesso automÃ¡tico
-  //setTimeout(() => {
-//if (!isMounted) return;
-
-    //supabase.auth.getSession().then(({ data: sessionData }) => {
-      // Chamamos a checagem, mas a lÃ³gica interna (passo 2 abaixo) 
-      // garantirão que ela mude para 'unlocked' se o sensor responder.
-     // return performBiometricCheck(sessionData.session);
-    //});
-  //}, 250); // 250ms são o suficiente para o hardware respirar
-});
+          setIsBiometricLocked(shouldLock);
+          setAppUnlockState(shouldLock ? 'locked' : 'unlocked');
+        })
+        .catch(() => {
+          if (isMounted) {
+            setIsBiometricLocked(true);
+            setAppUnlockState('locked');
+          }
+        });
+    });
 
     return () => {
       isMounted = false;
@@ -361,7 +369,6 @@ const appStateSubscription = AppState.addEventListener('change', (nextState) => 
     if (appUnlockState === 'locked' || appUnlockState === 'checking') {
       return (
         <LockScreen
-          isBiometricLocked={isBiometricLocked}
           isCheckingBiometric={appUnlockState === 'checking'}
           onManualUnlock={async () => {
             setAppUnlockState('checking');
