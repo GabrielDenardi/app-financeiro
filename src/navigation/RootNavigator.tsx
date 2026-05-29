@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
@@ -21,26 +21,13 @@ import { type AppColors, useThemeColors } from '../theme';
 import type { AuthSessionState, AuthenticatedUserSummary } from '../types/auth';
 import { AppStack } from './AppStack';
 import { AuthStack } from './AuthStack';
-import { LockScreen } from '../screens/LockScreen';
 
-/**
- * SECURITY: These types define the authentication flow state machine to prevent race conditions
- * that could expose sensitive financial data during biometric verification.
- */
 type CallbackNotice = {
   variant: 'success' | 'error';
   title: string;
   message: string;
   actionLabel: string;
 };
-
-/**
- * Unlock state machine:
- * - 'locked': App is in background or initializing; data is shielded (LockScreen)
- * - 'checking': Biometric auth in progress; safe neutral UI shown (LockScreen)
- * - 'unlocked': Biometric passed or not required; AppStack is mounted safely
- */
-type AppUnlockState = 'locked' | 'checking' | 'unlocked';
 
 function isRecoveryUrl(url: string): boolean {
   return /(?:[?#&]|^)type=recovery(?:[&#]|$)/i.test(url);
@@ -80,23 +67,15 @@ export function RootNavigator() {
   const [callbackNotice, setCallbackNotice] = useState<CallbackNotice | null>(null);
   const [isPasswordRecoveryFlow, setIsPasswordRecoveryFlow] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthenticatedUserSummary | null>(null);
+  const [isBiometricChecking, setIsBiometricChecking] = useState(false);
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
-
-  /**
-   * SECURITY: Unlock state gates rendering of AppStack to prevent data leakage.
-   * Starts as 'locked' to shield data on init and backgroundâ†’foreground transitions.
-   * Only transitions to 'unlocked' after successful biometric verification.
-   */
-  const [appUnlockState, setAppUnlockState] = useState<AppUnlockState>('locked');
-
   const lastLoggedUserIdRef = useRef<string | null>(null);
   const appStateRef = useRef(AppState.currentState);
-  const isCheckingRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadCurrentUser = async (session: Session | null): Promise<void> => {
+    const loadCurrentUser = async (session: Session | null) => {
       if (!session?.user) {
         if (isMounted) {
           setCurrentUser(null);
@@ -129,7 +108,7 @@ export function RootNavigator() {
       });
     };
 
-    const maybeRegisterLogin = async (session: Session | null): Promise<void> => {
+    const maybeRegisterLogin = async (session: Session | null) => {
       const userId = session?.user?.id ?? null;
       if (!userId || lastLoggedUserIdRef.current === userId) {
         return;
@@ -140,68 +119,69 @@ export function RootNavigator() {
       try {
         await registerLoginEvent('sign_in');
       } catch {
-        // Ignore telemetry failures during boot
+        // Ignore telemetry failures during boot.
       }
     };
 
-    /**
-     * SECURITY: Resolves lock state without auto-unlocking.
-     * If biometric lock is enabled, the app stays locked until manual unlock action.
-     */
-    const performBiometricCheck = async (session: Session | null): Promise<void> => {
+    const maybeRunBiometricCheck = async (session: Session | null) => {
       if (!session?.user) {
         if (isMounted) {
           setIsBiometricLocked(false);
-          setAppUnlockState('locked');
+          setIsBiometricChecking(false);
         }
         return;
       }
 
-      // Se já houver uma checagem em andamento, ignora chamadas duplicadas de background
-      if (isCheckingRef.current) return;
-
       try {
-        isCheckingRef.current = true; // Ativa a proteção contra duplicidade
-
         const [preferences, biometricEnabledLocally] = await Promise.all([
           getPreferences(),
           isBiometricLockEnabledLocally(),
         ]);
 
-        // Se o usuário desativou a biometria nas configurações, libera o app direto
         if (!preferences.biometricEnabled || !biometricEnabledLocally) {
           if (isMounted) {
             setIsBiometricLocked(false);
-            setAppUnlockState('unlocked');
+            setIsBiometricChecking(false);
           }
           return;
         }
 
-        // Com biometria ativa, mantém o app bloqueado até desbloqueio manual no LockScreen.
         if (isMounted) {
-          setIsBiometricLocked(true);
-          setAppUnlockState('locked');
+          setIsBiometricChecking(true);
         }
+
+        const result = await authenticateWithBiometrics('Desbloqueie o app');
+
+        if (!isMounted) {
+          return;
+        }
+
+        setIsBiometricLocked(!result.success);
       } catch {
         if (isMounted) {
-          setIsBiometricLocked(true);
-          setAppUnlockState('locked');
+          setIsBiometricLocked(false);
         }
       } finally {
-        isCheckingRef.current = false; // Desativa a proteção ao terminar
+        if (isMounted) {
+          setIsBiometricChecking(false);
+        }
       }
     };
-    const syncSessionState = async (): Promise<void> => {
+
+    const syncSessionState = async () => {
       const { data } = await supabase.auth.getSession();
+      if (isMounted && data.session?.user) {
+        setIsBiometricChecking(true);
+      }
       await loadCurrentUser(data.session);
       await maybeRegisterLogin(data.session);
-      await performBiometricCheck(data.session);
+      await maybeRunBiometricCheck(data.session);
       if (isMounted) {
         setSessionState(data.session ? 'authenticated' : 'unauthenticated');
       }
     };
 
-    const handleIncomingUrl = async (url: string): Promise<void> => {
+    const handleIncomingUrl = async (url: string) => {
       if (!isAuthCallbackUrl(url)) {
         await syncSessionState();
         return;
@@ -240,7 +220,7 @@ export function RootNavigator() {
       }
     };
 
-    const bootstrapSession = async (): Promise<void> => {
+    const bootstrapSession = async () => {
       const initialUrl = await Linking.getInitialURL();
       if (initialUrl && isAuthCallbackUrl(initialUrl)) {
         await handleIncomingUrl(initialUrl);
@@ -269,6 +249,9 @@ export function RootNavigator() {
         setIsPasswordRecoveryFlow(true);
         setCallbackNotice(null);
       }
+      if (session && (_event === 'SIGNED_IN' || _event === 'USER_UPDATED')) {
+        setIsBiometricChecking(true);
+      }
       loadCurrentUser(session).catch(() => {
         if (isMounted) {
           setCurrentUser(null);
@@ -277,47 +260,36 @@ export function RootNavigator() {
       if (_event === 'SIGNED_IN') {
         maybeRegisterLogin(session).catch(() => undefined);
       }
-      // Re-trigger biometric check on auth state changes
-      //if (_event === 'SIGNED_IN' || _event === 'USER_UPDATED') {
-        //performBiometricCheck(session).catch(() => undefined);
-      //}
+      if (_event === 'SIGNED_IN' || _event === 'USER_UPDATED') {
+        maybeRunBiometricCheck(session).catch(() => undefined);
+      }
       if (!session) {
         lastLoggedUserIdRef.current = null;
         setIsBiometricLocked(false);
-        setAppUnlockState('locked');
       }
       setSessionState(session ? 'authenticated' : 'unauthenticated');
     });
 
-    /**
- * SECURITY: AppState listener enforces unlock state reset on backgroundâ†’foreground transition.
- * Immediately locks the app and forces biometric re-verification before AppStack can render.
- * This prevents data leakage through visual glitches during app wake-up.
- */
-const appStateSubscription = AppState.addEventListener('change', (nextState) => {
-  const previousState = appStateRef.current;
-  appStateRef.current = nextState;
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      const previousState = appStateRef.current;
+      appStateRef.current = nextState;
 
-  const becameActive = previousState.match(/inactive|background/) && nextState === 'active';
-  if (!becameActive) return;
+      const becameActive = previousState.match(/inactive|background/) && nextState === 'active';
+      if (!becameActive) {
+        return;
+      }
 
-  // 1. Bloqueia IMEDIATAMENTE
-  if (isMounted) {
-    setAppUnlockState('locked'); 
-    setIsBiometricLocked(true);
-  }
+      supabase.auth
+        .getSession()
+        .then(({ data: sessionData }) => {
+          if (sessionData.session?.user) {
+            setIsBiometricChecking(true);
+          }
 
-  // 2. Tenta disparar a biometria, mas SEM o gatilho que aceita sucesso automÃ¡tico
-  //setTimeout(() => {
-//if (!isMounted) return;
-
-    //supabase.auth.getSession().then(({ data: sessionData }) => {
-      // Chamamos a checagem, mas a lÃ³gica interna (passo 2 abaixo) 
-      // garantirão que ela mude para 'unlocked' se o sensor responder.
-     // return performBiometricCheck(sessionData.session);
-    //});
-  //}, 250); // 250ms são o suficiente para o hardware respirar
-});
+          return maybeRunBiometricCheck(sessionData.session);
+        })
+        .catch(() => undefined);
+    });
 
     return () => {
       isMounted = false;
@@ -327,7 +299,6 @@ const appStateSubscription = AppState.addEventListener('change', (nextState) => 
     };
   }, []);
 
-  // Loading state during bootstrap
   if (sessionState === 'loading') {
     return (
       <View style={styles.loadingContainer}>
@@ -336,7 +307,6 @@ const appStateSubscription = AppState.addEventListener('change', (nextState) => 
     );
   }
 
-  // Auth callback flow (email confirmation, etc.)
   if (callbackNotice) {
     return (
       <AuthCallbackResult
@@ -349,46 +319,56 @@ const appStateSubscription = AppState.addEventListener('change', (nextState) => 
     );
   }
 
-  // Password recovery flow
   if (isPasswordRecoveryFlow) {
     return <PasswordRecoveryScreen onComplete={() => setIsPasswordRecoveryFlow(false)} />;
   }
 
-  // Authenticated but potentially locked
   if (sessionState === 'authenticated') {
-    // SECURITY BARRIER: App is locked or biometric check in progress
-    // Shows neutral LockScreen without any sensitive data
-    if (appUnlockState === 'locked' || appUnlockState === 'checking') {
+    if (isBiometricChecking) {
       return (
-        <LockScreen
-          isBiometricLocked={isBiometricLocked}
-          isCheckingBiometric={appUnlockState === 'checking'}
-          onManualUnlock={async () => {
-            setAppUnlockState('checking');
-            const result = await authenticateWithBiometrics('Desbloqueie o app');
-            if (result.success) {
-              setIsBiometricLocked(false);
-              setAppUnlockState('unlocked');
-            } else {
-              setIsBiometricLocked(true);
-              setAppUnlockState('locked');
-            }
-          }}
-          onSignOut={async () => {
-            await supabase.auth.signOut();
-          }}
-        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primaryLight} />
+        </View>
       );
     }
 
-    // SECURITY GATE: AppStack only renders when unlock state is explicitly 'unlocked'
-    // This prevents the visual glitch where financial data appears before biometric UI
-    if (appUnlockState === 'unlocked') {
-      return <AppStack currentUser={currentUser} />;
+    if (isBiometricLocked) {
+      return (
+        <View style={styles.lockContainer}>
+          <Text style={styles.lockTitle}>App bloqueado</Text>
+          <Text style={styles.lockMessage}>
+            A biometria esta habilitada para esta conta. Use o botao abaixo para desbloquear.
+          </Text>
+          <Pressable
+            style={({ pressed }) => [styles.unlockButton, pressed && styles.pressed]}
+            onPress={async () => {
+              const { data } = await supabase.auth.getSession();
+              if (!data.session) {
+                return;
+              }
+
+              setIsBiometricChecking(true);
+              const result = await authenticateWithBiometrics('Desbloqueie o app');
+              setIsBiometricChecking(false);
+              setIsBiometricLocked(!result.success);
+            }}
+          >
+            <Text style={styles.unlockButtonText}>Desbloquear</Text>
+          </Pressable>
+          <Pressable
+            onPress={async () => {
+              await supabase.auth.signOut();
+            }}
+          >
+            <Text style={styles.signOutText}>Sair da conta</Text>
+          </Pressable>
+        </View>
+      );
     }
+
+    return <AppStack currentUser={currentUser} />;
   }
 
-  // Unauthenticated: show login flow
   return (
     <AuthFlowProvider>
       <AuthStack />
@@ -396,15 +376,50 @@ const appStateSubscription = AppState.addEventListener('change', (nextState) => 
   );
 }
 
-const createStyles = (colors: AppColors) =>
-  StyleSheet.create({
-    loadingContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.background,
-    },
-  });
-
-
+const createStyles = (colors: AppColors) => StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  lockContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 16,
+    backgroundColor: colors.background,
+  },
+  lockTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  lockMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: colors.textSecondary,
+  },
+  unlockButton: {
+    minWidth: 180,
+    minHeight: 48,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  unlockButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  signOutText: {
+    color: colors.danger,
+    fontWeight: '600',
+  },
+  pressed: {
+    opacity: 0.85,
+  },
+});
 
