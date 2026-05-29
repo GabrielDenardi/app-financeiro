@@ -51,7 +51,7 @@ function getSuccessNotice(type: AuthCallbackOutcome['type']): CallbackNotice {
     return {
       variant: 'success',
       title: 'Link validado com sucesso',
-      message: 'Sua autenticaÃ§Ã£o foi confirmada. Continue para ajustar sua senha no aplicativo.',
+      message: 'Sua autenticação foi confirmada. Continue para ajustar sua senha no aplicativo.',
       actionLabel: 'Continuar',
     };
   }
@@ -60,7 +60,7 @@ function getSuccessNotice(type: AuthCallbackOutcome['type']): CallbackNotice {
     return {
       variant: 'success',
       title: 'E-mail confirmado',
-      message: 'A alteraÃ§Ã£o do seu e-mail foi validada com sucesso.',
+      message: 'A alteração do seu e-mail foi validada com sucesso.',
       actionLabel: 'Continuar',
     };
   }
@@ -224,14 +224,14 @@ export function RootNavigator() {
           }
         }
       } catch (error) {
-        console.error('NÃ£o foi possÃ­vel concluir a autenticaÃ§Ã£o pelo link.', error);
+        console.error('Não foi possível concluir a autenticação pelo link.', error);
         if (isMounted) {
           setIsPasswordRecoveryFlow(false);
           setCallbackNotice({
             variant: 'error',
-            title: 'Link invÃ¡lido ou expirado',
+            title: 'Link inválido ou expirado',
             message:
-              'NÃ£o foi possÃ­vel concluir a confirmaÃ§Ã£o. Solicite um novo e-mail e tente novamente.',
+              'Não foi possível concluir a confirmação. Solicite um novo e-mail e tente novamente.',
             actionLabel: 'Voltar',
           });
         }
@@ -313,10 +313,10 @@ const appStateSubscription = AppState.addEventListener('change', (nextState) => 
 
     //supabase.auth.getSession().then(({ data: sessionData }) => {
       // Chamamos a checagem, mas a lÃ³gica interna (passo 2 abaixo) 
-      // garantirÃ¡ que ela sÃ³ mude para 'unlocked' se o sensor fÃ­sico responder.
+      // garantirão que ela mude para 'unlocked' se o sensor responder.
      // return performBiometricCheck(sessionData.session);
     //});
-  //}, 250); // 250ms Ã© o suficiente para o hardware respirar
+  //}, 250); // 250ms são o suficiente para o hardware respirar
 });
 
     return () => {
