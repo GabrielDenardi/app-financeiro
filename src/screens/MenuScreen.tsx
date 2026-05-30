@@ -1,18 +1,31 @@
-import React, { useMemo } from 'react';
-import { Alert, Switch, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
-import { ChevronRight, LogOut, User } from 'lucide-react-native';
+import React, { useMemo } from "react";
+import {
+  Alert,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+  StyleSheet,
+} from "react-native";
+import { ChevronRight, LogOut, User } from "lucide-react-native";
 
-import { Card } from '../components/Card';
-import { PageHeader } from '../components/PageHeader';
-import { PageShell } from '../components/PageShell';
-import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
-import { useUserNotifications } from '../features/notifications/hooks/useNotifications';
-import { useProfile } from '../features/profile/hooks/useProfile';
-import { registerLoginEvent } from '../features/preferences/services/preferencesService';
-import { supabase } from '../lib/supabase';
-import { radius, spacing, typography, type AppColors, useAppTheme } from '../theme';
-import type { AuthenticatedUserSummary } from '../types/auth';
-import { menuMock } from '../data/menuMock';
+import { Card } from "../components/Card";
+import { PageHeader } from "../components/PageHeader";
+import { PageShell } from "../components/PageShell";
+import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
+import { useUserNotifications } from "../features/notifications/hooks/useNotifications";
+import { useProfile } from "../features/profile/hooks/useProfile";
+import { registerLoginEvent } from "../features/preferences/services/preferencesService";
+import { supabase } from "../lib/supabase";
+import {
+  radius,
+  spacing,
+  typography,
+  type AppColors,
+  useAppTheme,
+} from "../theme";
+import type { AuthenticatedUserSummary } from "../types/auth";
+import { menuMock } from "../data/menuMock";
 
 type MenuScreenProps = {
   navigation: any;
@@ -20,18 +33,18 @@ type MenuScreenProps = {
 };
 
 const IMPLEMENTED_ROUTES = new Set([
-  'Accounts',
-  'Cards',
-  'Goals',
-  'Help',
-  'Privacy',
-  'Notifications',
-  'Import',
-  'About',
-  'Budgets',
-  'Reports',
-  'Groups',
-  'RecurringTransactions',
+  "Accounts",
+  "Cards",
+  "Goals",
+  "Help",
+  "Privacy",
+  "Notifications",
+  "Import",
+  "About",
+  "Budgets",
+  "Reports",
+  "Groups",
+  "RecurringTransactions",
 ]);
 
 export function MenuScreen({ navigation, user }: MenuScreenProps) {
@@ -41,22 +54,35 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
   const resolvedUserId = currentUser?.id ?? user?.id;
   const profileQuery = useProfile(resolvedUserId);
   const notificationsQuery = useUserNotifications(resolvedUserId);
-  const profileName = profileQuery.data?.fullName || currentUser?.fullName || user?.fullName || 'Usuário';
-  const profileEmail = profileQuery.data?.email || currentUser?.email || user?.email || 'usuario@email.com';
+  const profileName =
+    profileQuery.data?.fullName ||
+    currentUser?.fullName ||
+    user?.fullName ||
+    "Usuário";
+  const profileEmail =
+    profileQuery.data?.email ||
+    currentUser?.email ||
+    user?.email ||
+    "usuario@email.com";
   const parentNavigation = navigation?.getParent?.();
-  const unreadNotifications = (notificationsQuery.data ?? []).filter((item) => !item.read).length;
+  const unreadNotifications = (notificationsQuery.data ?? []).filter(
+    (item) => !item.read,
+  ).length;
   const sections = menuMock.map((section) => ({
     ...section,
     items: section.items.map((item) =>
-      item.page === 'Notifications'
-        ? { ...item, value: unreadNotifications > 0 ? String(unreadNotifications) : '0' }
+      item.page === "Notifications"
+        ? {
+            ...item,
+            value: unreadNotifications > 0 ? String(unreadNotifications) : "0",
+          }
         : item,
     ),
   }));
 
   const handleLogout = async () => {
     try {
-      await registerLoginEvent('sign_out');
+      await registerLoginEvent("sign_out");
     } catch {
       // Ignore logging failures on sign out.
     }
@@ -64,7 +90,7 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      Alert.alert('Erro', 'Não foi possível sair agora. Tente novamente.');
+      Alert.alert("Erro", "Não foi possível sair agora. Tente novamente.");
     }
   };
 
@@ -74,7 +100,7 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
     }
 
     if (!IMPLEMENTED_ROUTES.has(page)) {
-      Alert.alert('Em breve', 'Essa tela ainda não está disponível.');
+      Alert.alert("Em breve", "Essa tela ainda não está disponível.");
       return;
     }
 
@@ -88,11 +114,11 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
 
   const handleEditProfile = () => {
     if (parentNavigation) {
-      parentNavigation.navigate('EditProfile');
+      parentNavigation.navigate("EditProfile");
       return;
     }
 
-    navigation?.navigate('EditProfile');
+    navigation?.navigate("EditProfile");
   };
 
   return (
@@ -105,7 +131,9 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
 
       <Card style={styles.profileCard}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{profileName.charAt(0)?.toUpperCase() || 'U'}</Text>
+          <Text style={styles.avatarText}>
+            {profileName.charAt(0)?.toUpperCase() || "U"}
+          </Text>
         </View>
         <View style={styles.profileInfo}>
           <Text style={styles.profileName}>{profileName}</Text>
@@ -127,7 +155,11 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
 
               return (
                 <View key={item.label}>
-                  <TouchableOpacity style={styles.menuItem} disabled={item.toggle} onPress={() => handleNavigate(item.page)}>
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    disabled={item.toggle}
+                    onPress={() => handleNavigate(item.page)}
+                  >
                     <View style={styles.menuItemIcon}>
                       <Icon size={20} color={colors.textSecondary} />
                     </View>
@@ -136,15 +168,22 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
 
                     {item.toggle ? (
                       <Switch
-                        value={item.label === 'Modo Escuro' ? isDarkMode : false}
+                        value={
+                          item.label === "Modo Escuro" ? isDarkMode : false
+                        }
                         onValueChange={(value) => {
-                          if (item.label === 'Modo Escuro') {
+                          if (item.label === "Modo Escuro") {
                             setDarkMode(value);
                           }
                         }}
                         disabled={item.disabled}
-                        thumbColor={isDarkMode ? colors.primaryLight : colors.white}
-                        trackColor={{ false: colors.border, true: `${colors.primaryLight}66` }}
+                        thumbColor={
+                          isDarkMode ? colors.primaryLight : colors.white
+                        }
+                        trackColor={{
+                          false: colors.border,
+                          true: `${colors.primaryLight}66`,
+                        }}
                       />
                     ) : item.value ? (
                       <Text style={styles.menuItemValue}>{item.value}</Text>
@@ -161,7 +200,7 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
       ))}
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <LogOut size={20} color={colors.danger} />
+        <LogOut size={20} color={colors.white} />
         <Text style={styles.logoutButtonText}>Sair da Conta</Text>
       </TouchableOpacity>
     </PageShell>
@@ -171,8 +210,8 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
     profileCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.md,
     },
     avatar: {
@@ -180,13 +219,13 @@ const createStyles = (colors: AppColors) =>
       height: 60,
       borderRadius: 30,
       backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
     },
     avatarText: {
       ...typography.h2,
       color: colors.white,
-      fontWeight: '700',
+      fontWeight: "700",
     },
     profileInfo: {
       flex: 1,
@@ -201,8 +240,8 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
     },
     editButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
       borderRadius: radius.md,
@@ -213,7 +252,7 @@ const createStyles = (colors: AppColors) =>
     editButtonText: {
       ...typography.body,
       color: colors.textPrimary,
-      fontWeight: '600',
+      fontWeight: "600",
     },
     section: {
       gap: spacing.sm,
@@ -221,15 +260,15 @@ const createStyles = (colors: AppColors) =>
     sectionTitle: {
       ...typography.caption,
       color: colors.textSecondary,
-      fontWeight: '700',
+      fontWeight: "700",
       marginLeft: spacing.xs,
     },
     menuGroup: {
-      overflow: 'hidden',
+      overflow: "hidden",
     },
     menuItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       padding: spacing.lg,
     },
     menuItemIcon: {
@@ -237,15 +276,15 @@ const createStyles = (colors: AppColors) =>
       height: 36,
       borderRadius: radius.md,
       backgroundColor: colors.surfaceMuted,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       marginRight: spacing.md,
     },
     menuItemLabel: {
       flex: 1,
       ...typography.body,
       color: colors.textPrimary,
-      fontWeight: '500',
+      fontWeight: "500",
     },
     menuItemValue: {
       ...typography.caption,
@@ -257,9 +296,9 @@ const createStyles = (colors: AppColors) =>
       marginLeft: 68,
     },
     logoutButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
       minHeight: 56,
       borderRadius: radius.lg,
       borderWidth: 1,
@@ -270,7 +309,7 @@ const createStyles = (colors: AppColors) =>
     },
     logoutButtonText: {
       ...typography.body,
-      color: colors.danger,
-      fontWeight: '700',
+      color: colors.white,
+      fontWeight: "700",
     },
   });
