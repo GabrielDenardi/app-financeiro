@@ -35,8 +35,8 @@ jest.mock('../../../transactions/services/transactionsService', () => ({
 
 import { parseAmount, parseRow } from '../importService';
 
-// Serial Excel 46_000 → verifica: 30/12/1899 + 46000 dias = 26/01/2026
-const EXCEL_SERIAL_46000_DATE = '2026-01-26';
+// Serial Excel 46_000 → data correta: 09/12/2025 no sistema 1900 do Excel.
+const EXCEL_SERIAL_46000_DATE = '2025-12-09';
 
 describe('importService amount parsing', () => {
   it.each([
@@ -72,6 +72,16 @@ describe('importService date parsing via parseRow', () => {
 
   it('retorna null para formato de data não reconhecido (sem fallback para hoje)', () => {
     const row = parseRow({ amount: '10', description: 'Teste', date: 'data-errada' });
+    expect(row.occurredOn).toBeNull();
+  });
+
+  it('retorna null para data ISO inválida', () => {
+    const row = parseRow({ amount: '10', description: 'Teste', date: '2026-02-31' });
+    expect(row.occurredOn).toBeNull();
+  });
+
+  it('retorna null para formato ISO incompleto ou ambíguo sem correspondência exata', () => {
+    const row = parseRow({ amount: '10', description: 'Teste', date: '05-06-2026' });
     expect(row.occurredOn).toBeNull();
   });
 
