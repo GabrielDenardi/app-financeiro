@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -18,7 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Check, CreditCard, X } from 'lucide-react-native';
 
 import type { CreateCardInput } from '../features/cards/types';
-import { colors, radius, spacing, typography } from '../theme';
+import { spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -59,6 +59,8 @@ export function AddCardModal({
   onClose,
   onSubmit,
 }: AddCardModalProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [name, setName] = useState('');
   const [institution, setInstitution] = useState('');
   const [network, setNetwork] = useState('Visa');
@@ -374,14 +376,14 @@ export function AddCardModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backgroundColor: colors.overlay,
   },
   backdropTouch: {
     flex: 1,
@@ -581,7 +583,7 @@ const styles = StyleSheet.create({
   },
   typeItemActive: {
     borderColor: colors.primary,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.primarySoft,
   },
   typeLabel: {
     ...typography.body,

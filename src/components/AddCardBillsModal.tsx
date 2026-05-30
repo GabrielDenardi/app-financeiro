@@ -19,7 +19,7 @@ import { Check, ChevronRight, X } from 'lucide-react-native';
 
 import type { CreditCard, RecordCardChargeInput } from '../features/cards/types';
 import type { FinanceCategory } from '../features/transactions/types';
-import { colors, typography } from '../theme';
+import { typography, type AppColors, useThemeColors } from '../theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -56,6 +56,8 @@ export function AddCardBillsModal({
   onClose,
   onSubmit,
 }: AddCardBillsModalProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const expenseCategories = useMemo(
     () => categories.filter((category) => category.kind !== 'income'),
     [categories],
@@ -350,7 +352,7 @@ export function AddCardBillsModal({
                           styles.miniChip,
                           selected && {
                             borderColor: colors.primaryLight,
-                            backgroundColor: '#EFF6FF',
+                            backgroundColor: colors.primarySoft,
                           },
                         ]}
                       >
@@ -437,14 +439,14 @@ export function AddCardBillsModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backgroundColor: colors.overlay,
   },
   backdropTouch: {
     flex: 1,

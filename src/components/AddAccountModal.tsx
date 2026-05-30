@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -17,7 +17,7 @@ import {
 import { Banknote, Building2, Check, PiggyBank, TrendingUp, Wallet, X } from 'lucide-react-native';
 
 import type { AccountType, CreateAccountInput } from '../features/accounts/types';
-import { colors, radius, spacing, typography } from '../theme';
+import { spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -59,11 +59,13 @@ export function AddAccountModal({
   onClose,
   onSubmit,
 }: AddAccountModalProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [name, setName] = useState('');
   const [institution, setInstitution] = useState('');
   const [openingBalance, setOpeningBalance] = useState('');
   const [type, setType] = useState<AccountType>('checking');
-  const [selectedColor, setSelectedColor] = useState<string>(colors.primaryLight);
+  const [selectedColor, setSelectedColor] = useState<string>('#2563EB');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
@@ -297,14 +299,14 @@ export function AddAccountModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backgroundColor: colors.overlay,
   },
   backdropTouch: {
     flex: 1,
@@ -390,7 +392,7 @@ const styles = StyleSheet.create({
   },
   typeItemActive: {
     borderColor: colors.primary,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.primarySoft,
   },
   typeLabel: {
     ...typography.body,

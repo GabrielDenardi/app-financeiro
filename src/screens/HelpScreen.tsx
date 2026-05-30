@@ -32,26 +32,30 @@ import {
 
 import { useHelpArticles, useHelpCategories } from '../features/help/hooks/useHelp';
 import type { HelpArticle } from '../features/help/types';
-import { colors } from '../theme';
+import { type AppColors, useThemeColors } from '../theme';
 
 const { width } = Dimensions.get('window');
 
-const CATEGORY_CONFIG: Record<string, { color: string; bgColor: string; icon: any }> = {
-  transactions: { color: '#10b981', bgColor: '#ecfdf5', icon: ArrowLeftRight },
-  cards: { color: colors.primaryLight, bgColor: '#eff6ff', icon: CreditCard },
-  goals: { color: '#f59e0b', bgColor: '#fffbeb', icon: PiggyBank },
-  groups: { color: '#8b5cf6', bgColor: '#f5f3ff', icon: MessageCircle },
-  budgets: { color: colors.danger, bgColor: '#fef2f2', icon: ChartPie },
-  accounts: { color: colors.primary, bgColor: '#eef2ff', icon: Receipt },
-  voice: { color: '#ec4899', bgColor: '#fdf2f8', icon: Mic },
-  reports: { color: '#06b6d4', bgColor: '#ecfeff', icon: Newspaper },
+const CATEGORY_CONFIG: Record<string, { color: string; icon: any }> = {
+  transactions: { color: '#10b981', icon: ArrowLeftRight },
+  cards: { color: '#2563eb', icon: CreditCard },
+  goals: { color: '#f59e0b', icon: PiggyBank },
+  groups: { color: '#8b5cf6', icon: MessageCircle },
+  budgets: { color: '#dc2626', icon: ChartPie },
+  accounts: { color: '#1e3a8a', icon: Receipt },
+  voice: { color: '#ec4899', icon: Mic },
+  reports: { color: '#06b6d4', icon: Newspaper },
 };
 
-function getCategoryVisual(code: string) {
-  return CATEGORY_CONFIG[code] ?? { color: colors.primary, bgColor: '#eef2ff', icon: BookOpen };
+function getCategoryVisual(code: string, colors: AppColors) {
+  const visual = CATEGORY_CONFIG[code] ?? { color: colors.primaryLight, icon: BookOpen };
+  return { ...visual, bgColor: `${visual.color}20` };
 }
 
 function ArticleDetail({ article, onBack }: { article: HelpArticle; onBack: () => void }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       <View style={styles.detailHeader}>
@@ -112,6 +116,8 @@ function ArticleDetail({ article, onBack }: { article: HelpArticle; onBack: () =
 }
 
 export function HelpScreen({ navigation }: any) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [searchText, setSearchText] = useState('');
   const [selectedCategoryCode, setSelectedCategoryCode] = useState<string | null>(null);
   const [selectedArticle, setSelectedArticle] = useState<HelpArticle | null>(null);
@@ -178,7 +184,7 @@ export function HelpScreen({ navigation }: any) {
                   styles.resultsHeader,
                   {
                     backgroundColor: selectedCategoryCode
-                      ? getCategoryVisual(selectedCategoryCode).color
+                      ? getCategoryVisual(selectedCategoryCode, colors).color
                       : colors.primary,
                   },
                 ]}
@@ -186,7 +192,7 @@ export function HelpScreen({ navigation }: any) {
                 <View style={styles.resultsHeaderLeft}>
                   <View style={styles.resultsHeaderIcon}>
                     {selectedCategoryCode
-                      ? React.createElement(getCategoryVisual(selectedCategoryCode).icon, {
+                      ? React.createElement(getCategoryVisual(selectedCategoryCode, colors).icon, {
                           size: 20,
                           color: colors.white,
                         })
@@ -221,13 +227,13 @@ export function HelpScreen({ navigation }: any) {
                         <View
                           style={[
                             styles.levelBadge,
-                            { backgroundColor: article.level === 'Avançado' ? '#F3E8FF' : '#E0F2FE' },
+                            { backgroundColor: article.level === 'Avançado' ? '#8b5cf620' : colors.primarySoft },
                           ]}
                         >
                           <Text
                             style={[
                               styles.levelBadgeText,
-                              { color: article.level === 'Avançado' ? '#9333EA' : '#2563EB' },
+                              { color: article.level === 'Avançado' ? '#8b5cf6' : colors.primaryLight },
                             ]}
                           >
                             {article.level}
@@ -259,7 +265,7 @@ export function HelpScreen({ navigation }: any) {
 
                 {articlesQuery.isLoading ? <Text style={styles.emptyText}>Carregando destaques...</Text> : null}
                 {!articlesQuery.isLoading && popularArticles.map((article) => {
-                  const visual = getCategoryVisual(article.categoryCode);
+                  const visual = getCategoryVisual(article.categoryCode, colors);
 
                   return (
                     <TouchableOpacity
@@ -285,7 +291,7 @@ export function HelpScreen({ navigation }: any) {
               <Text style={styles.gridLabel}>Categorias</Text>
               <View style={styles.grid}>
                 {categories.map((category) => {
-                  const visual = getCategoryVisual(category.code);
+                  const visual = getCategoryVisual(category.code, colors);
                   return (
                     <TouchableOpacity
                       key={category.id}
@@ -344,7 +350,7 @@ export function HelpScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -391,7 +397,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     height: 56,
     borderRadius: 18,
     paddingHorizontal: 16,
@@ -416,7 +422,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 20,
     marginBottom: 20,
@@ -432,7 +438,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   iconAmber: {
-    backgroundColor: '#FFFBEB',
+    backgroundColor: '#f59e0b20',
     padding: 6,
     borderRadius: 8,
   },
@@ -479,7 +485,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   gridItem: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     width: (width - 55) / 2,
     padding: 12,
     borderRadius: 20,
@@ -501,7 +507,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   contactCard: {
-    backgroundColor: colors.textPrimary,
+    backgroundColor: colors.primary,
     borderRadius: 24,
     padding: 20,
     marginTop: 10,
@@ -561,7 +567,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     gap: 12,
@@ -589,13 +595,13 @@ const styles = StyleSheet.create({
     fontWeight: 'normal',
   },
   detailCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 24,
     overflow: 'hidden',
     elevation: 2,
   },
   stepHeader: {
-    backgroundColor: colors.textPrimary,
+    backgroundColor: colors.primary,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -618,7 +624,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.textPrimary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -636,7 +642,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   tipBox: {
-    backgroundColor: '#FFFBEB',
+    backgroundColor: '#f59e0b20',
     padding: 16,
     borderRadius: 20,
     borderLeftWidth: 4,
@@ -695,7 +701,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   resultsCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 20,
