@@ -40,7 +40,6 @@ import {
   typography,
   type AppColors,
   useThemeColors,
-  colors,
 } from "../theme";
 import { formatCurrencyBRL } from "../utils/format";
 
@@ -444,12 +443,17 @@ export default function MetasScreen() {
                     [due]: { selected: true, selectedColor: "#6567ef" },
                   }}
                   onDayPress={(day) => setDue(day.dateString)}
-                  style={{ backgroundColor: "#172033" }}
+                  style={{ backgroundColor: themeColors.surface }}
                   theme={{
-                    todayTextColor: "#6567ef",
-                    selectedDayBackgroundColor: "#6567ef",
-                    calendarBackground: "#172033",
-                    monthTextColor: colors.textSecondary,
+                    backgroundColor: themeColors.surface,
+                    calendarBackground: themeColors.surface,
+                    dayTextColor: themeColors.textPrimary,
+                    monthTextColor: themeColors.textPrimary,
+                    textDisabledColor: themeColors.textSecondary,
+                    todayTextColor: themeColors.primaryLight,
+                    selectedDayBackgroundColor: themeColors.primaryLight,
+                    selectedDayTextColor: themeColors.white,
+                    arrowColor: themeColors.primaryLight,
                   }}
                 />
               </View>
@@ -608,8 +612,15 @@ export default function MetasScreen() {
                 }}
                 onDayPress={(day) => setTempDue(day.dateString)}
                 theme={{
-                  todayTextColor: "#6567ef",
-                  selectedDayBackgroundColor: "#6567ef",
+                  backgroundColor: themeColors.surface,
+                  calendarBackground: themeColors.surface,
+                  dayTextColor: themeColors.textPrimary,
+                  monthTextColor: themeColors.textPrimary,
+                  textDisabledColor: themeColors.textSecondary,
+                  todayTextColor: themeColors.primaryLight,
+                  selectedDayBackgroundColor: themeColors.primaryLight,
+                  selectedDayTextColor: themeColors.white,
+                  arrowColor: themeColors.primaryLight,
                 }}
               />
             </View>

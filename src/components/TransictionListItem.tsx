@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { RecentTransaction } from '../types/finance';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { 
   Fuel, 
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react-native';
 
 // Função para mapear ícone por categoria
-const getIcon = (category: string) => {
+const getIcon = (category: string, colors: AppColors) => {
   const cat = category.toLowerCase();
   if (cat.includes('combustivel') || cat.includes('transporte')) return <Fuel size={20} color={colors.textSecondary} />;
   if (cat.includes('alimentação') || cat.includes('restaurante')) return <Utensils size={20} color={colors.textSecondary} />;
@@ -27,12 +27,14 @@ const getIcon = (category: string) => {
 };
 
 export const TransactionListItem = ({ item }: { item: RecentTransaction }) => {
+  const colors = useThemeColors();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
   const isIncome = item.type === 'income';
 
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
-        {getIcon(item.category)}
+        {getIcon(item.category, colors)}
       </View>
       
       <View style={styles.details}>
@@ -55,7 +57,7 @@ export const TransactionListItem = ({ item }: { item: RecentTransaction }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     padding: spacing.md,
