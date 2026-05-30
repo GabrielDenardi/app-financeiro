@@ -97,12 +97,27 @@ function parseExcelSerial(serial: number): string | null {
   if (!Number.isInteger(serial) || serial < 1 || serial > 2958465) {
     return null;
   }
-  // O Excel conta erroneamente 29/02/1900, por isso a época é 30/12/1899.
-  const date = new Date(Date.UTC(1899, 11, 30) + serial * 86_400_000);
+  // O Excel usa o sistema de data de 1900 e inclui o dia inválido 29/02/1900.
+  // Ajustamos datas maiores que o erro de bisexto de 1900.
+  const epoch = Date.UTC(1899, 11, 31);
+  const date = new Date(epoch + serial * 86_400_000);
+
+  if (serial > 60) {
+    date.setUTCDate(date.getUTCDate() - 1);
+  }
+
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
 }
 
 function parseDate(value: unknown): string | null {
+  const isValidUtcDate = (year: number, month: number, day: number) => {
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
+  };
+
+  const formatDate = (year: number, month: number, day: number) =>
+    `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+
   // Objeto Date (ex: xlsx com cellDates:true)
   if (value instanceof Date) {
     return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
@@ -121,13 +136,14 @@ function parseDate(value: unknown): string | null {
 
   // ISO: YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-    return text;
+    const [year, month, day] = text.split('-').map(Number);
+    return isValidUtcDate(year, month, day) ? text : null;
   }
 
   // BR/PT: DD/MM/YYYY
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) {
-    const [day, month, year] = text.split('/');
-    return `${year}-${month}-${day}`;
+    const [day, month, year] = text.split('/').map(Number);
+    return isValidUtcDate(year, month, day) ? formatDate(year, month, day) : null;
   }
 
   // String numérica pura → pode ser serial Excel representado como texto
@@ -135,13 +151,19 @@ function parseDate(value: unknown): string | null {
     return parseExcelSerial(Number(text));
   }
 
-  const date = new Date(text);
-  if (Number.isNaN(date.getTime())) {
-    // Formato não reconhecido: sinalizar falha em vez de usar a data de hoje.
-    return null;
+  // ISO datetime estrito
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(text)) {
+    const [datePart] = text.split(/[T ]/);
+    const [year, month, day] = datePart.split('-').map(Number);
+    if (!isValidUtcDate(year, month, day)) {
+      return null;
+    }
+
+    const date = new Date(text);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
   }
 
-  return date.toISOString().slice(0, 10);
+  return null;
 }
 
 function parseType(value: unknown, amount: number): 'income' | 'expense' {
