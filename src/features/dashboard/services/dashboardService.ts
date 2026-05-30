@@ -13,6 +13,13 @@ type GroupMembershipRow = {
   group_id: string;
 };
 
+const EXCLUDED_DASHBOARD_SOURCES = new Set([
+  'transfer',
+  'group_settlement',
+  'goal_contribution',
+  'card_payment',
+]);
+
 function buildWeeklyFlow(items: DashboardData['recentTransactions']): WeeklyFlowPoint[] {
   const base: Record<WeeklyFlowPoint['weekLabel'], WeeklyFlowPoint> = {
     S1: { weekLabel: 'S1', income: 0, expense: 0 },
@@ -81,7 +88,8 @@ export async function getHomeDashboard(monthDate = formatMonthDate()): Promise<D
     throw new Error(goalsData.error?.message ?? membershipsData.error?.message ?? 'Não foi possível carregar o dashboard.');
   }
 
-  const totals = summarizeTransactions(transactionFeed);
+  const dashboardItems = transactionFeed.filter((item) => !EXCLUDED_DASHBOARD_SOURCES.has(item.sourceType ?? 'manual'));
+  const totals = summarizeTransactions(dashboardItems);
   const goalsCount = ((goalsData.data as GoalCountRow[] | null) ?? []).length;
   const groupsCount = new Set(((membershipsData.data as GroupMembershipRow[] | null) ?? []).map((row) => row.group_id)).size;
 
@@ -96,8 +104,8 @@ export async function getHomeDashboard(monthDate = formatMonthDate()): Promise<D
       goalsCount,
       groupsCount,
     },
-    weeklyFlow: buildWeeklyFlow(transactionFeed),
-    recentTransactions: transactionFeed.slice(0, 5),
-    categorySpending: buildCategorySpending(transactionFeed),
+    weeklyFlow: buildWeeklyFlow(dashboardItems),
+    recentTransactions: dashboardItems.slice(0, 5),
+    categorySpending: buildCategorySpending(dashboardItems),
   };
 }
