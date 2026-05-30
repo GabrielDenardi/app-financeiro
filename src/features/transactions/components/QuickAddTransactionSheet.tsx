@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -93,6 +93,10 @@ function toOccurredAt(value: string) {
   return parsed.toISOString();
 }
 
+function categoryMatchesEntryType(category: FinanceCategory, entryType: EntryType) {
+  return category.kind === 'both' || category.kind === entryType;
+}
+
 export function QuickAddTransactionSheet({
   visible,
   currentUserId,
@@ -127,13 +131,25 @@ export function QuickAddTransactionSheet({
   const [isParsing, setIsParsing] = useState(false);
   const [parseLabel, setParseLabel] = useState('');
 
-  const filteredCategories = useMemo(
-    () =>
-      (type === 'income'
-        ? categories.filter((category) => category.kind !== 'expense')
-        : categories.filter((category) => category.kind !== 'income')),
-    [categories, type],
+  const getCategoriesForType = useCallback(
+    (entryType: EntryType) => categories.filter((category) => categoryMatchesEntryType(category, entryType)),
+    [categories],
   );
+
+  const resolveCategoryIdForType = useCallback(
+    (entryType: EntryType, currentCategoryId: string | null) => {
+      const categoryOptions = getCategoriesForType(entryType);
+
+      if (currentCategoryId && categoryOptions.some((category) => category.id === currentCategoryId)) {
+        return currentCategoryId;
+      }
+
+      return categoryOptions[0]?.id ?? null;
+    },
+    [getCategoriesForType],
+  );
+
+  const filteredCategories = useMemo(() => getCategoriesForType(type), [getCategoriesForType, type]);
 
   const resetState = () => {
     setStep('mode');
@@ -164,23 +180,24 @@ export function QuickAddTransactionSheet({
   }, [visible, primaryAccountId]);
 
   useEffect(() => {
-    if (!filteredCategories.length) {
-      setCategoryId(null);
-      return;
-    }
+    setCategoryId((current) => resolveCategoryIdForType(type, current));
+  }, [resolveCategoryIdForType, type]);
 
-    setCategoryId((current) =>
-      current && filteredCategories.some((category) => category.id === current) ? current : filteredCategories[0]?.id ?? null,
-    );
-  }, [filteredCategories]);
+  const handleTypeChange = (nextType: EntryType) => {
+    setType(nextType);
+    setCategoryId((current) => resolveCategoryIdForType(nextType, current));
+  };
 
   const applyDraft = (draft: CapturedTransactionDraft, mode: Exclude<CaptureMode, 'manual'>) => {
+    const nextType = draft.type ?? 'expense';
     const matchedCategory =
       draft.suggestedCategoryCode
-        ? categories.find((category) => category.code === draft.suggestedCategoryCode)
+        ? categories.find(
+            (category) =>
+              category.code === draft.suggestedCategoryCode && categoryMatchesEntryType(category, nextType),
+          )
         : null;
 
-    const nextType = draft.type ?? 'expense';
     const nextDate = draft.occurredAt ? formatDateInput(new Date(draft.occurredAt)) : formatDateInput(new Date());
     const nextWarnings =
       draft.warnings.length > 0
@@ -197,7 +214,7 @@ export function QuickAddTransactionSheet({
       ? draft.paymentMethod
       : 'Pix') as PaymentMethod);
     setOccurredOn(nextDate);
-    setCategoryId(matchedCategory?.id ?? null);
+    setCategoryId(resolveCategoryIdForType(nextType, matchedCategory?.id ?? null));
     setNotes(draft.notes ?? '');
     setDraftWarnings(nextWarnings);
     setRawCaptureText(draft.rawTranscriptOrOcrText ?? '');
@@ -350,9 +367,14 @@ export function QuickAddTransactionSheet({
         });
       }
 
+      const safeCategoryId = resolveCategoryIdForType(type, categoryId);
+      if (safeCategoryId !== categoryId) {
+        setCategoryId(safeCategoryId);
+      }
+
       const payload: CreateTransactionInput = {
         accountId,
-        categoryId,
+        categoryId: safeCategoryId,
         title: title.trim(),
         amount: Number(parsedAmount.toFixed(2)),
         type,
@@ -467,7 +489,7 @@ export function QuickAddTransactionSheet({
           {(['expense', 'income'] as EntryType[]).map((entryType) => (
             <Pressable
               key={entryType}
-              onPress={() => setType(entryType)}
+              onPress={() => handleTypeChange(entryType)}
               style={[
                 styles.typeChip,
                 entryType === type && (entryType === 'expense' ? styles.typeChipExpense : styles.typeChipIncome),
