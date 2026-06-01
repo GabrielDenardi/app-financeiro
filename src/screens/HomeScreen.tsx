@@ -48,7 +48,7 @@ function getDisplayName(fullName?: string | null, email?: string | null) {
     return email.split("@")[0];
   }
 
-  return "Usuario";
+  return "Usuário";
 }
 
 function formatVisibleCurrency(value: number, visible: boolean) {
@@ -112,7 +112,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
       >
         <BalanceCard
           summary={{
-            monthLabel: summary?.monthLabel ?? "Mes atual",
+            monthLabel: summary?.monthLabel ?? "Mês atual",
             balance: summary?.balance ?? 0,
             income: summary?.income ?? 0,
             expense: summary?.expense ?? 0,
@@ -132,7 +132,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
             hideAmounts={!showValues}
           />
           <SummaryStatCard
-            label="Saidas"
+            label="Saídas"
             amount={summary?.expense ?? 0}
             type="expense"
             style={styles.summaryStatCard}
@@ -180,7 +180,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
               <View>
                 <Text style={styles.accountName}>{primaryAccount.name}</Text>
                 <Text style={styles.accountMeta}>
-                  {primaryAccount.institution || "Instituicao nao informada"}
+                  {primaryAccount.institution || "Instituição não informada"}
                 </Text>
               </View>
               <Text style={styles.accountAmount}>
@@ -229,7 +229,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
             ))
           ) : (
             <Text style={styles.emptyText}>
-              Nenhum gasto reportável neste periodo.
+              Nenhum gasto reportável neste período.
             </Text>
           )}
         </Card>
@@ -256,7 +256,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
               />
             ))
           ) : (
-            <View style={(styles.sectionInner, { padding: spacing.lg })}>
+            <View style={[styles.sectionInner, { padding: spacing.lg }]}>
               <Text style={styles.emptyText}>
                 As novas transações vão aparecer aqui.
               </Text>
