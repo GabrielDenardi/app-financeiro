@@ -292,7 +292,6 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{avatarLetter}</Text>
         </View>
-        <Text style={styles.avatarHint}>Foto opcional fora do escopo neste MVP.</Text>
       </View>
 
       {profileQuery.isLoading ? (
