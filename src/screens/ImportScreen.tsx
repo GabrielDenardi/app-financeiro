@@ -42,15 +42,36 @@ export default function ImportScreen({ navigation }: any) {
 
     try {
       const result = await importMutation.mutateAsync({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType });
-      setSummary({
-        accepted: result.previewRows.filter((row) => row.status === 'accepted').length,
-        duplicate: result.previewRows.filter((row) => row.status === 'duplicate').length,
-        failed: result.previewRows.filter((row) => row.status === 'failed').length,
-      });
-      setDoneOpen(true);
+      const accepted = result.previewRows.filter((row) => row.status === 'accepted').length;
+      const duplicate = result.previewRows.filter((row) => row.status === 'duplicate').length;
+      const failed = result.previewRows.filter((row) => row.status === 'failed').length;
+      const total = result.previewRows.length;
+
+      setSummary({ accepted, duplicate, failed });
       setAsset(null);
+
+      if (accepted === 0) {
+        const message = failed > 0
+          ? 'O arquivo contém dados inválidos ou está em um formato incorreto. Corrija a planilha e tente novamente.'
+          : duplicate > 0
+            ? 'Nenhuma transação nova foi importada. Todas as linhas do arquivo já existem no sistema.'
+            : total === 0
+              ? 'O arquivo não contém linhas para importar.'
+              : 'Nenhuma transação nova foi importada.';
+
+        Alert.alert('Erro', message);
+        return;
+      }
+
+      setDoneOpen(true);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível importar o arquivo.');
+      const rawMessage = error instanceof Error ? error.message : String(error ?? '');
+      const validationError = /date\/time field value out of range|invalid input syntax for type date|invalid input syntax for type timestamp/i.test(rawMessage);
+      const message = validationError
+        ? 'O arquivo contém datas inválidas. Corrija a planilha e tente novamente.'
+        : rawMessage || 'O arquivo não pôde ser importado. Verifique se o formato está correto.';
+
+      Alert.alert('Erro', message);
     }
   };
 
