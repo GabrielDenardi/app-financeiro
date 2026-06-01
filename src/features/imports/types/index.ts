@@ -6,7 +6,7 @@ export type ImportPreviewRow = {
   type: 'income' | 'expense';
   categoryCode: string;
   paymentMethod: string;
-  occurredOn: string;
+  occurredOn: string | null;
   status: 'accepted' | 'duplicate' | 'failed';
   errorMessage: string;
   rawData: Record<string, unknown>;

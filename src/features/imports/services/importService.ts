@@ -32,7 +32,7 @@ type ParsedRow = {
   type: 'income' | 'expense';
   category: string;
   paymentMethod: string;
-  occurredOn: string;
+  occurredOn: string | null;
   rawData: Record<string, unknown>;
 };
 
@@ -90,28 +90,80 @@ export function parseAmount(value: unknown) {
   return Number.isFinite(amount) ? amount : 0;
 }
 
-function parseDate(value: unknown) {
+/** Converte um número serial do Excel (dias desde 30/12/1899) para 'YYYY-MM-DD'. */
+function parseExcelSerial(serial: number): string | null {
+  // Seriais válidos vão de 1 (01/01/1900) a ~2958465 (31/12/9999).
+  // Faixa prática para datas reais: até ~100 000 (cobre o ano 2173).
+  if (!Number.isInteger(serial) || serial < 1 || serial > 2958465) {
+    return null;
+  }
+  // O Excel usa o sistema de data de 1900 e inclui o dia inválido 29/02/1900.
+  // Ajustamos datas maiores que o erro de bisexto de 1900.
+  const epoch = Date.UTC(1899, 11, 31);
+  const date = new Date(epoch + serial * 86_400_000);
+
+  if (serial > 60) {
+    date.setUTCDate(date.getUTCDate() - 1);
+  }
+
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
+function parseDate(value: unknown): string | null {
+  const isValidUtcDate = (year: number, month: number, day: number) => {
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
+  };
+
+  const formatDate = (year: number, month: number, day: number) =>
+    `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+
+  // Objeto Date (ex: xlsx com cellDates:true)
   if (value instanceof Date) {
-    return value.toISOString().slice(0, 10);
+    return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  }
+
+  // Número: serial do Excel (xlsx sem cellDates:true retorna números para células de data)
+  if (typeof value === 'number') {
+    return parseExcelSerial(value);
   }
 
   const text = String(value ?? '').trim();
 
+  if (!text) {
+    return null;
+  }
+
+  // ISO: YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-    return text;
+    const [year, month, day] = text.split('-').map(Number);
+    return isValidUtcDate(year, month, day) ? text : null;
   }
 
+  // BR/PT: DD/MM/YYYY
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) {
-    const [day, month, year] = text.split('/');
-    return `${year}-${month}-${day}`;
+    const [day, month, year] = text.split('/').map(Number);
+    return isValidUtcDate(year, month, day) ? formatDate(year, month, day) : null;
   }
 
-  const date = new Date(text);
-  if (Number.isNaN(date.getTime())) {
-    return new Date().toISOString().slice(0, 10);
+  // String numérica pura → pode ser serial Excel representado como texto
+  if (/^\d+$/.test(text)) {
+    return parseExcelSerial(Number(text));
   }
 
-  return date.toISOString().slice(0, 10);
+  // ISO datetime estrito
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(text)) {
+    const [datePart] = text.split(/[T ]/);
+    const [year, month, day] = datePart.split('-').map(Number);
+    if (!isValidUtcDate(year, month, day)) {
+      return null;
+    }
+
+    const date = new Date(text);
+    return Number.isNaN(date.getTime()) ? null : datePart;
+  }
+
+  return null;
 }
 
 function parseType(value: unknown, amount: number): 'income' | 'expense' {
@@ -139,7 +191,7 @@ function buildFingerprint(row: ParsedRow) {
 async function readAssetRows(asset: PickedAsset): Promise<Record<string, unknown>[]> {
   if (Platform.OS === 'web') {
     const fileBuffer = await fetch(asset.uri).then((response) => response.arrayBuffer());
-    const workbook = XLSX.read(fileBuffer, { type: 'array' });
+    const workbook = XLSX.read(fileBuffer, { type: 'array', cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     return XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
   }
@@ -149,7 +201,7 @@ async function readAssetRows(asset: PickedAsset): Promise<Record<string, unknown
   if (lowerName.endsWith('.csv')) {
     const csvContent = await FileSystem.readAsStringAsync(asset.uri);
 
-    const workbook = XLSX.read(csvContent, { type: 'string' });
+    const workbook = XLSX.read(csvContent, { type: 'string', cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     return XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
   }
@@ -158,7 +210,7 @@ async function readAssetRows(asset: PickedAsset): Promise<Record<string, unknown
     encoding: FileSystem.EncodingType.Base64,
   });
 
-  const workbook = XLSX.read(base64Content, { type: 'base64' });
+  const workbook = XLSX.read(base64Content, { type: 'base64', cellDates: true });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   return XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
 }
@@ -191,7 +243,12 @@ async function existingFingerprints(userId: string, rows: ParsedRow[]) {
     return new Set<string>();
   }
 
-  const sortedDates = rows.map((row) => row.occurredOn).sort();
+  const validDates = rows.map((row) => row.occurredOn).filter((d): d is string => d !== null);
+  if (validDates.length === 0) {
+    return new Set<string>();
+  }
+
+  const sortedDates = validDates.sort();
   const from = sortedDates[0];
   const to = sortedDates[sortedDates.length - 1];
 
@@ -267,7 +324,13 @@ export async function importTransactionsFromAsset(asset: PickedAsset) {
     const categoryCode = categoryByName.get(normalizeText(row.category)) ?? 'other';
     const hasRequiredFields = Boolean(row.title && row.amount > 0 && row.occurredOn);
     const status = !hasRequiredFields ? 'failed' : duplicate ? 'duplicate' : 'accepted';
-    const errorMessage = !hasRequiredFields ? 'Linha inválida ou incompleta.' : duplicate ? 'Transação já existente.' : '';
+    const errorMessage = !hasRequiredFields
+      ? row.occurredOn === null && row.title && row.amount > 0
+        ? 'Data inválida ou em formato não reconhecido.'
+        : 'Linha inválida ou incompleta.'
+      : duplicate
+        ? 'Transação já existente.'
+        : '';
 
     inBatchFingerprints.add(fingerprint);
 

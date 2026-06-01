@@ -35,6 +35,9 @@ jest.mock('../../../transactions/services/transactionsService', () => ({
 
 import { parseAmount, parseRow } from '../importService';
 
+// Serial Excel 46_000 → data correta: 09/12/2025 no sistema 1900 do Excel.
+const EXCEL_SERIAL_46000_DATE = '2025-12-09';
+
 describe('importService amount parsing', () => {
   it.each([
     ['10.50', 10.5],
@@ -53,6 +56,53 @@ describe('importService amount parsing', () => {
   it('treats a single separator followed by three digits as thousands separator', () => {
     expect(parseAmount('1.234')).toBe(1234);
     expect(parseAmount('12,345')).toBe(12345);
+  });
+});
+
+describe('importService date parsing via parseRow', () => {
+  it('converte serial numérico do Excel para a data correta', () => {
+    const row = parseRow({ amount: '10', description: 'Teste', date: 46_000 });
+    expect(row.occurredOn).toBe(EXCEL_SERIAL_46000_DATE);
+  });
+
+  it('converte serial Excel representado como string numérica', () => {
+    const row = parseRow({ amount: '10', description: 'Teste', date: '46000' });
+    expect(row.occurredOn).toBe(EXCEL_SERIAL_46000_DATE);
+  });
+
+  it('retorna null para formato de data não reconhecido (sem fallback para hoje)', () => {
+    const row = parseRow({ amount: '10', description: 'Teste', date: 'data-errada' });
+    expect(row.occurredOn).toBeNull();
+  });
+
+  it('retorna null para data ISO inválida', () => {
+    const row = parseRow({ amount: '10', description: 'Teste', date: '2026-02-31' });
+    expect(row.occurredOn).toBeNull();
+  });
+
+  it('retorna null para formato ISO incompleto ou ambíguo sem correspondência exata', () => {
+    const row = parseRow({ amount: '10', description: 'Teste', date: '05-06-2026' });
+    expect(row.occurredOn).toBeNull();
+  });
+
+  it('preserva a data de origem em datetime ISO com offset', () => {
+    const row = parseRow({ amount: '10', description: 'Teste', date: '2024-05-01T00:30:00+14:00' });
+    expect(row.occurredOn).toBe('2024-05-01');
+  });
+
+  it('retorna null para data vazia', () => {
+    const row = parseRow({ amount: '10', description: 'Teste', date: '' });
+    expect(row.occurredOn).toBeNull();
+  });
+
+  it('aceita objeto Date válido', () => {
+    const row = parseRow({ amount: '10', description: 'Teste', date: new Date('2026-03-15T12:00:00Z') });
+    expect(row.occurredOn).toBe('2026-03-15');
+  });
+
+  it('retorna null para objeto Date inválido', () => {
+    const row = parseRow({ amount: '10', description: 'Teste', date: new Date('invalid') });
+    expect(row.occurredOn).toBeNull();
   });
 });
 
