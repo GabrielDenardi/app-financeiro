@@ -1,9 +1,13 @@
+import { useMemo } from 'react';
 import { Alert, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 import { supabase } from '../lib/supabase';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 export function SettingsScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -31,7 +35,7 @@ export function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
