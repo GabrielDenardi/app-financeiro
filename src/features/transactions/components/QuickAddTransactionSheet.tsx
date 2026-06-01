@@ -66,18 +66,17 @@ function formatDateInput(value: Date) {
   return value.toISOString().slice(0, 10);
 }
 
-function parseAmountInput(value: string) {
-  const normalized = value.replace(/\./g, '').replace(',', '.').trim();
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : 0;
+function formatCentsToDisplay(digits: string): string {
+  if (!digits) return '';
+  const padded = digits.padStart(3, '0');
+  const int = padded.slice(0, -2).replace(/^0+/, '') || '0';
+  const dec = padded.slice(-2);
+  return `${int},${dec}`;
 }
 
-function formatAmountInput(value: number | null) {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '';
-  }
-
-  return value.toFixed(2).replace('.', ',');
+function amountToCents(value: number | null): string {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return '';
+  return String(Math.round(value * 100));
 }
 
 function fallbackTitleForMode(mode: CaptureMode) {
@@ -111,7 +110,7 @@ export function QuickAddTransactionSheet({
   const [captureMode, setCaptureMode] = useState<CaptureMode>('manual');
   const [type, setType] = useState<EntryType>('expense');
   const [title, setTitle] = useState('');
-  const [amount, setAmount] = useState('');
+  const [amountDigits, setAmountDigits] = useState('');
   const [accountId, setAccountId] = useState(primaryAccountId ?? '');
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Pix');
@@ -140,7 +139,7 @@ export function QuickAddTransactionSheet({
     setCaptureMode('manual');
     setType('expense');
     setTitle('');
-    setAmount('');
+    setAmountDigits('');
     setAccountId(primaryAccountId ?? accounts.find((account) => account.isActive)?.id ?? accounts[0]?.id ?? '');
     setCategoryId(null);
     setPaymentMethod('Pix');
@@ -192,7 +191,7 @@ export function QuickAddTransactionSheet({
     setCaptureMode(mode);
     setType(nextType);
     setTitle(draft.title?.trim() || draft.merchantOrIssuer?.trim() || fallbackTitleForMode(mode));
-    setAmount(formatAmountInput(draft.amount));
+    setAmountDigits(amountToCents(draft.amount));
     setPaymentMethod((PAYMENT_METHODS.includes(draft.paymentMethod as PaymentMethod)
       ? draft.paymentMethod
       : 'Pix') as PaymentMethod);
@@ -319,7 +318,7 @@ export function QuickAddTransactionSheet({
       return;
     }
 
-    const parsedAmount = parseAmountInput(amount);
+    const parsedAmount = amountDigits ? Number(amountDigits) / 100 : 0;
     if (parsedAmount <= 0) {
       Alert.alert('Transacao', 'Informe um valor valido.');
       return;
@@ -493,10 +492,10 @@ export function QuickAddTransactionSheet({
           placeholderTextColor={colors.textSecondary}
         />
         <TextInput
-          placeholder="Valor"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="decimal-pad"
+          placeholder="0,00"
+          value={formatCentsToDisplay(amountDigits)}
+          onChangeText={(text) => setAmountDigits(text.replace(/\D/g, '').replace(/^0+/, ''))}
+          keyboardType="numeric"
           style={styles.input}
           placeholderTextColor={colors.textSecondary}
         />
