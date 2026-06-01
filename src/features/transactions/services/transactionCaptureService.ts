@@ -49,6 +49,48 @@ async function readFileAsBytes(uri: string) {
   return Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 }
 
+async function getFunctionErrorMessage(error: unknown, response?: Response) {
+  const fallback =
+    error instanceof Error && error.message
+      ? error.message
+      : 'Nao foi possivel processar o arquivo enviado.';
+
+  const errorContext =
+    typeof error === 'object' && error && 'context' in error
+      ? (error as { context?: Response }).context
+      : undefined;
+  const errorResponse = response ?? errorContext;
+
+  if (!errorResponse) {
+    return fallback;
+  }
+
+  try {
+    const contentType = errorResponse.headers.get('Content-Type') ?? '';
+    const body = contentType.includes('application/json')
+      ? await errorResponse.clone().json()
+      : await errorResponse.clone().text();
+
+    if (typeof body === 'string' && body.trim()) {
+      return body.trim();
+    }
+
+    if (body && typeof body === 'object') {
+      const message =
+        (body as { error?: unknown }).error ??
+        (body as { message?: unknown }).message;
+
+      if (typeof message === 'string' && message.trim()) {
+        return message.trim();
+      }
+    }
+  } catch {
+    // Keep the SDK message if the response body cannot be read.
+  }
+
+  return fallback;
+}
+
 function mapAttachmentRow(row: {
   id: string;
   user_id: string;
@@ -235,7 +277,7 @@ export async function deleteTransactionAttachment(
 
 export async function parseTransactionFromOcr(file: LocalCaptureFile): Promise<CapturedTransactionDraft> {
   const base64Data = await readFileAsBase64(file.uri);
-  const { data, error } = await supabase.functions.invoke('parse-transaction-ocr', {
+  const { data, error, response } = await supabase.functions.invoke('parse-transaction-ocr', {
     body: {
       fileName: file.name,
       mimeType: file.mimeType,
@@ -244,7 +286,7 @@ export async function parseTransactionFromOcr(file: LocalCaptureFile): Promise<C
   });
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(await getFunctionErrorMessage(error, response));
   }
 
   const draft = (data as { draft?: CapturedTransactionDraft }).draft;
@@ -257,7 +299,7 @@ export async function parseTransactionFromOcr(file: LocalCaptureFile): Promise<C
 
 export async function parseTransactionFromVoice(file: LocalCaptureFile): Promise<CapturedTransactionDraft> {
   const base64Data = await readFileAsBase64(file.uri);
-  const { data, error } = await supabase.functions.invoke('parse-transaction-voice', {
+  const { data, error, response } = await supabase.functions.invoke('parse-transaction-voice', {
     body: {
       fileName: file.name,
       mimeType: file.mimeType,
@@ -266,7 +308,7 @@ export async function parseTransactionFromVoice(file: LocalCaptureFile): Promise
   });
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(await getFunctionErrorMessage(error, response));
   }
 
   const draft = (data as { draft?: CapturedTransactionDraft }).draft;
