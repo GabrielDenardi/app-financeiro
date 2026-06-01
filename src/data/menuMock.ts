@@ -33,7 +33,7 @@ export const menuMock: MenuSections[] = [
     title: 'Preferências',
     items: [
       { icon: Bell, label: 'Notificações', page: 'Notifications' },
-      { icon: Moon, label: 'Modo Escuro', toggle: true },
+      { id: 'dark-mode', icon: Moon, label: 'Modo Escuro', toggle: true },
       { icon: Globe, label: 'Idioma', value: 'Português' },
     ],
   },

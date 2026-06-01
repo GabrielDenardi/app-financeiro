@@ -17,7 +17,7 @@ import {
 import { ArrowLeftRight, RefreshCw, X } from 'lucide-react-native';
 
 import type { AccountBalanceSnapshot, CreateTransferInput } from '../features/accounts/types';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -40,6 +40,8 @@ export function TransferModal({
   onClose,
   onSubmit,
 }: TransferModalProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const activeAccounts = useMemo(
     () => accounts.filter((account) => account.isActive),
     [accounts],
@@ -279,14 +281,14 @@ export function TransferModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backgroundColor: colors.overlay,
   },
   backdropTouch: {
     flex: 1,
@@ -381,11 +383,11 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 12,
-    borderColor: '#D0DBFF',
+    borderColor: colors.border,
     borderWidth: 1,
   },
   sectionLabel: {
@@ -411,7 +413,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   accountChipActive: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.primarySoft,
     borderColor: colors.primary,
   },
   accountDisabled: {
