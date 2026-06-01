@@ -85,6 +85,11 @@ describe('importService date parsing via parseRow', () => {
     expect(row.occurredOn).toBeNull();
   });
 
+  it('preserva a data de origem em datetime ISO com offset', () => {
+    const row = parseRow({ amount: '10', description: 'Teste', date: '2024-05-01T00:30:00+14:00' });
+    expect(row.occurredOn).toBe('2024-05-01');
+  });
+
   it('retorna null para data vazia', () => {
     const row = parseRow({ amount: '10', description: 'Teste', date: '' });
     expect(row.occurredOn).toBeNull();
