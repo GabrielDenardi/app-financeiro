@@ -107,7 +107,15 @@ export function QuickAddTransactionSheet({
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const createTransactionMutation = useCreateTransactionMutation(currentUserId);
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [recorderRevision, setRecorderRevision] = useState(0);
+  const recorderOptions = useMemo(
+    () => ({
+      ...RecordingPresets.HIGH_QUALITY,
+      isMeteringEnabled: recorderRevision % 2 === 1,
+    }),
+    [recorderRevision],
+  );
+  const recorder = useAudioRecorder(recorderOptions);
   const recorderState = useAudioRecorderState(recorder);
 
   const [step, setStep] = useState<SheetStep>('mode');
@@ -174,6 +182,7 @@ export function QuickAddTransactionSheet({
 
   useEffect(() => {
     if (visible) {
+      setRecorderRevision((current) => current + 1);
       resetState();
     }
   }, [visible, primaryAccountId]);
@@ -278,6 +287,32 @@ export function QuickAddTransactionSheet({
     }
   };
 
+  const stopActiveRecordingIfNeeded = async () => {
+    if (!recorderState.isRecording) {
+      return;
+    }
+
+    try {
+      await recorder.stop();
+    } finally {
+      await setAudioModeAsync({
+        allowsRecording: false,
+        playsInSilentMode: true,
+      });
+      setRecorderRevision((current) => current + 1);
+    }
+  };
+
+  const handleClose = async () => {
+    try {
+      await stopActiveRecordingIfNeeded();
+    } catch {
+      // Closing should not leave the sheet stuck if the native recorder was already released.
+    } finally {
+      onClose();
+    }
+  };
+
   const handleStartRecording = async () => {
     try {
       const permission = await requestRecordingPermissionsAsync();
@@ -295,6 +330,15 @@ export function QuickAddTransactionSheet({
       setCaptureMode('voice');
       setDraftWarnings([]);
     } catch (error) {
+      setRecorderRevision((current) => current + 1);
+      try {
+        await setAudioModeAsync({
+          allowsRecording: false,
+          playsInSilentMode: true,
+        });
+      } catch {
+        // Best-effort audio session reset after a failed native recorder call.
+      }
       Alert.alert('Voz', error instanceof Error ? error.message : 'Nao foi possivel iniciar a gravacao.');
     }
   };
@@ -321,6 +365,8 @@ export function QuickAddTransactionSheet({
       await handleParseFile('voice', file);
     } catch (error) {
       Alert.alert('Voz', error instanceof Error ? error.message : 'Nao foi possivel finalizar a gravacao.');
+    } finally {
+      setRecorderRevision((current) => current + 1);
     }
   };
 
@@ -398,7 +444,7 @@ export function QuickAddTransactionSheet({
       };
 
       await createTransactionMutation.mutateAsync(payload);
-      onClose();
+      await handleClose();
     } catch (error) {
       if (uploadedAttachment) {
         try {
@@ -621,14 +667,14 @@ export function QuickAddTransactionSheet({
   );
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Pressable style={styles.backdrop} onPress={handleClose} />
         <View style={styles.sheet}>
           {step === 'mode' ? renderModeStep() : renderReviewStep()}
 
           <View style={styles.actions}>
-            <Pressable style={styles.secondaryButton} onPress={onClose}>
+            <Pressable style={styles.secondaryButton} onPress={handleClose}>
               <Text style={styles.secondaryButtonText}>Cancelar</Text>
             </Pressable>
             {step === 'review' ? (
