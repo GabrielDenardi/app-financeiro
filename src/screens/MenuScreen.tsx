@@ -68,6 +68,7 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
   const unreadNotifications = (notificationsQuery.data ?? []).filter(
     (item) => !item.read,
   ).length;
+  const darkModeItemId = "dark-mode";
   const sections = menuMock.map((section) => ({
     ...section,
     items: section.items.map((item) =>
@@ -154,7 +155,7 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
               const isLast = index === section.items.length - 1;
 
               return (
-                <View key={item.label}>
+                <View key={item.id ?? item.page ?? item.label}>
                   <TouchableOpacity
                     style={styles.menuItem}
                     disabled={item.toggle}
@@ -168,11 +169,9 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
 
                     {item.toggle ? (
                       <Switch
-                        value={
-                          item.label === "Modo Escuro" ? isDarkMode : false
-                        }
+                        value={item.id === darkModeItemId ? isDarkMode : false}
                         onValueChange={(value) => {
-                          if (item.label === "Modo Escuro") {
+                          if (item.id === darkModeItemId) {
                             setDarkMode(value);
                           }
                         }}

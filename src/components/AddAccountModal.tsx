@@ -65,7 +65,7 @@ export function AddAccountModal({
   const [institution, setInstitution] = useState('');
   const [openingBalance, setOpeningBalance] = useState('');
   const [type, setType] = useState<AccountType>('checking');
-  const [selectedColor, setSelectedColor] = useState<string>('#2563EB');
+  const [selectedColor, setSelectedColor] = useState<string>(colors.primaryLight);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
@@ -78,7 +78,7 @@ export function AddAccountModal({
     setSelectedColor(colors.primaryLight);
     fadeAnim.setValue(0);
     translateY.setValue(SCREEN_HEIGHT);
-  }, [fadeAnim, translateY]);
+  }, [colors.primaryLight, fadeAnim, translateY]);
 
   const animateIn = useCallback(() => {
     Animated.parallel([

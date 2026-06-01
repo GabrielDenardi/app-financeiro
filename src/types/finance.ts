@@ -43,6 +43,7 @@ export interface Account {
 }
 
 export interface MenuItem {
+  id?: string;
   icon: LucideIcon;
   label: string;
   page?: string;
