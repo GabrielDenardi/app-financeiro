@@ -90,7 +90,7 @@ function ArticleDetail({ article, onBack }: { article: HelpArticle; onBack: () =
 
         {article.tip ? (
           <View style={styles.tipBox}>
-            <Zap size={18} color="#B45309" />
+            <Zap size={18} color={colors.primaryLight} />
             <View style={styles.tipCopy}>
               <Text style={styles.tipTitle}>Dica</Text>
               <Text style={styles.tipText}>{article.tip}</Text>
@@ -258,7 +258,7 @@ export function HelpScreen({ navigation }: any) {
               <View style={styles.card}>
                 <View style={styles.sectionTitleRow}>
                   <View style={styles.iconAmber}>
-                    <Star size={16} color="#F59E0B" fill="#F59E0B" />
+                    <Star size={16} color={colors.primaryLight} fill={colors.primaryLight} />
                   </View>
                   <Text style={styles.cardTitle}>Mais acessados</Text>
                 </View>
@@ -438,7 +438,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     gap: 10,
   },
   iconAmber: {
-    backgroundColor: '#f59e0b20',
+    backgroundColor: colors.warningSoft,
     padding: 6,
     borderRadius: 8,
   },
@@ -642,11 +642,11 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     marginTop: 4,
   },
   tipBox: {
-    backgroundColor: '#f59e0b20',
+    backgroundColor: colors.warningSoft,
     padding: 16,
     borderRadius: 20,
     borderLeftWidth: 4,
-    borderLeftColor: '#F59E0B',
+    borderLeftColor: colors.primaryLight,
     flexDirection: 'row',
     gap: 12,
     marginTop: 24,
@@ -654,12 +654,12 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   tipTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#92400E',
+    color: colors.textPrimary,
     marginBottom: 2,
   },
   tipText: {
     fontSize: 13,
-    color: '#B45309',
+    color: colors.textSecondary,
     lineHeight: 20,
   },
   usefulCard: {

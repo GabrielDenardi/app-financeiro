@@ -440,7 +440,7 @@ export default function MetasScreen() {
                   current={due}
                   minDate={TODAY}
                   markedDates={{
-                    [due]: { selected: true, selectedColor: "#6567ef" },
+                    [due]: { selected: true, selectedColor: themeColors.primaryLight },
                   }}
                   onDayPress={(day) => setDue(day.dateString)}
                   style={{ backgroundColor: themeColors.surface }}
@@ -608,7 +608,7 @@ export default function MetasScreen() {
                 current={tempDue}
                 minDate={TODAY}
                 markedDates={{
-                  [tempDue]: { selected: true, selectedColor: "#6567ef" },
+                  [tempDue]: { selected: true, selectedColor: themeColors.primaryLight },
                 }}
                 onDayPress={(day) => setTempDue(day.dateString)}
                 theme={{

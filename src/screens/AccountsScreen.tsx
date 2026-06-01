@@ -38,12 +38,12 @@ import {
   spacing,
   typography,
   type AppColors,
-  useThemeColors,
+  useAppTheme,
 } from "../theme";
 import { formatCurrencyBRL } from "../utils/format";
 
 export function AccountsScreen({ navigation }: any) {
-  const colors = useThemeColors();
+  const { colors, isDarkMode } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const currentUser = useAuthenticatedUser();
   const overviewQuery = useAccountsOverview(currentUser?.id);
@@ -92,7 +92,10 @@ export function AccountsScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+        backgroundColor={colors.background}
+      />
 
       <View style={styles.headerBackground}>
         <SafeAreaView>
