@@ -45,6 +45,7 @@ export default function ImportScreen({ navigation }: any) {
       const accepted = result.previewRows.filter((row) => row.status === 'accepted').length;
       const duplicate = result.previewRows.filter((row) => row.status === 'duplicate').length;
       const failed = result.previewRows.filter((row) => row.status === 'failed').length;
+      const total = result.previewRows.length;
 
       setSummary({ accepted, duplicate, failed });
       setAsset(null);
@@ -52,7 +53,11 @@ export default function ImportScreen({ navigation }: any) {
       if (accepted === 0) {
         const message = failed > 0
           ? 'O arquivo contém dados inválidos ou está em um formato incorreto. Corrija a planilha e tente novamente.'
-          : 'Nenhuma transação nova foi importada. Todas as linhas do arquivo já existem no sistema.';
+          : duplicate > 0
+            ? 'Nenhuma transação nova foi importada. Todas as linhas do arquivo já existem no sistema.'
+            : total === 0
+              ? 'O arquivo não contém linhas para importar.'
+              : 'Nenhuma transação nova foi importada.';
 
         Alert.alert('Erro', message);
         return;

@@ -160,7 +160,7 @@ function parseDate(value: unknown): string | null {
     }
 
     const date = new Date(text);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+    return Number.isNaN(date.getTime()) ? null : datePart;
   }
 
   return null;
