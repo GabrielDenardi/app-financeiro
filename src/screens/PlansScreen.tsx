@@ -1,11 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Linking from 'expo-linking';
 import { CheckCircle2 } from 'lucide-react-native';
 
 import { Card } from '../components/Card';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import { startAbacatepaySubscription } from '../features/billing/abacatepayService';
 import { useCurrentPlan } from '../features/plans/hooks';
 import { SUBSCRIPTION_PLANS } from '../features/plans/plans';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
@@ -17,9 +19,25 @@ export function PlansScreen({ navigation }: any) {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
+  const [selectingPlanId, setSelectingPlanId] = useState<string | null>(null);
 
-  const showBillingNotice = () => {
-    Alert.alert('Planos', 'A cobranca ainda nao esta ativa. Esta tela mostra as opcoes disponiveis.');
+  const handleSelectPlan = async (planId: (typeof PLAN_ORDER)[number]) => {
+    if (currentPlan.plan.id === planId || selectingPlanId) {
+      return;
+    }
+
+    setSelectingPlanId(planId);
+    try {
+      const checkoutUrl = await startAbacatepaySubscription(planId);
+      await Linking.openURL(checkoutUrl);
+    } catch (error) {
+      Alert.alert(
+        'Planos',
+        error instanceof Error ? error.message : 'Nao foi possivel iniciar a assinatura.',
+      );
+    } finally {
+      setSelectingPlanId(null);
+    }
   };
 
   return (
@@ -37,6 +55,7 @@ export function PlansScreen({ navigation }: any) {
       {PLAN_ORDER.map((planId) => {
         const plan = SUBSCRIPTION_PLANS[planId];
         const active = currentPlan.plan.id === plan.id;
+        const selecting = selectingPlanId === plan.id;
 
         return (
           <Card key={plan.id} style={[styles.planCard, active && styles.activePlanCard]}>
@@ -61,9 +80,13 @@ export function PlansScreen({ navigation }: any) {
               ))}
             </View>
 
-            <Pressable style={[styles.planButton, active && styles.planButtonMuted]} onPress={showBillingNotice}>
-              <Text style={[styles.planButtonText, active && styles.planButtonMutedText]}>
-                {active ? 'Plano atual' : 'Ver opcao'}
+            <Pressable
+              style={[styles.planButton, (active || selecting) && styles.planButtonMuted]}
+              disabled={active || Boolean(selectingPlanId)}
+              onPress={() => handleSelectPlan(plan.id)}
+            >
+              <Text style={[styles.planButtonText, (active || selecting) && styles.planButtonMutedText]}>
+                {active ? 'Plano atual' : selecting ? 'Abrindo checkout...' : 'Assinar'}
               </Text>
             </Pressable>
           </Card>
