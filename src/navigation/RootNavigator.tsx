@@ -6,6 +6,7 @@ import type { Session } from '@supabase/supabase-js';
 import { AuthCallbackResult } from '../features/auth/components/AuthCallbackResult';
 import { AuthFlowProvider } from '../features/auth/context/AuthFlowContext';
 import { PasswordRecoveryScreen } from '../features/auth/screens/AuthScreens';
+import { startAbacatepaySubscription } from '../features/billing/abacatepayService';
 import { isValidPlanId, SUBSCRIPTION_PLANS } from '../features/plans/plans';
 import type { SubscriptionPlanId } from '../features/plans/types';
 import {
@@ -84,7 +85,9 @@ export function RootNavigator() {
   const [sessionState, setSessionState] = useState<AuthSessionState>('loading');
   const [callbackNotice, setCallbackNotice] = useState<CallbackNotice | null>(null);
   const [planGateState, setPlanGateState] = useState<PlanGateState>('checking');
+  const [planGateError, setPlanGateError] = useState<string | null>(null);
   const [isSelectingPlan, setIsSelectingPlan] = useState(false);
+  const [isVerifyingPlan, setIsVerifyingPlan] = useState(false);
   const [isPasswordRecoveryFlow, setIsPasswordRecoveryFlow] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthenticatedUserSummary | null>(null);
   const [isBiometricLocked, setIsBiometricLocked] = useState(false);
@@ -99,6 +102,52 @@ export function RootNavigator() {
   const lastLoggedUserIdRef = useRef<string | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const isCheckingRef = useRef(false);
+
+  const refreshPlanGate = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData.session;
+
+    if (!session?.user) {
+      setSessionState('unauthenticated');
+      setPlanGateState('checking');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('full_name, subscription_plan')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!isValidPlanId(data?.subscription_plan)) {
+      setPlanGateState('required');
+      return;
+    }
+
+    setCurrentUser({
+      id: session.user.id,
+      email: session.user.email ?? null,
+      fullName:
+        typeof data?.full_name === 'string' && data.full_name.trim().length > 0
+          ? data.full_name.trim()
+          : typeof session.user.user_metadata.full_name === 'string'
+            ? session.user.user_metadata.full_name.trim()
+            : '',
+    });
+    setPlanGateState('ready');
+
+    const [preferences, biometricEnabledLocally] = await Promise.all([
+      getPreferences(),
+      isBiometricLockEnabledLocally(),
+    ]);
+    const shouldLock = preferences.biometricEnabled && biometricEnabledLocally;
+    setIsBiometricLocked(shouldLock);
+    setAppUnlockState(shouldLock ? 'locked' : 'unlocked');
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -418,27 +467,50 @@ export function RootNavigator() {
         <RequiredPlanScreen
           colors={colors}
           styles={styles}
+          errorMessage={planGateError}
           isSelectingPlan={isSelectingPlan}
+          isVerifyingPlan={isVerifyingPlan}
           onSelectPlan={async (planId) => {
             if (!currentUser?.id) {
               return;
             }
 
             setIsSelectingPlan(true);
+            setPlanGateError(null);
             try {
-              const { error } = await supabase
-                .from('profiles')
-                .update({ subscription_plan: planId })
-                .eq('id', currentUser.id);
-
-              if (error) {
-                throw error;
-              }
-
-              setPlanGateState('ready');
-              setAppUnlockState('unlocked');
+              const checkoutUrl = await startAbacatepaySubscription(planId);
+              await Linking.openURL(checkoutUrl);
+            } catch (error) {
+              const message =
+                error instanceof Error ? error.message : 'Nao foi possivel iniciar a assinatura.';
+              setPlanGateError(message);
             } finally {
               setIsSelectingPlan(false);
+            }
+          }}
+          onVerifyPlan={async () => {
+            setIsVerifyingPlan(true);
+            setPlanGateError(null);
+            try {
+              await refreshPlanGate();
+              const { data } = await supabase.auth.getSession();
+              if (data.session) {
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('subscription_plan')
+                  .eq('id', data.session.user.id)
+                  .maybeSingle();
+
+                if (!isValidPlanId(profile?.subscription_plan)) {
+                  setPlanGateError('Pagamento ainda nao confirmado. Tente novamente em instantes.');
+                }
+              }
+            } catch (error) {
+              const message =
+                error instanceof Error ? error.message : 'Nao foi possivel verificar a assinatura.';
+              setPlanGateError(message);
+            } finally {
+              setIsVerifyingPlan(false);
             }
           }}
           onSignOut={async () => {
@@ -490,14 +562,20 @@ export function RootNavigator() {
 function RequiredPlanScreen({
   colors,
   styles,
+  errorMessage,
   isSelectingPlan,
+  isVerifyingPlan,
   onSelectPlan,
+  onVerifyPlan,
   onSignOut,
 }: {
   colors: AppColors;
   styles: ReturnType<typeof createStyles>;
+  errorMessage: string | null;
   isSelectingPlan: boolean;
+  isVerifyingPlan: boolean;
   onSelectPlan: (planId: SubscriptionPlanId) => Promise<void>;
+  onVerifyPlan: () => Promise<void>;
   onSignOut: () => Promise<void>;
 }) {
   return (
@@ -505,8 +583,9 @@ function RequiredPlanScreen({
       <ScrollView contentContainerStyle={styles.planGateContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.planGateTitle}>Escolha um plano</Text>
         <Text style={styles.planGateSubtitle}>
-          Sua conta foi criada. Para acessar o aplicativo, selecione um plano.
+          Sua conta foi criada. Para acessar o aplicativo, assine um plano.
         </Text>
+        {errorMessage ? <Text style={styles.planGateError}>{errorMessage}</Text> : null}
 
         {PLAN_ORDER.map((planId) => {
           const plan = SUBSCRIPTION_PLANS[planId];
@@ -533,12 +612,22 @@ function RequiredPlanScreen({
                 onPress={() => onSelectPlan(plan.id)}
               >
                 <Text style={styles.planGateButtonText}>
-                  {isSelectingPlan ? 'Salvando...' : 'Assinar plano'}
+                  {isSelectingPlan ? 'Abrindo checkout...' : 'Assinar plano'}
                 </Text>
               </Pressable>
             </View>
           );
         })}
+
+        <Pressable
+          style={[styles.planGateSecondaryButton, isVerifyingPlan && styles.planGateButtonDisabled]}
+          disabled={isVerifyingPlan}
+          onPress={onVerifyPlan}
+        >
+          <Text style={styles.planGateSecondaryButtonText}>
+            {isVerifyingPlan ? 'Verificando...' : 'Ja paguei, verificar'}
+          </Text>
+        </Pressable>
 
         <Pressable style={styles.planGateSignOut} onPress={onSignOut}>
           <Text style={styles.planGateSignOutText}>Sair da conta</Text>
@@ -575,6 +664,12 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
       fontSize: 15,
       lineHeight: 21,
+    },
+    planGateError: {
+      color: colors.danger,
+      fontSize: 14,
+      fontWeight: '700',
+      lineHeight: 20,
     },
     planGateCard: {
       gap: 12,
@@ -623,6 +718,20 @@ const createStyles = (colors: AppColors) =>
     },
     planGateButtonText: {
       color: colors.white,
+      fontSize: 15,
+      fontWeight: '800',
+    },
+    planGateSecondaryButton: {
+      minHeight: 48,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    planGateSecondaryButtonText: {
+      color: colors.textPrimary,
       fontSize: 15,
       fontWeight: '800',
     },
