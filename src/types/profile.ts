@@ -1,6 +1,9 @@
+import type { SubscriptionPlanId } from '../features/plans/types';
+
 export type UserProfile = {
   id: string;
   email: string;
+  subscriptionPlan: SubscriptionPlanId;
   fullName: string;
   phone: string;
   birthDate: string | null;
@@ -16,6 +19,7 @@ export type UserProfile = {
 export type UpdateUserProfileInput = {
   id: string;
   email: string;
+  subscriptionPlan?: SubscriptionPlanId;
   fullName: string;
   phone: string;
   birthDate: string | null;

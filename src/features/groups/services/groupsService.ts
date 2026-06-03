@@ -1,5 +1,7 @@
 import { hasSupabaseEnv } from '../../../config/env';
+import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
+import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
 import type {
   CreateGroupInput,
   CreateGroupSplitInput,
@@ -89,6 +91,10 @@ type GroupSettlementRow = {
 type MembershipRoleRow = {
   group_id: string;
   role: GroupRole;
+};
+
+type ProfilePlanRow = {
+  subscription_plan: string | null;
 };
 
 export type GroupsServiceErrorCode =
@@ -432,6 +438,22 @@ export async function getGroupDetails(
 }
 
 export async function createGroup(input: CreateGroupInput): Promise<string> {
+  const userId = await requireCurrentUserId();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('subscription_plan')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new GroupsServiceError('unknown', error.message);
+  }
+
+  const entitlements = getPlanEntitlements(normalizePlanId((data as ProfilePlanRow | null)?.subscription_plan));
+  if (!entitlements.createGroups) {
+    throw new GroupsServiceError('unknown', getUpgradeMessage('Criar grupos'));
+  }
+
   return runRpc<string>('create_group', {
     p_title: input.title.trim(),
     p_description: input.description.trim(),

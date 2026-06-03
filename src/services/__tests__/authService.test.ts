@@ -125,6 +125,15 @@ describe('authService', () => {
     ).resolves.toBeUndefined();
 
     expect(mockSignUp).toHaveBeenCalledTimes(1);
+    expect(mockSignUp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          data: expect.objectContaining({
+            consent_accepted: true,
+          }),
+        }),
+      }),
+    );
   });
 
   it('sends password reset using cpf lookup', async () => {

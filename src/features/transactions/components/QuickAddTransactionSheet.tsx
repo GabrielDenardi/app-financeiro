@@ -47,6 +47,7 @@ type QuickAddTransactionSheetProps = {
   accounts: AccountBalanceSnapshot[];
   categories: FinanceCategory[];
   primaryAccountId?: string | null;
+  allowVoiceCapture?: boolean;
   onClose: () => void;
 };
 
@@ -102,6 +103,7 @@ export function QuickAddTransactionSheet({
   accounts,
   categories,
   primaryAccountId,
+  allowVoiceCapture = false,
   onClose,
 }: QuickAddTransactionSheetProps) {
   const colors = useThemeColors();
@@ -233,6 +235,11 @@ export function QuickAddTransactionSheet({
   };
 
   const handleParseFile = async (mode: Exclude<CaptureMode, 'manual'>, file: LocalCaptureFile) => {
+    if (mode === 'voice' && !allowVoiceCapture) {
+      Alert.alert('Plano necessario', 'Cadastro por voz nao esta disponivel no seu plano atual.');
+      return;
+    }
+
     setSelectedFile(file);
     setCaptureMode(mode);
     setIsParsing(true);
@@ -314,6 +321,11 @@ export function QuickAddTransactionSheet({
   };
 
   const handleStartRecording = async () => {
+    if (!allowVoiceCapture) {
+      Alert.alert('Plano necessario', 'Cadastro por voz nao esta disponivel no seu plano atual.');
+      return;
+    }
+
     try {
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
@@ -469,23 +481,25 @@ export function QuickAddTransactionSheet({
           <Text style={styles.modeText}>Preenchimento completo no formulario.</Text>
         </Pressable>
 
-        <View style={styles.modeCard}>
-          <Text style={styles.modeTitle}>Por voz</Text>
-          <Text style={styles.modeText}>Grave um resumo curto e deixe a IA montar o rascunho.</Text>
-          <Pressable
-            style={[
-              styles.primaryButton,
-              styles.modeCardActionButton,
-              recorderState.isRecording && styles.recordingButton,
-            ]}
-            onPress={recorderState.isRecording ? handleStopRecording : handleStartRecording}
-            disabled={isParsing}
-          >
-            <Text style={styles.primaryButtonText}>
-              {recorderState.isRecording ? 'Parar e analisar' : 'Gravar audio'}
-            </Text>
-          </Pressable>
-        </View>
+        {allowVoiceCapture ? (
+          <View style={styles.modeCard}>
+            <Text style={styles.modeTitle}>Por voz</Text>
+            <Text style={styles.modeText}>Grave um resumo curto e deixe a IA montar o rascunho.</Text>
+            <Pressable
+              style={[
+                styles.primaryButton,
+                styles.modeCardActionButton,
+                recorderState.isRecording && styles.recordingButton,
+              ]}
+              onPress={recorderState.isRecording ? handleStopRecording : handleStartRecording}
+              disabled={isParsing}
+            >
+              <Text style={styles.primaryButtonText}>
+                {recorderState.isRecording ? 'Parar e analisar' : 'Gravar audio'}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.modeCard}>
           <Text style={styles.modeTitle}>Leitura OCR</Text>

@@ -3,11 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { financeQueryKeys } from '../../finance/queryKeys';
 import { importTransactionsFromAsset, listImportBatches } from '../services/importService';
 
-export function useImportBatches(userId?: string | null) {
+export function useImportBatches(userId?: string | null, enabled = true) {
   return useQuery({
     queryKey: financeQueryKeys.imports.list(userId),
     queryFn: listImportBatches,
-    enabled: Boolean(userId),
+    enabled: Boolean(userId && enabled),
   });
 }
 

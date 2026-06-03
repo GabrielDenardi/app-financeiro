@@ -1,5 +1,6 @@
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
+import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
 import type {
   CreateSupportConversationInput,
   SendSupportMessageInput,
@@ -24,6 +25,27 @@ type MessageRow = {
   created_at: string;
 };
 
+type ProfilePlanRow = {
+  subscription_plan: string | null;
+};
+
+async function ensureSupportChatAllowed(userId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('subscription_plan')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const entitlements = getPlanEntitlements(normalizePlanId((data as ProfilePlanRow | null)?.subscription_plan));
+  if (!entitlements.supportChat) {
+    throw new Error(getUpgradeMessage('Chat de suporte'));
+  }
+}
+
 function mapMessage(row: MessageRow): SupportMessage {
   return {
     id: row.id,
@@ -38,6 +60,7 @@ function mapMessage(row: MessageRow): SupportMessage {
 
 export async function listSupportConversations(): Promise<SupportConversation[]> {
   const userId = await requireCurrentUserId();
+  await ensureSupportChatAllowed(userId);
   const { data: conversationsData, error: conversationsError } = await supabase
     .from('support_conversations')
     .select('id, title, status, updated_at')
@@ -85,6 +108,7 @@ export async function listSupportConversations(): Promise<SupportConversation[]>
 
 export async function listSupportMessages(conversationId: string): Promise<SupportMessage[]> {
   const userId = await requireCurrentUserId();
+  await ensureSupportChatAllowed(userId);
   const { data, error } = await supabase
     .from('support_messages')
     .select(
@@ -112,6 +136,7 @@ export async function listSupportMessages(conversationId: string): Promise<Suppo
 
 export async function createSupportConversation(input: CreateSupportConversationInput): Promise<string> {
   const userId = await requireCurrentUserId();
+  await ensureSupportChatAllowed(userId);
   const { data, error } = await supabase
     .from('support_conversations')
     .insert({
@@ -143,6 +168,7 @@ export async function createSupportConversation(input: CreateSupportConversation
 
 export async function sendSupportMessage(input: SendSupportMessageInput): Promise<string> {
   const userId = await requireCurrentUserId();
+  await ensureSupportChatAllowed(userId);
   const { data, error } = await supabase
     .from('support_messages')
     .insert({
@@ -162,6 +188,8 @@ export async function sendSupportMessage(input: SendSupportMessageInput): Promis
 }
 
 export async function markSupportConversationRead(conversationId: string): Promise<void> {
+  const userId = await requireCurrentUserId();
+  await ensureSupportChatAllowed(userId);
   const { error } = await supabase
     .from('support_messages')
     .update({ read_at: new Date().toISOString() })

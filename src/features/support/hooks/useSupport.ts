@@ -10,19 +10,19 @@ import {
 } from '../services/supportService';
 import type { CreateSupportConversationInput, SendSupportMessageInput } from '../types';
 
-export function useSupportConversations(userId?: string | null) {
+export function useSupportConversations(userId?: string | null, enabled = true) {
   return useQuery({
     queryKey: financeQueryKeys.support.conversations(userId),
     queryFn: listSupportConversations,
-    enabled: Boolean(userId),
+    enabled: Boolean(userId && enabled),
   });
 }
 
-export function useSupportMessages(userId?: string | null, conversationId?: string | null) {
+export function useSupportMessages(userId?: string | null, conversationId?: string | null, enabled = true) {
   return useQuery({
     queryKey: financeQueryKeys.support.messages(userId, conversationId),
     queryFn: () => listSupportMessages(conversationId as string),
-    enabled: Boolean(userId && conversationId),
+    enabled: Boolean(userId && conversationId && enabled),
   });
 }
 

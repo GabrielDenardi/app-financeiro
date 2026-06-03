@@ -54,7 +54,7 @@ const progressMap = {
   city: 0.76,
   state: 0.82,
   consent: 0.9,
-  password: 0.97,
+  password: 0.98,
 } as const;
 
 function maskEmailFallback(email: string): string {

@@ -2,10 +2,12 @@ import { digitsOnly } from '../../auth/utils/masks';
 import { parseDateBR } from '../../auth/utils/validation';
 import { supabase } from '../../../lib/supabase';
 import type { UpdateUserProfileInput, UserProfile } from '../../../types/profile';
+import { normalizePlanId } from '../../plans/plans';
 
 type ProfileRow = {
   id: string;
   email: string;
+  subscription_plan: string | null;
   full_name: string;
   phone: string;
   birth_date: string | null;
@@ -19,7 +21,7 @@ type ProfileRow = {
 };
 
 const PROFILE_SELECT_FIELDS =
-  'id, email, full_name, phone, birth_date, cep, street, address_number, complement, city, state, bio';
+  'id, email, subscription_plan, full_name, phone, birth_date, cep, street, address_number, complement, city, state, bio';
 
 function toIsoDateString(date: Date): string {
   const year = date.getFullYear();
@@ -66,6 +68,7 @@ function mapProfileRow(row: ProfileRow): UserProfile {
   return {
     id: row.id,
     email: row.email,
+    subscriptionPlan: normalizePlanId(row.subscription_plan),
     fullName: row.full_name,
     phone: row.phone,
     birthDate: row.birth_date,

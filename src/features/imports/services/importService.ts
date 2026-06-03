@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
+import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
 import { listCategories } from '../../transactions/services/transactionsService';
 import type { ImportBatch, ImportPreviewRow } from '../types';
 
@@ -18,6 +19,10 @@ type ImportBatchRow = {
   status: ImportBatch['status'];
   created_at: string;
   finalized_at: string | null;
+};
+
+type ProfilePlanRow = {
+  subscription_plan: string | null;
 };
 
 type PickedAsset = {
@@ -305,6 +310,21 @@ export async function listImportBatches(): Promise<ImportBatch[]> {
 
 export async function importTransactionsFromAsset(asset: PickedAsset) {
   const userId = await requireCurrentUserId();
+  const { data: profileData, error: profileError } = await supabase
+    .from('profiles')
+    .select('subscription_plan')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  const entitlements = getPlanEntitlements(normalizePlanId((profileData as ProfilePlanRow | null)?.subscription_plan));
+  if (!entitlements.dataImportExport) {
+    throw new Error(getUpgradeMessage('Importar dados'));
+  }
+
   const categories = await listCategories();
   const categoryByName = new Map<string, string>(
     categories.flatMap((category) => [

@@ -17,6 +17,8 @@ import { Card } from '../components/Card';
 import { FloatingActionButton } from '../components/FloatingActionButton';
 import { BOTTOM_TAB_BAR_HEIGHT } from '../components/BottomTabBarMock';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import { useCurrentPlan } from '../features/plans/hooks';
+import { getUpgradeMessage } from '../features/plans/plans';
 import {
   useCreateSupportConversationMutation,
   useSupportConversations,
@@ -45,7 +47,8 @@ export default function ListChatScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const user = useAuthenticatedUser();
-  const conversationsQuery = useSupportConversations(user?.id);
+  const currentPlan = useCurrentPlan(user?.id);
+  const conversationsQuery = useSupportConversations(user?.id, currentPlan.entitlements.supportChat);
   const createConversationMutation = useCreateSupportConversationMutation(user?.id);
   const [searchText, setSearchText] = useState('');
   const [addTalkVisible, setAddTalkVisible] = useState(false);
@@ -65,6 +68,11 @@ export default function ListChatScreen() {
     navigation.navigate('Chat', { chatId: id, chatTitle });
 
   const handleCreateConversation = async () => {
+    if (!currentPlan.entitlements.supportChat) {
+      setAddTalkVisible(false);
+      return;
+    }
+
     try {
       const conversationId = await createConversationMutation.mutateAsync({
         title,
@@ -95,10 +103,22 @@ export default function ListChatScreen() {
         <View style={styles.headerCopy}>
           <Text style={styles.headerTitle}>Conversas</Text>
           <Text style={styles.headerSubtitle}>
-            Visualize todos os seus chats abertos.
+            {currentPlan.entitlements.supportChat
+              ? 'Visualize todos os seus chats abertos.'
+              : 'Disponivel no Plano Pro.'}
           </Text>
         </View>
       </View>
+
+      {!currentPlan.entitlements.supportChat ? (
+        <View style={styles.lockedContent}>
+          <Card style={styles.lockedCard}>
+            <Text style={styles.lockedTitle}>Chat de suporte Pro</Text>
+            <Text style={styles.lockedText}>{getUpgradeMessage('Chat de suporte')}</Text>
+          </Card>
+        </View>
+      ) : (
+        <>
 
       <View style={styles.searchContainer}>
         <View style={styles.search}>
@@ -260,6 +280,8 @@ export default function ListChatScreen() {
           </View>
         </View>
       </Modal>
+        </>
+      )}
     </SafeAreaView>
   );
 }
@@ -478,6 +500,21 @@ const createStyles = (colors: AppColors) =>
       ...typography.body,
       color: colors.textSecondary,
       fontSize: 12,
+    },
+    lockedContent: {
+      padding: layout.pageHorizontal,
+    },
+    lockedCard: {
+      gap: spacing.sm,
+    },
+    lockedTitle: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    lockedText: {
+      ...typography.body,
+      color: colors.textSecondary,
+      lineHeight: 19,
     },
     tabsRow: {
       flexDirection: 'row',

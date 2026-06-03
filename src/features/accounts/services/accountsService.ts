@@ -1,5 +1,6 @@
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
+import { getAccountLimitMessage, getPlanEntitlements, normalizePlanId } from '../../plans/plans';
 import { endOfMonth, startOfMonth, toNumber } from '../../finance/utils';
 import type {
   AccountBalanceSnapshot,
@@ -29,6 +30,10 @@ type AccountBalanceRow = {
 type MonthlyTransactionRow = {
   type: 'income' | 'expense';
   amount: number | string;
+};
+
+type ProfilePlanRow = {
+  subscription_plan: string | null;
 };
 
 function mapAccount(
@@ -129,6 +134,28 @@ export async function getAccountsOverview(): Promise<AccountsOverview> {
 
 export async function createAccount(input: CreateAccountInput): Promise<string> {
   const userId = await requireCurrentUserId();
+  const [{ count, error: countError }, { data: profileData, error: profileError }] = await Promise.all([
+    supabase
+      .from('personal_accounts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_active', true),
+    supabase
+      .from('profiles')
+      .select('subscription_plan')
+      .eq('id', userId)
+      .maybeSingle(),
+  ]);
+
+  if (countError || profileError) {
+    throw new Error(countError?.message ?? profileError?.message ?? 'Nao foi possivel validar seu plano.');
+  }
+
+  const subscriptionPlan = normalizePlanId((profileData as ProfilePlanRow | null)?.subscription_plan);
+  if ((count ?? 0) >= getPlanEntitlements(subscriptionPlan).accountLimit) {
+    throw new Error(getAccountLimitMessage(subscriptionPlan));
+  }
+
   const { data, error } = await supabase
     .from('personal_accounts')
     .insert({

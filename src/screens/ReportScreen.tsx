@@ -9,6 +9,7 @@ import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { endOfMonth, isoDate, startOfMonth } from '../features/finance/utils';
+import { useCurrentPlan } from '../features/plans/hooks';
 import { useReports } from '../features/reports/hooks/useReports';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { formatCurrencyBRL } from '../utils/format';
@@ -34,6 +35,7 @@ export default function ReportsScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const user = useAuthenticatedUser();
+  const currentPlan = useCurrentPlan(user?.id);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'Despesas' | 'Tendências' | 'Evolução'>('Despesas');
   const [mode, setMode] = useState<'month' | 'range'>('month');
@@ -46,6 +48,7 @@ export default function ReportsScreen({ navigation }: any) {
   const [selecting, setSelecting] = useState<'from' | 'to'>('from');
   const reportQuery = useReports(user?.id, { from, to });
   const report = reportQuery.data;
+  const hasFullReports = currentPlan.entitlements.fullReports;
 
   const monthLabel = `${MONTHS[Number(monthKey.split('-')[1]) - 1]} ${monthKey.split('-')[0]}`;
   const pieData = useMemo(
@@ -121,7 +124,7 @@ export default function ReportsScreen({ navigation }: any) {
       </Card>
 
       <View style={styles.tabs}>
-        {(['Despesas', 'Tendências', 'Evolução'] as const).map((item) => (
+        {(hasFullReports ? (['Despesas', 'Tendências', 'Evolução'] as const) : (['Despesas'] as const)).map((item) => (
           <Pressable key={item} style={[styles.tab, tab === item && styles.tabOn]} onPress={() => setTab(item)}>
             <Text style={[styles.tabText, tab === item && styles.tabTextOn]}>{item}</Text>
           </Pressable>
@@ -167,14 +170,14 @@ export default function ReportsScreen({ navigation }: any) {
             <Text style={styles.msg}>Sem despesas suficientes no período.</Text>
           )
         ) : null}
-        {!reportQuery.isLoading && !reportQuery.isError && tab === 'Tendências' ? (
+        {!reportQuery.isLoading && !reportQuery.isError && hasFullReports && tab === 'Tendências' ? (
           report?.barSeries.length ? (
             <BarChart data={report.barSeries} barWidth={34} spacing={34} roundedTop yAxisThickness={0} xAxisThickness={0} hideRules noOfSections={3} />
           ) : (
             <Text style={styles.msg}>Sem dados para tendências.</Text>
           )
         ) : null}
-        {!reportQuery.isLoading && !reportQuery.isError && tab === 'Evolução' ? (
+        {!reportQuery.isLoading && !reportQuery.isError && hasFullReports && tab === 'Evolução' ? (
           report?.lineSeries.length ? (
             <LineChart
               data={lineData}
@@ -217,17 +220,24 @@ export default function ReportsScreen({ navigation }: any) {
         ))}
       </Card>
 
-      <Card style={styles.card}>
-        <Text style={styles.cardTitle}>Por Forma de Pagamento</Text>
-        {reportQuery.isLoading ? <ActivityIndicator color={colors.primaryLight} /> : null}
-        {!reportQuery.isLoading && !(report?.paymentMethods.length) ? <Text style={styles.msg}>Nenhuma forma de pagamento encontrada.</Text> : null}
-        {(report?.paymentMethods ?? []).map((item) => (
-          <View key={item.label} style={styles.pay}>
-            <Text style={styles.payLabel}>{item.label}</Text>
-            <Text style={styles.payValue}>{formatCurrencyBRL(item.amount)}</Text>
-          </View>
-        ))}
-      </Card>
+      {hasFullReports ? (
+        <Card style={styles.card}>
+          <Text style={styles.cardTitle}>Por Forma de Pagamento</Text>
+          {reportQuery.isLoading ? <ActivityIndicator color={colors.primaryLight} /> : null}
+          {!reportQuery.isLoading && !(report?.paymentMethods.length) ? <Text style={styles.msg}>Nenhuma forma de pagamento encontrada.</Text> : null}
+          {(report?.paymentMethods ?? []).map((item) => (
+            <View key={item.label} style={styles.pay}>
+              <Text style={styles.payLabel}>{item.label}</Text>
+              <Text style={styles.payValue}>{formatCurrencyBRL(item.amount)}</Text>
+            </View>
+          ))}
+        </Card>
+      ) : (
+        <Card style={styles.card}>
+          <Text style={styles.cardTitle}>Relatorios completos</Text>
+          <Text style={styles.msg}>Tendencias, evolucao e formas de pagamento ficam disponiveis nos planos Intermediario e Pro.</Text>
+        </Card>
+      )}
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <View style={styles.overlay}>

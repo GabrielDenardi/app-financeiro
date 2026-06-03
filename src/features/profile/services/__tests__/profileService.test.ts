@@ -67,6 +67,7 @@ describe('profileService', () => {
     await expect(getProfile('user-1')).resolves.toEqual({
       id: 'user-1',
       email: 'henrique@teste.com',
+      subscriptionPlan: 'basic',
       fullName: 'Henrique Feijo',
       phone: '11999999999',
       birthDate: '1994-06-20',
@@ -117,6 +118,7 @@ describe('profileService', () => {
     ).resolves.toEqual({
       id: 'user-1',
       email: 'henrique@teste.com',
+      subscriptionPlan: 'basic',
       fullName: 'Henrique Feijo',
       phone: '11999999999',
       birthDate: '1994-06-20',

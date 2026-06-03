@@ -32,6 +32,8 @@ import {
   useCreateTransferMutation,
 } from "../features/accounts/hooks/useAccounts";
 import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
+import { useCurrentPlan } from "../features/plans/hooks";
+import { canCreateAccount, getAccountLimitMessage } from "../features/plans/plans";
 import {
   layout,
   radius,
@@ -49,6 +51,7 @@ export function AccountsScreen({ navigation }: any) {
   const overviewQuery = useAccountsOverview(currentUser?.id);
   const createAccountMutation = useCreateAccountMutation(currentUser?.id);
   const createTransferMutation = useCreateTransferMutation(currentUser?.id);
+  const currentPlan = useCurrentPlan(currentUser?.id);
 
   const [showBalances, setShowBalances] = useState(true);
   const [addVisible, setAddVisible] = useState(false);
@@ -76,6 +79,15 @@ export function AccountsScreen({ navigation }: any) {
           : "Não foi possível criar a conta.",
       );
     }
+  };
+
+  const handleOpenAddAccount = () => {
+    if (!canCreateAccount(currentPlan.plan.id, activeAccounts.length)) {
+      Alert.alert("Limite do plano", getAccountLimitMessage(currentPlan.plan.id));
+      return;
+    }
+
+    setAddVisible(true);
   };
 
   const handleCreateTransfer = async (input: any) => {
@@ -119,7 +131,7 @@ export function AccountsScreen({ navigation }: any) {
               </Pressable>
               <Pressable
                 style={styles.actionButtonSolid}
-                onPress={() => setAddVisible(true)}
+                onPress={handleOpenAddAccount}
               >
                 <Plus color={colors.white} size={14} />
                 <Text style={styles.headerActionText}>Novo</Text>
@@ -168,7 +180,7 @@ export function AccountsScreen({ navigation }: any) {
                   <View style={styles.statItem}>
                     <Text style={styles.statLabel}>Contas</Text>
                     <Text style={styles.statValue}>
-                      {activeAccounts.length}
+                      {activeAccounts.length}/{currentPlan.entitlements.accountLimit}
                     </Text>
                   </View>
                 </View>
