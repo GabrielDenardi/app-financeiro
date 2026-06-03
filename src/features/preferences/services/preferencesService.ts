@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
+import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
 import type { LoginEvent, MfaEnrollment, UserPreferences } from '../types';
 
 type PreferencesRow = {
@@ -21,6 +22,27 @@ type LoginEventRow = {
   platform: string;
   created_at: string;
 };
+
+type ProfilePlanRow = {
+  subscription_plan: string | null;
+};
+
+async function ensureDataImportExportAllowed(userId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('subscription_plan')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const entitlements = getPlanEntitlements(normalizePlanId((data as ProfilePlanRow | null)?.subscription_plan));
+  if (!entitlements.dataImportExport) {
+    throw new Error(getUpgradeMessage('Exportar dados'));
+  }
+}
 
 function mapPreferences(row: PreferencesRow): UserPreferences {
   return {
@@ -216,6 +238,7 @@ export async function listTotpFactors() {
 
 export async function requestDataExport(): Promise<string | null> {
   const userId = await requireCurrentUserId();
+  await ensureDataImportExportAllowed(userId);
   const { data, error } = await supabase
     .from('data_export_requests')
     .insert({

@@ -19,6 +19,8 @@ import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
 import { appEnv } from '../config/env';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import { useCurrentPlan } from '../features/plans/hooks';
+import { getUpgradeMessage } from '../features/plans/plans';
 import {
   useDisableTotpMutation,
   useEnrollTotpMutation,
@@ -37,6 +39,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const user = useAuthenticatedUser();
+  const currentPlan = useCurrentPlan(user?.id);
   const preferencesQuery = usePreferences(user?.id);
   const loginEventsQuery = useLoginEvents(user?.id);
   const mfaFactorsQuery = useMfaFactors(user?.id);
@@ -117,6 +120,11 @@ export function PrivacySecurityScreen({ navigation }: any) {
   };
 
   const onExport = async () => {
+    if (!currentPlan.entitlements.dataImportExport) {
+      Alert.alert('Plano necessario', getUpgradeMessage('Exportar dados'));
+      return;
+    }
+
     try {
       const url = await exportData.mutateAsync();
       if (!url) {
@@ -235,7 +243,9 @@ export function PrivacySecurityScreen({ navigation }: any) {
           <Section title="Seus Dados" icon={<Database size={18} color={colors.textPrimary} />} styles={styles}>
             <Pressable style={styles.action} onPress={onExport}>
               <Download size={18} color={colors.textPrimary} />
-              <Text style={styles.actionText}>Exportar meus dados</Text>
+              <Text style={styles.actionText}>
+                {currentPlan.entitlements.dataImportExport ? 'Exportar meus dados' : 'Exportar meus dados (Pro)'}
+              </Text>
               {exportData.isPending ? <ActivityIndicator /> : null}
             </Pressable>
             <Pressable style={[styles.action, styles.danger]} onPress={() => setDeleteOpen(true)}>

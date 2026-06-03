@@ -8,13 +8,16 @@ import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { useImportBatches, useImportTransactionsMutation } from '../features/imports/hooks/useImports';
+import { useCurrentPlan } from '../features/plans/hooks';
+import { getUpgradeMessage } from '../features/plans/plans';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 export default function ImportScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const user = useAuthenticatedUser();
-  const batchesQuery = useImportBatches(user?.id);
+  const currentPlan = useCurrentPlan(user?.id);
+  const batchesQuery = useImportBatches(user?.id, currentPlan.entitlements.dataImportExport);
   const importMutation = useImportTransactionsMutation(user?.id);
   const [asset, setAsset] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [doneOpen, setDoneOpen] = useState(false);
@@ -37,6 +40,11 @@ export default function ImportScreen({ navigation }: any) {
 
   const doImport = async () => {
     if (!asset) {
+      return;
+    }
+
+    if (!currentPlan.entitlements.dataImportExport) {
+      Alert.alert('Plano necessario', getUpgradeMessage('Importar dados'));
       return;
     }
 
@@ -78,6 +86,17 @@ export default function ImportScreen({ navigation }: any) {
   return (
     <PageShell>
       <PageHeader title="Importar Dados" onBackPress={() => navigation.goBack()} />
+
+      {!currentPlan.entitlements.dataImportExport ? (
+        <Card style={styles.card}>
+          <View style={styles.icon}>
+            <FileSpreadsheet color={colors.textSecondary} size={28} />
+          </View>
+          <Text style={styles.cardTitle}>Recurso do Plano Pro</Text>
+          <Text style={styles.cardSub}>{getUpgradeMessage('Importacao de dados')}</Text>
+        </Card>
+      ) : (
+        <>
 
       <Card style={styles.card}>
         <View style={styles.icon}>
@@ -169,6 +188,8 @@ export default function ImportScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
+        </>
+      )}
     </PageShell>
   );
 }

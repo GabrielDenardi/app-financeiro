@@ -40,11 +40,13 @@ const IMPLEMENTED_ROUTES = new Set([
   "Privacy",
   "Notifications",
   "Import",
+  "Plans",
   "About",
   "Budgets",
   "Reports",
   "Groups",
   "RecurringTransactions",
+  "ListChat",
 ]);
 
 export function MenuScreen({ navigation, user }: MenuScreenProps) {

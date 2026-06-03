@@ -19,6 +19,8 @@ import { Card } from '../../../components/Card';
 import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import type { AuthenticatedUserSummary } from '../../../types/auth';
 import { formatCurrencyBRL } from '../../../utils/format';
+import { useCurrentPlan } from '../../plans/hooks';
+import { getUpgradeMessage } from '../../plans/plans';
 import { useCreateGroupMutation, useGroups, useJoinGroupMutation } from '../hooks/useGroups';
 
 type GroupsScreenProps = {
@@ -50,6 +52,16 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
   const groupsQuery = useGroups(currentUser?.id);
   const createGroupMutation = useCreateGroupMutation(currentUser?.id);
   const joinGroupMutation = useJoinGroupMutation(currentUser?.id);
+  const currentPlan = useCurrentPlan(currentUser?.id);
+
+  const openCreateModal = () => {
+    if (!currentPlan.entitlements.createGroups) {
+      Alert.alert('Plano necessario', getUpgradeMessage('Criar grupos'));
+      return;
+    }
+
+    setIsCreateModalVisible(true);
+  };
 
   const handleCreateGroup = async () => {
     if (!groupTitle.trim()) {
@@ -120,7 +132,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
           <View style={styles.heroActions}>
             <Pressable
               accessibilityRole="button"
-              onPress={() => setIsCreateModalVisible(true)}
+              onPress={openCreateModal}
               style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
             >
               <Ionicons name="add-circle-outline" size={18} color={colors.white} />

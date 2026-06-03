@@ -1,4 +1,8 @@
 const mockRpc = jest.fn();
+const mockFrom = jest.fn();
+const mockSelect = jest.fn();
+const mockEq = jest.fn();
+const mockMaybeSingle = jest.fn();
 
 jest.mock('../../../../config/env', () => ({
   hasSupabaseEnv: true,
@@ -7,8 +11,12 @@ jest.mock('../../../../config/env', () => ({
 jest.mock('../../../../lib/supabase', () => ({
   supabase: {
     rpc: (...args: unknown[]) => mockRpc(...args),
-    from: jest.fn(),
+    from: (...args: unknown[]) => mockFrom(...args),
   },
+}));
+
+jest.mock('../../../../lib/auth', () => ({
+  requireCurrentUserId: jest.fn(() => Promise.resolve('user-1')),
 }));
 
 import {
@@ -22,6 +30,20 @@ import {
 describe('groupsService rpc wrappers', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+
+    mockFrom.mockImplementation(() => ({
+      select: mockSelect,
+    }));
+    mockSelect.mockImplementation(() => ({
+      eq: mockEq,
+    }));
+    mockEq.mockImplementation(() => ({
+      maybeSingle: mockMaybeSingle,
+    }));
+    mockMaybeSingle.mockResolvedValue({
+      data: { subscription_plan: 'intermediate' },
+      error: null,
+    });
   });
 
   it('creates group with trimmed payload', async () => {

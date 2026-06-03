@@ -5,9 +5,14 @@ import { Platform } from 'react-native';
 
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
+import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
 import type { CapturedTransactionDraft, TransactionAttachment, TransactionAttachmentKind } from '../types';
 
 const RECEIPT_BUCKET = 'transaction-receipts';
+
+type ProfilePlanRow = {
+  subscription_plan: string | null;
+};
 
 export type LocalCaptureFile = {
   uri: string;
@@ -298,6 +303,22 @@ export async function parseTransactionFromOcr(file: LocalCaptureFile): Promise<C
 }
 
 export async function parseTransactionFromVoice(file: LocalCaptureFile): Promise<CapturedTransactionDraft> {
+  const userId = await requireCurrentUserId();
+  const { data: profileData, error: profileError } = await supabase
+    .from('profiles')
+    .select('subscription_plan')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  const entitlements = getPlanEntitlements(normalizePlanId((profileData as ProfilePlanRow | null)?.subscription_plan));
+  if (!entitlements.voiceCapture) {
+    throw new Error(getUpgradeMessage('Cadastro por voz'));
+  }
+
   const base64Data = await readFileAsBase64(file.uri);
   const { data, error, response } = await supabase.functions.invoke('parse-transaction-voice', {
     body: {

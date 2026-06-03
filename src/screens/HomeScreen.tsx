@@ -21,6 +21,7 @@ import { SummaryStatCard } from "../components/SummaryStatCard";
 import { TransactionListItem } from "../components/TransactionListItem";
 import { useAccounts } from "../features/accounts/hooks/useAccounts";
 import { useHomeDashboard } from "../features/dashboard/hooks/useDashboard";
+import { useCurrentPlan } from "../features/plans/hooks";
 import { usePreferences } from "../features/preferences/hooks/usePreferences";
 import { useProfile } from "../features/profile/hooks/useProfile";
 import { QuickAddTransactionSheet } from "../features/transactions/components/QuickAddTransactionSheet";
@@ -64,6 +65,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
   const accountsQuery = useAccounts(currentUser?.id);
   const categoriesQuery = useFinanceCategories(currentUser?.id);
   const preferencesQuery = usePreferences(currentUser?.id);
+  const currentPlan = useCurrentPlan(currentUser?.id);
 
   const [showValues, setShowValues] = useState(true);
   const [quickAddVisible, setQuickAddVisible] = useState(false);
@@ -276,6 +278,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
         accounts={accounts}
         categories={categoriesQuery.data ?? []}
         primaryAccountId={primaryAccount?.id ?? null}
+        allowVoiceCapture={currentPlan.entitlements.voiceCapture}
         onClose={() => setQuickAddVisible(false)}
       />
     </SafeAreaView>
