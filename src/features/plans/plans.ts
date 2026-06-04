@@ -57,6 +57,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, SubscriptionPlan> = 
       'Tudo dos outros planos',
       'Chat de suporte interno',
       'Importacao e exportacao de dados',
+      'Exportacao para o Imposto de Renda',
     ],
   },
 };

@@ -14,6 +14,7 @@ export type AppStackParamList = {
   Notifications: undefined;
   Plans: undefined;
   Import: undefined;
+  IncomeTax: undefined;
   About: undefined;
   Budgets: undefined;
   Reports: undefined;

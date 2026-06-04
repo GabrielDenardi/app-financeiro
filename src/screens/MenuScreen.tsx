@@ -40,6 +40,7 @@ const IMPLEMENTED_ROUTES = new Set([
   "Privacy",
   "Notifications",
   "Import",
+  "IncomeTax",
   "Plans",
   "About",
   "Budgets",

@@ -10,6 +10,7 @@ import CardsScreen from '../screens/CardsScreen';
 import { HelpScreen } from '../screens/HelpScreen';
 import ListChatScreen from '../screens/ListChatScreen';
 import ImportScreen from '../screens/ImportScreen';
+import IncomeTaxScreen from '../screens/IncomeTaxScreen';
 import { PrivacySecurityScreen } from '../screens/PrivacySecurityScreen';
 import { PlansScreen } from '../screens/PlansScreen';
 import RecurringTransactionsScreen from '../screens/RecurringTransactionsScreen';
@@ -40,6 +41,7 @@ export function AppStack({ currentUser }: AppStackProps) {
       <Stack.Screen name="Privacy" component={PrivacySecurityScreen} />
       <Stack.Screen name="Plans" component={PlansScreen} />
       <Stack.Screen name="Import" component={ImportScreen} />
+      <Stack.Screen name="IncomeTax" component={IncomeTaxScreen} />
       <Stack.Screen name="About" component={SobreScreen} />
       <Stack.Screen name="Budgets" component={BudgetsScreen} />
       <Stack.Screen name="Reports" component={ReportsScreen} />

@@ -43,6 +43,11 @@ export const financeQueryKeys = {
     all: ['finance', 'imports'] as const,
     list: (userId?: string | null) => ['finance', 'imports', 'list', userId] as const,
   },
+  incomeTax: {
+    all: ['finance', 'income-tax'] as const,
+    report: (userId?: string | null, year?: number | null) =>
+      ['finance', 'income-tax', 'report', userId, year ?? null] as const,
+  },
   preferences: {
     all: ['finance', 'preferences'] as const,
     detail: (userId?: string | null) => ['finance', 'preferences', 'detail', userId] as const,
