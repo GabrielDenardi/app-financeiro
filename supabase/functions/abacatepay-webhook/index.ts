@@ -3,8 +3,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const ABACATEPAY_PUBLIC_KEY =
-  't9dXRhHHo3yDEj5pVDYz0frf7q6bMKyMRmxxCPIPp3RCplBfXRxqlC6ZpiWmOqj4L63qEaeUOtrCI8P0VMUgo6iIga2ri9ogaHFs0WIIywSMg0q7RmBfybe1E5XJcfC4IW3alNqym0tXoAKkzvfEjZxV6bE0oG2zJrNNYmUCKZyV0KZ3JS8Votf9EAWWYdiDkMkpbMdPggfh1EqHlVkMiTady6jOR3hyzGEHrIz2Ret0xHKMbiqkr9HS1JhNHDX9';
+const ABACATEPAY_PUBLIC_KEY = Deno.env.get('ABACATEPAY_PUBLIC_KEY') ?? '';
 
 function createAdminClient() {
   return createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
@@ -36,7 +35,7 @@ function constantTimeEqual(left: string, right: string) {
 }
 
 async function verifySignature(rawBody: string, signature: string | null) {
-  if (!signature) {
+  if (!signature || !ABACATEPAY_PUBLIC_KEY) {
     return false;
   }
 
