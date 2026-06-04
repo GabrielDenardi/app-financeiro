@@ -59,7 +59,8 @@
           "microphonePermission": "Permita o uso do microfone para registrar transacoes por voz."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-web-browser"
     ]
   }
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { CheckCircle2 } from 'lucide-react-native';
 
 import { Card } from '../components/Card';
@@ -29,7 +29,10 @@ export function PlansScreen({ navigation }: any) {
     setSelectingPlanId(planId);
     try {
       const checkoutUrl = await startAbacatepaySubscription(planId);
-      await Linking.openURL(checkoutUrl);
+      const result = await WebBrowser.openAuthSessionAsync(checkoutUrl, 'appfinanceiro://billing');
+      if (result.type === 'success') {
+        await currentPlan.refetch();
+      }
     } catch (error) {
       Alert.alert(
         'Planos',

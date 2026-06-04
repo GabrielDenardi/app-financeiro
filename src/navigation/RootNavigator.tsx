@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import type { Session } from '@supabase/supabase-js';
 
 import { AuthCallbackResult } from '../features/auth/components/AuthCallbackResult';
@@ -479,7 +480,13 @@ export function RootNavigator() {
             setPlanGateError(null);
             try {
               const checkoutUrl = await startAbacatepaySubscription(planId);
-              await Linking.openURL(checkoutUrl);
+              const result = await WebBrowser.openAuthSessionAsync(
+                checkoutUrl,
+                'appfinanceiro://billing',
+              );
+              if (result.type === 'success') {
+                await refreshPlanGate();
+              }
             } catch (error) {
               const message =
                 error instanceof Error ? error.message : 'Nao foi possivel iniciar a assinatura.';
