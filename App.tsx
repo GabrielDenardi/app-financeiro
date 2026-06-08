@@ -1,13 +1,36 @@
-import { NavigationContainer } from '@react-navigation/native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { NavigationContainer } from "@react-navigation/native";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { RootNavigator } from './src/navigation/RootNavigator';
-import { AppThemeProvider, useAppTheme } from './src/theme';
+import { RootNavigator } from "./src/navigation/RootNavigator";
+import { AppThemeProvider, useAppTheme } from "./src/theme";
+
+import * as NavigationBar from "expo-navigation-bar";
+import { useEffect } from "react";
+import { AppState } from "react-native";
 
 const queryClient = new QueryClient();
 
 function AppNavigation() {
   const { navigationTheme } = useAppTheme();
+
+  useEffect(() => {
+    const hideNavigationBar = async () => {
+      await NavigationBar.setVisibilityAsync("hidden");
+      await NavigationBar.setBehaviorAsync("overlay-swipe");
+    };
+
+    hideNavigationBar();
+
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "active") {
+        hideNavigationBar();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   return (
     <NavigationContainer theme={navigationTheme}>
