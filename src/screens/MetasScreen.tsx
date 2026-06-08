@@ -299,7 +299,7 @@ export default function MetasScreen() {
             >
               <View style={s.row}>
                 <View style={[s.iconBox, { backgroundColor: goal.color }]}>
-                  <Icon size={20} color="#fff" />
+                  <Icon size={20} color={themeColors.white} />
                 </View>
                 <View style={s.flex}>
                   <Text style={s.goalTitle}>{goal.title}</Text>
@@ -318,11 +318,11 @@ export default function MetasScreen() {
                       setDeadlineOpen(true);
                     }}
                   >
-                    <CalIcon size={18} color="#6567ef" />
+                    <CalIcon size={18} color={themeColors.primary} />
                   </Pressable>
                 ) : null}
                 <Pressable style={s.iconBtn} onPress={() => onDelete(goal.id)}>
-                  <Trash2 size={18} color="#ef4444" />
+                  <Trash2 size={18} color={themeColors.danger} />
                 </Pressable>
               </View>
               <View style={[s.row, s.between]}>
@@ -401,7 +401,10 @@ export default function MetasScreen() {
                 <X size={22} color={themeColors.textPrimary} />
               </Pressable>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={s.sheetContent}
+            >
               <Text style={s.label}>Nome</Text>
               <TextInput
                 value={title}
@@ -493,7 +496,7 @@ export default function MetasScreen() {
                 disabled={createGoal.isPending}
               >
                 {createGoal.isPending ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={themeColors.white} />
                 ) : (
                   <Text style={s.primaryText}>Criar Meta</Text>
                 )}
@@ -506,21 +509,22 @@ export default function MetasScreen() {
       <Modal
         visible={addOpen}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setAddOpen(false)}
       >
-        <View style={s.center}>
-          <View style={s.modal}>
-            <View style={s.row}>
-              <Text style={s.modalTitle}>Adicionar Valor</Text>
+        <View style={s.overlay}>
+          <View style={s.sheet}>
+            <View style={s.sheetHead}>
+              <Text style={s.sheetTitle}>Adicionar Valor</Text>
               <Pressable onPress={() => setAddOpen(false)}>
-                <X size={18} color={themeColors.textSecondary} />
+                <X size={22} color={themeColors.textPrimary} />
               </Pressable>
             </View>
             <Text style={s.modalSub}>
               Adicionando a{" "}
               <Text style={s.softStrong}>{selectedGoal?.title ?? "Meta"}</Text>
             </Text>
+            <Text style={s.label}>Conta</Text>
             <View style={s.wrap}>
               {accounts.length ? (
                 accounts.map((item) => (
@@ -543,6 +547,7 @@ export default function MetasScreen() {
                 <Text style={s.modalSub}>Crie uma conta antes de aportar.</Text>
               )}
             </View>
+            <Text style={s.label}>Valor</Text>
             <View style={s.moneyRow}>
               <Text style={s.prefix}>R$</Text>
               <TextInput
@@ -575,7 +580,7 @@ export default function MetasScreen() {
                 disabled={contribute.isPending || !accounts.length}
               >
                 {contribute.isPending ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={themeColors.white} />
                 ) : (
                   <Text style={s.greenText}>Adicionar</Text>
                 )}
@@ -636,7 +641,7 @@ export default function MetasScreen() {
               disabled={updateGoal.isPending}
             >
               {updateGoal.isPending ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={themeColors.white} />
               ) : (
                 <Text style={s.primaryText}>Salvar Novo Prazo</Text>
               )}
@@ -650,8 +655,6 @@ export default function MetasScreen() {
 
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
-    bg: { flex: 1, backgroundColor: colors.background },
-    content: { paddingBottom: 40 },
     darkBtn: {
       backgroundColor: colors.primaryLight,
       borderRadius: radius.md,
@@ -669,75 +672,95 @@ const createStyles = (colors: AppColors) =>
     tabs: {
       flexDirection: "row",
       marginBottom: spacing.xs,
-      padding: 4,
-      borderRadius: 14,
+      padding: spacing.xs,
+      borderRadius: radius.lg,
       backgroundColor: colors.mutedSurface,
     },
     tab: {
       flex: 1,
-      paddingVertical: spacing.sm + 4,
+      paddingVertical: spacing.sm,
       alignItems: "center",
-      borderRadius: 12,
+      borderRadius: radius.md,
     },
     tabOn: { backgroundColor: colors.surface },
-    tabText: { fontSize: 13, fontWeight: "700", color: colors.textSecondary },
+    tabText: {
+      ...typography.caption,
+      fontWeight: "700",
+      color: colors.textSecondary,
+    },
     tabTextOn: { color: colors.textPrimary },
     card: {
       backgroundColor: colors.surface,
-      borderRadius: 20,
-      marginHorizontal: 16,
-      marginBottom: 16,
-      padding: 16,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    goal: { elevation: 2 },
-    row: { flexDirection: "row", alignItems: "center" },
+    goal: {
+      gap: spacing.md,
+      elevation: 2,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+    },
     flex: { flex: 1 },
-    between: { justifyContent: "space-between", marginBottom: 8 },
+    between: { justifyContent: "space-between" },
     iconBox: {
       width: 42,
       height: 42,
-      borderRadius: 14,
+      borderRadius: radius.md,
       alignItems: "center",
       justifyContent: "center",
     },
-    iconBtn: { padding: 6 },
+    iconBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.pill,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.surfaceMuted,
+    },
     goalTitle: {
-      fontSize: 16,
+      ...typography.body,
       fontWeight: "800",
       color: colors.textPrimary,
-      marginLeft: 12,
     },
     goalSub: {
-      fontSize: 12,
+      ...typography.caption,
       color: colors.textSecondary,
-      marginTop: 4,
-      marginLeft: 12,
+      marginTop: spacing.xs,
     },
-    money: { fontSize: 14, fontWeight: "700", color: colors.textPrimary },
+    money: {
+      ...typography.body,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
     track: {
       height: 8,
       backgroundColor: colors.border,
-      borderRadius: 999,
+      borderRadius: radius.pill,
       overflow: "hidden",
     },
-    fill: { height: "100%", borderRadius: 999 },
+    fill: { height: "100%", borderRadius: radius.pill },
     pct: {
+      ...typography.caption,
       textAlign: "center",
-      fontSize: 11,
       color: colors.textSecondary,
-      marginTop: 8,
     },
     soft: {
-      backgroundColor: colors.background,
-      borderRadius: 14,
-      padding: 14,
-      marginTop: 16,
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: radius.md,
+      padding: spacing.md,
     },
     softText: {
+      ...typography.caption,
       textAlign: "center",
-      fontSize: 13,
       color: colors.textSecondary,
       lineHeight: 18,
     },
@@ -746,23 +769,34 @@ const createStyles = (colors: AppColors) =>
       flexDirection: "row",
       justifyContent: "center",
       alignItems: "center",
-      gap: 8,
-      paddingTop: 14,
-      marginTop: 14,
+      gap: spacing.sm,
+      paddingTop: spacing.md,
       borderTopWidth: 1,
       borderTopColor: colors.border,
     },
-    addText: { fontWeight: "800", color: colors.textPrimary },
-    msg: { textAlign: "center", color: colors.textSecondary, lineHeight: 18 },
+    addText: {
+      ...typography.body,
+      fontWeight: "800",
+      color: colors.textPrimary,
+    },
+    msg: {
+      ...typography.body,
+      textAlign: "center",
+      color: colors.textSecondary,
+    },
     retry: {
       backgroundColor: colors.primaryLight,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderRadius: 999,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.pill,
       alignSelf: "center",
-      marginTop: 12,
+      marginTop: spacing.md,
     },
-    retryText: { color: colors.white, fontWeight: "700" },
+    retryText: {
+      ...typography.caption,
+      color: colors.white,
+      fontWeight: "700",
+    },
     overlay: {
       flex: 1,
       backgroundColor: colors.overlay,
@@ -770,73 +804,110 @@ const createStyles = (colors: AppColors) =>
     },
     sheet: {
       backgroundColor: colors.surface,
-      borderTopLeftRadius: 32,
-      borderTopRightRadius: 32,
-      padding: 24,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: spacing.lg,
       maxHeight: "90%",
+      gap: spacing.md,
+    },
+    sheetContent: {
+      gap: spacing.md,
+      paddingBottom: spacing.sm,
     },
     sheetHead: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: 12,
     },
-    sheetTitle: { fontSize: 24, fontWeight: "800", color: colors.textPrimary },
+    sheetTitle: {
+      ...typography.h2,
+      fontWeight: "800",
+      color: colors.textPrimary,
+    },
     label: {
-      fontSize: 14,
+      ...typography.caption,
       fontWeight: "700",
       color: colors.textSecondary,
-      marginTop: 18,
-      marginBottom: 8,
     },
     input: {
+      minHeight: 48,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 14,
-      paddingHorizontal: 16,
-      paddingVertical: 15,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
       backgroundColor: colors.surfaceMuted,
       color: colors.textPrimary,
     },
     moneyRow: {
       flexDirection: "row",
       alignItems: "center",
+      minHeight: 48,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 14,
+      borderRadius: radius.md,
       backgroundColor: colors.surfaceMuted,
-      marginTop: 4,
     },
-    prefix: { marginLeft: 16, fontWeight: "800", color: colors.textSecondary },
+    prefix: {
+      ...typography.body,
+      marginLeft: spacing.md,
+      fontWeight: "800",
+      color: colors.textSecondary,
+    },
     moneyInput: {
+      ...typography.body,
       flex: 1,
-      paddingHorizontal: 12,
-      paddingVertical: 15,
+      minHeight: 48,
+      paddingHorizontal: spacing.md,
       color: colors.textPrimary,
     },
-    calendar: { borderRadius: 20, overflow: "hidden", marginTop: 4 },
-    wrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
-    pill: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 999,
-      backgroundColor: colors.mutedSurface,
+    calendar: {
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: "hidden",
     },
-    pillOn: { backgroundColor: `${colors.primaryLight}1F` },
-    pillText: { fontSize: 12, fontWeight: "700", color: colors.textSecondary },
-    pillTextOn: { color: colors.primaryLight },
-    colors: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 8 },
+    wrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.sm,
+    },
+    pill: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    pillOn: {
+      backgroundColor: colors.primarySoft,
+      borderColor: colors.primary,
+    },
+    pillText: {
+      ...typography.caption,
+      fontWeight: "700",
+      color: colors.textSecondary,
+    },
+    pillTextOn: { color: colors.primary },
+    colors: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.md,
+    },
     color: { width: 36, height: 36, borderRadius: 18 },
-    colorOn: { borderWidth: 3, borderColor: colors.border },
+    colorOn: { borderWidth: 3, borderColor: colors.textPrimary },
     primary: {
       backgroundColor: colors.primaryLight,
-      borderRadius: 999,
-      paddingVertical: 18,
+      borderRadius: radius.md,
+      minHeight: 48,
       alignItems: "center",
       justifyContent: "center",
-      marginTop: 24,
     },
-    primaryText: { color: colors.white, fontWeight: "800", fontSize: 16 },
+    primaryText: {
+      ...typography.body,
+      color: colors.white,
+      fontWeight: "800",
+    },
     center: {
       flex: 1,
       backgroundColor: colors.overlay,
