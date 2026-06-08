@@ -238,7 +238,7 @@ const createStyles = (colors: AppColors) =>
       color: colors.textPrimary,
     },
     profileEmail: {
-      ...typography.body,
+      ...typography.caption,
       color: colors.textSecondary,
     },
     editButton: {
@@ -260,9 +260,9 @@ const createStyles = (colors: AppColors) =>
       gap: spacing.sm,
     },
     sectionTitle: {
-      ...typography.caption,
-      color: colors.textSecondary,
-      fontWeight: "700",
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: "600",
       marginLeft: spacing.xs,
     },
     menuGroup: {
@@ -305,7 +305,7 @@ const createStyles = (colors: AppColors) =>
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.danger,
-      backgroundColor: colors.dangerSoft,
+      backgroundColor: colors.danger,
       gap: spacing.sm,
       marginBottom: spacing.sm,
     },

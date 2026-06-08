@@ -404,7 +404,7 @@ const createStyles = (colors: AppColors) =>
       alignItems: "center",
     },
     h1: {
-      ...typography.h1,
+      ...typography.h2,
       color: colors.textPrimary,
     },
     h2: {
