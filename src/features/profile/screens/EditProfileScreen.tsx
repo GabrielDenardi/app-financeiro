@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,22 +10,37 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { Card } from '../../../components/Card';
-import { PageHeader } from '../../../components/PageHeader';
-import { PageShell } from '../../../components/PageShell';
-import { brazilStates } from '../../auth/constants/locations';
-import { formatAddressNumber, formatCep, formatDateBR, formatPhoneBR, digitsOnly } from '../../auth/utils/masks';
-import { isValidPhoneBR, parseDateBR } from '../../auth/utils/validation';
-import { useProfile, useUpdateProfileMutation } from '../hooks/useProfile';
-import { lookupAddressByCep } from '../../../services/viaCepService';
-import { radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
-import type { AppStackParamList } from '../../../navigation/types';
-import type { AuthenticatedUserSummary } from '../../../types/auth';
-import type { UserProfile } from '../../../types/profile';
+import { Card } from "../../../components/Card";
+import { PageHeader } from "../../../components/PageHeader";
+import { PageShell } from "../../../components/PageShell";
+import { brazilStates } from "../../auth/constants/locations";
+import {
+  formatAddressNumber,
+  formatCep,
+  formatDateBR,
+  formatPhoneBR,
+  digitsOnly,
+} from "../../auth/utils/masks";
+import { isValidPhoneBR, parseDateBR } from "../../auth/utils/validation";
+import { useProfile, useUpdateProfileMutation } from "../hooks/useProfile";
+import { lookupAddressByCep } from "../../../services/viaCepService";
+import {
+  radius,
+  spacing,
+  typography,
+  type AppColors,
+  useThemeColors,
+} from "../../../theme";
+import type { AppStackParamList } from "../../../navigation/types";
+import type { AuthenticatedUserSummary } from "../../../types/auth";
+import type { UserProfile } from "../../../types/profile";
 
-type EditProfileScreenProps = NativeStackScreenProps<AppStackParamList, 'EditProfile'> & {
+type EditProfileScreenProps = NativeStackScreenProps<
+  AppStackParamList,
+  "EditProfile"
+> & {
   currentUser: AuthenticatedUserSummary | null;
 };
 
@@ -48,25 +63,27 @@ type FormErrors = Partial<Record<keyof ProfileFormState, string>>;
 const BRAZIL_STATES = new Set<string>(brazilStates);
 const BIO_MAX_LENGTH = 280;
 
-function createInitialForm(currentUser: AuthenticatedUserSummary | null): ProfileFormState {
+function createInitialForm(
+  currentUser: AuthenticatedUserSummary | null,
+): ProfileFormState {
   return {
-    fullName: currentUser?.fullName ?? '',
-    email: currentUser?.email ?? '',
-    phone: '',
-    birthDate: '',
-    cep: '',
-    street: '',
-    addressNumber: '',
-    complement: '',
-    city: '',
-    state: '',
-    bio: '',
+    fullName: currentUser?.fullName ?? "",
+    email: currentUser?.email ?? "",
+    phone: "",
+    birthDate: "",
+    cep: "",
+    street: "",
+    addressNumber: "",
+    complement: "",
+    city: "",
+    state: "",
+    bio: "",
   };
 }
 
 function formatStoredBirthDate(value: string | null): string {
   if (!value) {
-    return '';
+    return "";
   }
 
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -96,35 +113,35 @@ function profileToForm(profile: UserProfile): ProfileFormState {
 
 function getAvatarLetter(value: string): string {
   const normalized = value.trim();
-  return normalized ? normalized.charAt(0).toUpperCase() : 'U';
+  return normalized ? normalized.charAt(0).toUpperCase() : "U";
 }
 
 function validateProfileForm(form: ProfileFormState): FormErrors {
   const errors: FormErrors = {};
-  const normalizedName = form.fullName.trim().replace(/\s+/g, ' ');
+  const normalizedName = form.fullName.trim().replace(/\s+/g, " ");
   const phoneDigits = digitsOnly(form.phone);
   const cepDigits = digitsOnly(form.cep);
   const state = form.state.trim().toUpperCase();
   const bioLength = form.bio.length;
 
-  if (normalizedName.split(' ').length < 2) {
-    errors.fullName = 'Informe nome e sobrenome.';
+  if (normalizedName.split(" ").length < 2) {
+    errors.fullName = "Informe nome e sobrenome.";
   }
 
   if (phoneDigits.length > 0 && !isValidPhoneBR(phoneDigits)) {
-    errors.phone = 'Digite um celular com DDD e 9 dígitos.';
+    errors.phone = "Digite um celular com DDD e 9 dígitos.";
   }
 
   if (form.birthDate.trim() && !parseDateBR(form.birthDate)) {
-    errors.birthDate = 'Digite uma data válida no formato dd/mm/aaaa.';
+    errors.birthDate = "Digite uma data válida no formato dd/mm/aaaa.";
   }
 
   if (cepDigits.length > 0 && cepDigits.length !== 8) {
-    errors.cep = 'Digite um CEP válido com 8 digitos.';
+    errors.cep = "Digite um CEP válido com 8 digitos.";
   }
 
   if (state && !BRAZIL_STATES.has(state)) {
-    errors.state = 'Informe uma UF válida.';
+    errors.state = "Informe uma UF válida.";
   }
 
   if (bioLength > BIO_MAX_LENGTH) {
@@ -134,11 +151,14 @@ function validateProfileForm(form: ProfileFormState): FormErrors {
   return errors;
 }
 
-function buildUpdatePayload(currentUser: AuthenticatedUserSummary, form: ProfileFormState) {
+function buildUpdatePayload(
+  currentUser: AuthenticatedUserSummary,
+  form: ProfileFormState,
+) {
   return {
     id: currentUser.id,
-    email: form.email.trim().toLowerCase() || currentUser.email || '',
-    fullName: form.fullName.trim().replace(/\s+/g, ' '),
+    email: form.email.trim().toLowerCase() || currentUser.email || "",
+    fullName: form.fullName.trim().replace(/\s+/g, " "),
     phone: digitsOnly(form.phone),
     birthDate: form.birthDate.trim() || null,
     cep: digitsOnly(form.cep),
@@ -151,12 +171,19 @@ function buildUpdatePayload(currentUser: AuthenticatedUserSummary, form: Profile
   };
 }
 
-export function EditProfileScreen({ navigation, currentUser }: EditProfileScreenProps) {
+export function EditProfileScreen({
+  navigation,
+  currentUser,
+}: EditProfileScreenProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const [form, setForm] = useState<ProfileFormState>(() => createInitialForm(currentUser));
+  const [form, setForm] = useState<ProfileFormState>(() =>
+    createInitialForm(currentUser),
+  );
   const [errors, setErrors] = useState<FormErrors>({});
-  const [hydratedProfileId, setHydratedProfileId] = useState<string | null>(null);
+  const [hydratedProfileId, setHydratedProfileId] = useState<string | null>(
+    null,
+  );
   const [cepMessage, setCepMessage] = useState<string | null>(null);
   const [isLookingUpCep, setIsLookingUpCep] = useState(false);
 
@@ -178,7 +205,10 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
     setHydratedProfileId(profileQuery.data.id);
   }, [hydratedProfileId, profileQuery.data]);
 
-  const avatarLetter = useMemo(() => getAvatarLetter(form.fullName), [form.fullName]);
+  const avatarLetter = useMemo(
+    () => getAvatarLetter(form.fullName),
+    [form.fullName],
+  );
 
   const setFieldValue = (field: keyof ProfileFormState, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -204,7 +234,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
     if (cepDigits.length !== 8) {
       setErrors((current) => ({
         ...current,
-        cep: 'Digite um CEP válido com 8 digitos.',
+        cep: "Digite um CEP válido com 8 digitos.",
       }));
       setCepMessage(null);
       return;
@@ -226,7 +256,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
       const address = await lookupAddressByCep(cepDigits);
 
       if (!address) {
-        setCepMessage('Não foi possível preencher o endereço por esse CEP.');
+        setCepMessage("Não foi possível preencher o endereço por esse CEP.");
         return;
       }
 
@@ -236,7 +266,9 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
         city: address.city || current.city,
         state: address.state || current.state,
       }));
-      setCepMessage('Endereço preenchido pelo CEP. Você pode ajustar manualmente.');
+      setCepMessage(
+        "Endereço preenchido pelo CEP. Você pode ajustar manualmente.",
+      );
     } finally {
       setIsLookingUpCep(false);
     }
@@ -244,7 +276,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
 
   const handleSave = async () => {
     if (!currentUser) {
-      Alert.alert('Perfil', 'Não foi possível identificar o usuário atual.');
+      Alert.alert("Perfil", "Não foi possível identificar o usuário atual.");
       return;
     }
 
@@ -262,16 +294,18 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
       setForm(profileToForm(updatedProfile));
       setHydratedProfileId(updatedProfile.id);
 
-      Alert.alert('Perfil', 'Alterações salvas com sucesso.', [
+      Alert.alert("Perfil", "Alterações salvas com sucesso.", [
         {
-          text: 'OK',
+          text: "OK",
           onPress: () => navigation.goBack(),
         },
       ]);
     } catch (error) {
       Alert.alert(
-        'Perfil',
-        error instanceof Error ? error.message : 'Não foi possível salvar o perfil agora.',
+        "Perfil",
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar o perfil agora.",
       );
     }
   };
@@ -286,7 +320,10 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
 
   return (
     <PageShell>
-      <PageHeader title="Editar Perfil" onBackPress={() => navigation.goBack()} />
+      <PageHeader
+        title="Editar Perfil"
+        onBackPress={() => navigation.goBack()}
+      />
 
       <View style={styles.avatarWrap}>
         <View style={styles.avatar}>
@@ -297,13 +334,17 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
       {profileQuery.isLoading ? (
         <View style={styles.inlineState}>
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={styles.inlineStateText}>Carregando informações do perfil...</Text>
+          <Text style={styles.inlineStateText}>
+            Carregando informações do perfil...
+          </Text>
         </View>
       ) : null}
 
       {profileQuery.isError ? (
         <Card style={styles.noticeCard}>
-          <Text style={styles.noticeTitle}>Não foi possível carregar o perfil completo.</Text>
+          <Text style={styles.noticeTitle}>
+            Não foi possível carregar o perfil completo.
+          </Text>
           <Text style={styles.noticeText}>
             Você ainda pode revisar os dados exibidos e tentar salvar novamente.
           </Text>
@@ -319,7 +360,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
           label="Nome"
           placeholder="Nome e sobrenome"
           value={form.fullName}
-          onChangeText={(value) => setFieldValue('fullName', value)}
+          onChangeText={(value) => setFieldValue("fullName", value)}
           autoCapitalize="words"
           error={errors.fullName}
         />
@@ -330,7 +371,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
           label="E-mail"
           placeholder="seuemail@provedor.com"
           value={form.email}
-          onChangeText={(value) => setFieldValue('email', value)}
+          onChangeText={(value) => setFieldValue("email", value)}
           keyboardType="email-address"
           editable={false}
           helperText="O e-mail fica somente para leitura nesta etapa."
@@ -346,7 +387,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
           label="Telefone"
           placeholder="(00) 00000-0000"
           value={form.phone}
-          onChangeText={(value) => setFieldValue('phone', formatPhoneBR(value))}
+          onChangeText={(value) => setFieldValue("phone", formatPhoneBR(value))}
           keyboardType="number-pad"
           maxLength={15}
           error={errors.phone}
@@ -358,7 +399,9 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
           label="Data de Nascimento"
           placeholder="dd/mm/aaaa"
           value={form.birthDate}
-          onChangeText={(value) => setFieldValue('birthDate', formatDateBR(value))}
+          onChangeText={(value) =>
+            setFieldValue("birthDate", formatDateBR(value))
+          }
           keyboardType="number-pad"
           maxLength={10}
           error={errors.birthDate}
@@ -371,13 +414,16 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
           placeholder="00000-000"
           value={form.cep}
           onChangeText={(value) => {
-            setFieldValue('cep', formatCep(value));
+            setFieldValue("cep", formatCep(value));
             setCepMessage(null);
           }}
           keyboardType="number-pad"
           maxLength={9}
           error={errors.cep}
-          helperText={cepMessage ?? 'Ao sair do campo, tentamos preencher rua, cidade e UF.'}
+          helperText={
+            cepMessage ??
+            "Ao sair do campo, tentamos preencher rua, cidade e UF."
+          }
           onBlur={handleLookupCep}
           trailing={
             isLookingUpCep ? (
@@ -392,7 +438,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
           label="Rua"
           placeholder="Rua, avenida ou alameda"
           value={form.street}
-          onChangeText={(value) => setFieldValue('street', value)}
+          onChangeText={(value) => setFieldValue("street", value)}
           autoCapitalize="words"
         />
 
@@ -404,7 +450,9 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
               label="Número"
               placeholder="Número"
               value={form.addressNumber}
-              onChangeText={(value) => setFieldValue('addressNumber', formatAddressNumber(value))}
+              onChangeText={(value) =>
+                setFieldValue("addressNumber", formatAddressNumber(value))
+              }
               keyboardType="number-pad"
               maxLength={6}
             />
@@ -418,7 +466,13 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
               placeholder="SP"
               value={form.state}
               onChangeText={(value) =>
-                setFieldValue('state', value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2))
+                setFieldValue(
+                  "state",
+                  value
+                    .toUpperCase()
+                    .replace(/[^A-Z]/g, "")
+                    .slice(0, 2),
+                )
               }
               autoCapitalize="characters"
               maxLength={2}
@@ -433,7 +487,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
           label="Complemento"
           placeholder="Apto, bloco, sala..."
           value={form.complement}
-          onChangeText={(value) => setFieldValue('complement', value)}
+          onChangeText={(value) => setFieldValue("complement", value)}
           autoCapitalize="words"
         />
 
@@ -443,7 +497,7 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
           label="Cidade"
           placeholder="Sua cidade"
           value={form.city}
-          onChangeText={(value) => setFieldValue('city', value)}
+          onChangeText={(value) => setFieldValue("city", value)}
           autoCapitalize="words"
         />
 
@@ -453,7 +507,9 @@ export function EditProfileScreen({ navigation, currentUser }: EditProfileScreen
           label="Bio"
           placeholder="Conte um pouco sobre você..."
           value={form.bio}
-          onChangeText={(value) => setFieldValue('bio', value.slice(0, BIO_MAX_LENGTH))}
+          onChangeText={(value) =>
+            setFieldValue("bio", value.slice(0, BIO_MAX_LENGTH))
+          }
           multiline
           numberOfLines={4}
           error={errors.bio}
@@ -485,7 +541,7 @@ type ProfileFieldProps = {
   value: string;
   onChangeText: (value: string) => void;
   keyboardType?: KeyboardTypeOptions;
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
   maxLength?: number;
   editable?: boolean;
   multiline?: boolean;
@@ -503,8 +559,8 @@ function ProfileField({
   placeholder,
   value,
   onChangeText,
-  keyboardType = 'default',
-  autoCapitalize = 'sentences',
+  keyboardType = "default",
+  autoCapitalize = "sentences",
   maxLength,
   editable = true,
   multiline = false,
@@ -519,7 +575,13 @@ function ProfileField({
   return (
     <View style={styles.fieldWrap}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={[styles.inputShell, !editable && styles.inputShellReadonly, error && styles.inputShellError]}>
+      <View
+        style={[
+          styles.inputShell,
+          !editable && styles.inputShellReadonly,
+          error && styles.inputShellError,
+        ]}
+      >
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -536,141 +598,144 @@ function ProfileField({
             onBlur?.();
           }}
           style={[styles.input, multiline && styles.inputMultiline]}
-          textAlignVertical={multiline ? 'top' : 'center'}
+          textAlignVertical={multiline ? "top" : "center"}
         />
         {trailing ? <View style={styles.inputTrailing}>{trailing}</View> : null}
       </View>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {!error && helperText ? <Text style={styles.helperText}>{helperText}</Text> : null}
+      {!error && helperText ? (
+        <Text style={styles.helperText}>{helperText}</Text>
+      ) : null}
     </View>
   );
 }
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarWrap: {
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingBottom: spacing.xs,
-  },
-  avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.success,
-  },
-  avatarText: {
-    ...typography.h1,
-    color: colors.white,
-  },
-  avatarHint: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  sectionCard: {
-    gap: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.textSecondary,
-  },
-  fieldWrap: {
-    gap: spacing.xs,
-  },
-  fieldLabel: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  inputShell: {
-    minHeight: 48,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-  },
-  inputShellReadonly: {
-    backgroundColor: colors.mutedSurface,
-  },
-  inputShellError: {
-    borderColor: colors.danger,
-  },
-  input: {
-    flex: 1,
-    minHeight: 48,
-    color: colors.textPrimary,
-    ...typography.body,
-    paddingVertical: spacing.sm,
-  },
-  inputMultiline: {
-    minHeight: 104,
-  },
-  inputTrailing: {
-    marginLeft: spacing.sm,
-  },
-  helperText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  errorText: {
-    ...typography.caption,
-    color: colors.danger,
-    fontWeight: '600',
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  rowField: {
-    flex: 1,
-  },
-  saveButton: {
-    minHeight: 52,
-    borderRadius: radius.md,
-    backgroundColor: colors.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-  },
-  saveButtonText: {
-    ...typography.body,
-    color: colors.white,
-    fontWeight: '700',
-  },
-  pressed: {
-    opacity: 0.85,
-  },
-  inlineState: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  inlineStateText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  noticeCard: {
-    backgroundColor: colors.warningSoft,
-    borderColor: '#F59E0B',
-    gap: spacing.xs,
-  },
-  noticeTitle: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: '700',
-  },
-  noticeText: {
-    ...typography.caption,
-    color: colors.textPrimary,
-  },
-});
+const createStyles = (colors: AppColors) =>
+  StyleSheet.create({
+    loadingContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    avatarWrap: {
+      alignItems: "center",
+      gap: spacing.sm,
+      paddingBottom: spacing.xs,
+    },
+    avatar: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.primary,
+    },
+    avatarText: {
+      ...typography.h1,
+      color: colors.white,
+    },
+    avatarHint: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    sectionCard: {
+      gap: spacing.md,
+    },
+    sectionTitle: {
+      ...typography.h3,
+      color: colors.textSecondary,
+    },
+    fieldWrap: {
+      gap: spacing.xs,
+    },
+    fieldLabel: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: "600",
+    },
+    inputShell: {
+      minHeight: 48,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: spacing.md,
+    },
+    inputShellReadonly: {
+      backgroundColor: colors.mutedSurface,
+    },
+    inputShellError: {
+      borderColor: colors.danger,
+    },
+    input: {
+      flex: 1,
+      minHeight: 48,
+      color: colors.textPrimary,
+      ...typography.body,
+      paddingVertical: spacing.sm,
+    },
+    inputMultiline: {
+      minHeight: 104,
+    },
+    inputTrailing: {
+      marginLeft: spacing.sm,
+    },
+    helperText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    errorText: {
+      ...typography.caption,
+      color: colors.danger,
+      fontWeight: "600",
+    },
+    row: {
+      flexDirection: "row",
+      gap: spacing.md,
+    },
+    rowField: {
+      flex: 1,
+    },
+    saveButton: {
+      minHeight: 52,
+      borderRadius: radius.md,
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: spacing.xl,
+    },
+    saveButtonText: {
+      ...typography.body,
+      color: colors.white,
+      fontWeight: "700",
+    },
+    pressed: {
+      opacity: 0.85,
+    },
+    inlineState: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.sm,
+    },
+    inlineStateText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    noticeCard: {
+      backgroundColor: colors.warningSoft,
+      borderColor: "#F59E0B",
+      gap: spacing.xs,
+    },
+    noticeTitle: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: "700",
+    },
+    noticeText: {
+      ...typography.caption,
+      color: colors.textPrimary,
+    },
+  });
