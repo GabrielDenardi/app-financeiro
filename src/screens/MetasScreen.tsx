@@ -137,6 +137,11 @@ export default function MetasScreen() {
     setIcon("car");
   };
 
+  const closeModal = () => {
+    setCreateOpen(false);
+    resetCreate();
+  };
+
   const onCreate = async () => {
     if (!title.trim() || !target) {
       Alert.alert("Atenção", "Informe nome e valor alvo.");
@@ -443,7 +448,10 @@ export default function MetasScreen() {
                   current={due}
                   minDate={TODAY}
                   markedDates={{
-                    [due]: { selected: true, selectedColor: themeColors.primaryLight },
+                    [due]: {
+                      selected: true,
+                      selectedColor: themeColors.primaryLight,
+                    },
                   }}
                   onDayPress={(day) => setDue(day.dateString)}
                   style={{ backgroundColor: themeColors.surface }}
@@ -500,6 +508,11 @@ export default function MetasScreen() {
                 ) : (
                   <Text style={s.primaryText}>Criar Meta</Text>
                 )}
+              </Pressable>
+              <Pressable style={s.ghost} onPress={() => closeModal()}>
+                <Text style={[s.ghostText, { textAlign: "center" }]}>
+                  Cancelar
+                </Text>
               </Pressable>
             </ScrollView>
           </View>
@@ -568,9 +581,6 @@ export default function MetasScreen() {
               style={s.input}
             />
             <View style={s.actions}>
-              <Pressable style={s.ghost} onPress={() => setAddOpen(false)}>
-                <Text style={s.ghostText}>Cancelar</Text>
-              </Pressable>
               <Pressable
                 style={[
                   s.green,
@@ -584,6 +594,9 @@ export default function MetasScreen() {
                 ) : (
                   <Text style={s.greenText}>Adicionar</Text>
                 )}
+              </Pressable>
+              <Pressable style={s.ghost} onPress={() => setAddOpen(false)}>
+                <Text style={s.ghostText}>Cancelar</Text>
               </Pressable>
             </View>
           </View>
@@ -613,7 +626,10 @@ export default function MetasScreen() {
                 current={tempDue}
                 minDate={TODAY}
                 markedDates={{
-                  [tempDue]: { selected: true, selectedColor: themeColors.primaryLight },
+                  [tempDue]: {
+                    selected: true,
+                    selectedColor: themeColors.primaryLight,
+                  },
                 }}
                 onDayPress={(day) => setTempDue(day.dateString)}
                 theme={{
@@ -630,12 +646,6 @@ export default function MetasScreen() {
               />
             </View>
             <Pressable
-              style={s.ghostWide}
-              onPress={() => onUpdateDeadline(null)}
-            >
-              <Text style={s.ghostText}>Limpar prazo</Text>
-            </Pressable>
-            <Pressable
               style={[s.primary, updateGoal.isPending && s.dim]}
               onPress={() => onUpdateDeadline(tempDue)}
               disabled={updateGoal.isPending}
@@ -645,6 +655,12 @@ export default function MetasScreen() {
               ) : (
                 <Text style={s.primaryText}>Salvar Novo Prazo</Text>
               )}
+            </Pressable>
+            <Pressable
+              style={s.ghostWide}
+              onPress={() => onUpdateDeadline(null)}
+            >
+              <Text style={s.ghostText}>Limpar prazo</Text>
             </Pressable>
           </View>
         </View>
@@ -826,7 +842,7 @@ const createStyles = (colors: AppColors) =>
     },
     label: {
       ...typography.caption,
-      fontWeight: "700",
+      fontWeight: "600",
       color: colors.textSecondary,
     },
     input: {
@@ -835,7 +851,6 @@ const createStyles = (colors: AppColors) =>
       borderColor: colors.border,
       borderRadius: radius.md,
       paddingHorizontal: spacing.md,
-      backgroundColor: colors.surfaceMuted,
       color: colors.textPrimary,
     },
     moneyRow: {
@@ -845,12 +860,10 @@ const createStyles = (colors: AppColors) =>
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radius.md,
-      backgroundColor: colors.surfaceMuted,
     },
     prefix: {
       ...typography.body,
       marginLeft: spacing.md,
-      fontWeight: "800",
       color: colors.textSecondary,
     },
     moneyInput: {
@@ -897,7 +910,7 @@ const createStyles = (colors: AppColors) =>
     color: { width: 36, height: 36, borderRadius: 18 },
     colorOn: { borderWidth: 3, borderColor: colors.textPrimary },
     primary: {
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.primary,
       borderRadius: radius.md,
       minHeight: 48,
       alignItems: "center",
@@ -926,10 +939,16 @@ const createStyles = (colors: AppColors) =>
       fontWeight: "800",
       color: colors.textPrimary,
       flex: 1,
+      marginBottom: 0,
     },
-    modalSub: { fontSize: 13, color: colors.textSecondary, marginVertical: 12 },
+    modalSub: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginBottom: 10,
+      marginTop: 0,
+    },
     actions: {
-      flexDirection: "row",
+      flexDirection: "column",
       justifyContent: "flex-end",
       gap: 10,
       marginTop: 16,
@@ -947,11 +966,14 @@ const createStyles = (colors: AppColors) =>
       borderRadius: 14,
       paddingVertical: 14,
       alignItems: "center",
-      marginTop: 16,
     },
-    ghostText: { color: colors.textSecondary, fontWeight: "700" },
+    ghostText: {
+      color: colors.textPrimary,
+      fontWeight: "700",
+      textAlign: "center",
+    },
     green: {
-      backgroundColor: colors.success,
+      backgroundColor: colors.primary,
       borderRadius: 10,
       paddingHorizontal: 16,
       paddingVertical: 12,
