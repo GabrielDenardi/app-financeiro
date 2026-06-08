@@ -32,6 +32,7 @@ import {
   typography,
   type AppColors,
   useThemeColors,
+  radius,
 } from "../theme";
 import type { AuthenticatedUserSummary } from "../types/auth";
 import { HIDDEN_CURRENCY_TEXT, formatCurrencyBRL } from "../utils/format";
@@ -258,7 +259,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
               />
             ))
           ) : (
-            <View style={[styles.sectionInner, { padding: spacing.lg }]}>
+            <View style={{ padding: spacing.lg, paddingTop: 0 }}>
               <Text style={styles.emptyText}>
                 As novas transações vão aparecer aqui.
               </Text>
@@ -311,6 +312,7 @@ const createStyles = (colors: AppColors) =>
       ...typography.caption,
       color: colors.textSecondary,
       marginTop: spacing.xs,
+      marginBottom: spacing.sm,
     },
     visibilityButton: {
       width: 40,
