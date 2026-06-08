@@ -73,6 +73,41 @@ function formatDateInput(value: Date) {
   return value.toISOString().slice(0, 10);
 }
 
+function formatDateDisplay(value: string) {
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return "";
+
+  return `${day}/${month}/${year}`;
+}
+
+function maskDateDisplay(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  const day = digits.slice(0, 2);
+  const month = digits.slice(2, 4);
+  const year = digits.slice(4, 8);
+
+  return [day, month, year].filter(Boolean).join("/");
+}
+
+function parseDateDisplay(value: string) {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
+  if (!match) return null;
+
+  const [, dayText, monthText, yearText] = match;
+  const day = Number(dayText);
+  const month = Number(monthText);
+  const year = Number(yearText);
+  const parsed = new Date(year, month - 1, day);
+  const isSameDate =
+    parsed.getFullYear() === year &&
+    parsed.getMonth() === month - 1 &&
+    parsed.getDate() === day;
+
+  if (!isSameDate) return null;
+
+  return `${yearText}-${monthText}-${dayText}`;
+}
+
 function formatCentsToDisplay(digits: string): string {
   if (!digits) return "";
   const padded = digits.padStart(3, "0");
@@ -89,10 +124,23 @@ function amountToCents(value: number | null): string {
 
 function fallbackTitleForMode(mode: CaptureMode) {
   return mode === "voice"
-    ? "Lancamento por voz"
+    ? "Lançamento por voz"
     : mode === "ocr"
-      ? "Lancamento por OCR"
-      : "Lancamento rapido";
+      ? "Lançamento por OCR"
+      : "Lançamento rápido";
+}
+
+function formatPaymentMethodLabel(method: PaymentMethod) {
+  const labels: Record<PaymentMethod, string> = {
+    Pix: "Pix",
+    Transferencia: "Transferência",
+    Dinheiro: "Dinheiro",
+    "Cartao de debito": "Cartão de débito",
+    "Cartao de credito": "Cartão de crédito",
+    Boleto: "Boleto",
+  };
+
+  return labels[method];
 }
 
 function toOccurredAt(value: string) {
@@ -143,7 +191,9 @@ export function QuickAddTransactionSheet({
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Pix");
   const [notes, setNotes] = useState("");
-  const [occurredOn, setOccurredOn] = useState(formatDateInput(new Date()));
+  const [occurredOnDisplay, setOccurredOnDisplay] = useState(
+    formatDateDisplay(formatDateInput(new Date())),
+  );
   const [recurring, setRecurring] = useState(false);
   const [selectedFile, setSelectedFile] = useState<LocalCaptureFile | null>(
     null,
@@ -202,7 +252,8 @@ export function QuickAddTransactionSheet({
     setCategoryId(null);
     setPaymentMethod("Pix");
     setNotes("");
-    setOccurredOn(formatDateInput(new Date()));
+    const today = formatDateInput(new Date());
+    setOccurredOnDisplay(formatDateDisplay(today));
     setRecurring(false);
     setSelectedFile(null);
     setDraftWarnings([]);
@@ -230,6 +281,12 @@ export function QuickAddTransactionSheet({
     setCategoryId((current) => resolveCategoryIdForType(nextType, current));
   };
 
+  const handleOccurredOnChange = (value: string) => {
+    const nextDisplay = maskDateDisplay(value);
+
+    setOccurredOnDisplay(nextDisplay);
+  };
+
   const applyDraft = (
     draft: CapturedTransactionDraft,
     mode: Exclude<CaptureMode, "manual">,
@@ -252,7 +309,7 @@ export function QuickAddTransactionSheet({
         : draft.occurredAt
           ? []
           : [
-              "A data nao foi encontrada com seguranca. Revise antes de salvar.",
+              "A data não foi encontrada com segurança. Revise antes de salvar.",
             ];
 
     setCaptureMode(mode);
@@ -268,7 +325,7 @@ export function QuickAddTransactionSheet({
         ? draft.paymentMethod
         : "Pix") as PaymentMethod,
     );
-    setOccurredOn(nextDate);
+    setOccurredOnDisplay(formatDateDisplay(nextDate));
     setCategoryId(
       resolveCategoryIdForType(nextType, matchedCategory?.id ?? null),
     );
@@ -287,8 +344,8 @@ export function QuickAddTransactionSheet({
   ) => {
     if (mode === "voice" && !allowVoiceCapture) {
       Alert.alert(
-        "Plano necessario",
-        "Cadastro por voz nao esta disponivel no seu plano atual.",
+        "Plano necessário",
+        "Cadastro por voz não está disponível no seu plano atual.",
       );
       return;
     }
@@ -297,7 +354,7 @@ export function QuickAddTransactionSheet({
     setCaptureMode(mode);
     setIsParsing(true);
     setParseLabel(
-      mode === "voice" ? "Analisando audio..." : "Lendo documento...",
+      mode === "voice" ? "Analisando áudio..." : "Lendo documento...",
     );
 
     try {
@@ -311,7 +368,7 @@ export function QuickAddTransactionSheet({
         "Captura",
         error instanceof Error
           ? error.message
-          : "Nao foi possivel interpretar o arquivo.",
+          : "Não foi possível interpretar o arquivo.",
       );
     } finally {
       setIsParsing(false);
@@ -335,7 +392,7 @@ export function QuickAddTransactionSheet({
         "OCR",
         error instanceof Error
           ? error.message
-          : "Nao foi possivel abrir a camera.",
+          : "Não foi possível abrir a câmera.",
       );
     }
   };
@@ -351,7 +408,7 @@ export function QuickAddTransactionSheet({
         "OCR",
         error instanceof Error
           ? error.message
-          : "Nao foi possivel abrir a galeria.",
+          : "Não foi possível abrir a galeria.",
       );
     }
   };
@@ -367,7 +424,7 @@ export function QuickAddTransactionSheet({
         "OCR",
         error instanceof Error
           ? error.message
-          : "Nao foi possivel abrir o documento.",
+          : "Não foi possível abrir o documento.",
       );
     }
   };
@@ -401,8 +458,8 @@ export function QuickAddTransactionSheet({
   const handleStartRecording = async () => {
     if (!allowVoiceCapture) {
       Alert.alert(
-        "Plano necessario",
-        "Cadastro por voz nao esta disponivel no seu plano atual.",
+        "Plano necessário",
+        "Cadastro por voz não está disponível no seu plano atual.",
       );
       return;
     }
@@ -410,7 +467,7 @@ export function QuickAddTransactionSheet({
     try {
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert("Voz", "Permissao de microfone negada.");
+        Alert.alert("Voz", "Permissão de microfone negada.");
         return;
       }
 
@@ -436,7 +493,7 @@ export function QuickAddTransactionSheet({
         "Voz",
         error instanceof Error
           ? error.message
-          : "Nao foi possivel iniciar a gravacao.",
+          : "Não foi possível iniciar a gravação.",
       );
     }
   };
@@ -450,7 +507,7 @@ export function QuickAddTransactionSheet({
       });
 
       if (!recorder.uri) {
-        throw new Error("Nenhum audio foi gerado.");
+        throw new Error("Nenhum áudio foi gerado.");
       }
 
       const file: LocalCaptureFile = {
@@ -466,7 +523,7 @@ export function QuickAddTransactionSheet({
         "Voz",
         error instanceof Error
           ? error.message
-          : "Nao foi possivel finalizar a gravacao.",
+          : "Não foi possível finalizar a gravação.",
       );
     } finally {
       setRecorderRevision((current) => current + 1);
@@ -475,23 +532,29 @@ export function QuickAddTransactionSheet({
 
   const handleSave = async () => {
     if (!currentUserId) {
-      Alert.alert("Transacao", "Usuario nao autenticado.");
+      Alert.alert("Transação", "Usuário não autenticado.");
       return;
     }
 
     if (!accountId) {
-      Alert.alert("Transacao", "Selecione uma conta.");
+      Alert.alert("Transação", "Selecione uma conta.");
       return;
     }
 
     const parsedAmount = amountDigits ? Number(amountDigits) / 100 : 0;
     if (parsedAmount <= 0) {
-      Alert.alert("Transacao", "Informe um valor valido.");
+      Alert.alert("Transação", "Informe um valor válido.");
       return;
     }
 
     if (!title.trim()) {
-      Alert.alert("Transacao", "Informe uma descricao.");
+      Alert.alert("Transação", "Informe uma descrição.");
+      return;
+    }
+
+    const parsedOccurredOn = parseDateDisplay(occurredOnDisplay);
+    if (!parsedOccurredOn) {
+      Alert.alert("Transação", "Informe uma data válida no formato DD/MM/AAAA.");
       return;
     }
 
@@ -528,7 +591,7 @@ export function QuickAddTransactionSheet({
         amount: Number(parsedAmount.toFixed(2)),
         type,
         paymentMethod,
-        occurredAt: toOccurredAt(occurredOn),
+        occurredAt: toOccurredAt(parsedOccurredOn),
         notes: notes.trim(),
         isRecurring: recurring,
         sourceType: captureMode,
@@ -560,10 +623,10 @@ export function QuickAddTransactionSheet({
       }
 
       Alert.alert(
-        "Transacao",
+        "Transação",
         error instanceof Error
           ? error.message
-          : "Nao foi possivel salvar a transacao.",
+          : "Não foi possível salvar a transação.",
       );
     }
   };
@@ -572,14 +635,14 @@ export function QuickAddTransactionSheet({
     <View style={styles.contentBlock}>
       <Text style={styles.sheetTitle}>Como você quer preencher?</Text>
       <Text style={styles.sheetSubtitle}>
-        Escolha o modo de captura. A revisao final acontece antes de salvar.
+        Escolha o modo de captura. A revisão final acontece antes de salvar.
       </Text>
 
       <View style={styles.modeList}>
         <Pressable style={styles.modeCard} onPress={handleManualStart}>
           <Text style={styles.modeTitle}>Manual</Text>
           <Text style={styles.modeText}>
-            Preenchimento completo no formulario.
+            Preenchimento completo no formulário.
           </Text>
         </Pressable>
 
@@ -605,7 +668,7 @@ export function QuickAddTransactionSheet({
               <Text style={styles.primaryButtonText}>
                 {recorderState.isRecording
                   ? "Parar e analisar"
-                  : "Gravar audio"}
+                  : "Gravar áudio"}
               </Text>
             </Pressable>
           </View>
@@ -614,7 +677,7 @@ export function QuickAddTransactionSheet({
         <View style={styles.modeCard}>
           <Text style={styles.modeTitle}>Leitura OCR</Text>
           <Text style={styles.modeText}>
-            Use camera, galeria ou PDF para ler uma NF ou notinha.
+            Use câmera, galeria ou PDF para ler uma NF ou notinha.
           </Text>
           <View style={styles.inlineActions}>
             <Pressable
@@ -622,7 +685,7 @@ export function QuickAddTransactionSheet({
               onPress={handlePickFromCamera}
               disabled={isParsing}
             >
-              <Text style={styles.secondaryButtonText}>Camera</Text>
+              <Text style={styles.secondaryButtonText}>Câmera</Text>
             </Pressable>
             <Pressable
               style={styles.secondaryButton}
@@ -659,7 +722,7 @@ export function QuickAddTransactionSheet({
       <View style={styles.contentBlock}>
         <View style={styles.rowBetween}>
           <View>
-            <Text style={styles.sheetTitle}>Revisar lancamento</Text>
+            <Text style={styles.sheetTitle}>Revisar lançamento</Text>
             <Text style={styles.sheetSubtitle}>
               {captureMode === "manual"
                 ? "Confira os dados antes de salvar."
@@ -700,7 +763,7 @@ export function QuickAddTransactionSheet({
         </View>
 
         <TextInput
-          placeholder="Descricao"
+          placeholder="Descrição"
           value={title}
           onChangeText={setTitle}
           style={styles.input}
@@ -717,12 +780,13 @@ export function QuickAddTransactionSheet({
           placeholderTextColor={colors.textSecondary}
         />
         <TextInput
-          placeholder="Data (YYYY-MM-DD)"
-          value={occurredOn}
-          onChangeText={setOccurredOn}
+          placeholder="DD/MM/AAAA"
+          value={occurredOnDisplay}
+          onChangeText={handleOccurredOnChange}
           style={styles.input}
           placeholderTextColor={colors.textSecondary}
-          autoCapitalize="none"
+          keyboardType="numeric"
+          maxLength={10}
         />
 
         <Text style={styles.label}>Conta</Text>
@@ -771,7 +835,7 @@ export function QuickAddTransactionSheet({
           ))}
         </View>
 
-        <Text style={styles.label}>Metodo</Text>
+        <Text style={styles.label}>Método</Text>
         <View style={styles.wrapRow}>
           {PAYMENT_METHODS.map((method) => (
             <Pressable
@@ -788,14 +852,14 @@ export function QuickAddTransactionSheet({
                   paymentMethod === method && styles.filterChipTextActive,
                 ]}
               >
-                {method}
+                {formatPaymentMethodLabel(method)}
               </Text>
             </Pressable>
           ))}
         </View>
 
         <TextInput
-          placeholder="Observacoes"
+          placeholder="Observações"
           value={notes}
           onChangeText={setNotes}
           style={[styles.input, styles.notesInput]}
@@ -807,7 +871,7 @@ export function QuickAddTransactionSheet({
           <View style={styles.recurringCopy}>
             <Text style={styles.recurringTitle}>Criar regra recorrente</Text>
             <Text style={styles.recurringSubtitle}>
-              Usa a mesma conta, categoria e valor todo mes.
+              Usa a mesma conta, categoria e valor todo mês.
             </Text>
           </View>
           <Switch value={recurring} onValueChange={setRecurring} />
@@ -834,7 +898,7 @@ export function QuickAddTransactionSheet({
         {rawCaptureText ? (
           <View style={styles.captureCard}>
             <Text style={styles.captureTitle}>
-              {captureMode === "voice" ? "Transcricao" : "Texto lido"}
+              {captureMode === "voice" ? "Transcrição" : "Texto lido"}
             </Text>
             <Text style={styles.captureText}>{rawCaptureText}</Text>
           </View>
