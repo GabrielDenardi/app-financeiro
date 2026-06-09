@@ -108,13 +108,19 @@ export default function BudgetsScreen() {
       return;
     }
 
+    const parsedAmount = Number(
+      limitAmount.replace(/\./g, "").replace(",", ".") || 0,
+    );
+    if (parsedAmount <= 0) {
+      Alert.alert("Erro", "Informe um valor maior que zero.");
+      return;
+    }
+
     try {
       await upsertBudgetMutation.mutateAsync({
         id: editingId ?? undefined,
         categoryId: selectedCategoryId,
-        limitAmount: Number(
-          limitAmount.replace(/\./g, "").replace(",", ".") || 0,
-        ),
+        limitAmount: parsedAmount,
         monthDate,
       });
       closeModal();

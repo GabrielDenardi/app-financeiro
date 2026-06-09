@@ -165,6 +165,8 @@ export function TransferModal({
 
   const saveDisabled =
     !amount.trim() ||
+    parseCurrencyInput(amount) <= 0 ||
+    !Number.isFinite(parseCurrencyInput(amount)) ||
     !fromAccountId ||
     !toAccountId ||
     fromAccountId === toAccountId ||

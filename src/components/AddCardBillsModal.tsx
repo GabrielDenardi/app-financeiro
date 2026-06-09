@@ -272,6 +272,8 @@ export function AddCardBillsModal({
   const saveDisabled =
     !title.trim() ||
     !amount.trim() ||
+    numericAmount <= 0 ||
+    !Number.isFinite(numericAmount) ||
     !selectedCardId ||
     !selectedCategoryId ||
     submitting;

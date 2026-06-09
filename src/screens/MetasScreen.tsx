@@ -659,6 +659,7 @@ export default function MetasScreen() {
             <Pressable
               style={s.ghostWide}
               onPress={() => onUpdateDeadline(null)}
+              disabled={updateGoal.isPending}
             >
               <Text style={s.ghostText}>Limpar prazo</Text>
             </Pressable>
