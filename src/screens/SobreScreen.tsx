@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from "react";
 import {
   Linking,
   SafeAreaView,
@@ -8,22 +8,33 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+} from "react-native";
+import {
+  Feather,
+  FontAwesome5,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
 
-import { useAboutContent } from '../features/about/hooks/useAbout';
-import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
+import { useAboutContent } from "../features/about/hooks/useAbout";
+import {
+  layout,
+  radius,
+  spacing,
+  typography,
+  type AppColors,
+  useThemeColors,
+} from "../theme";
 
 function iconNameFromKey(key: string): keyof typeof FontAwesome5.glyphMap {
   switch (key) {
-    case 'instagram':
-      return 'instagram';
-    case 'twitter':
-      return 'twitter';
-    case 'github':
-      return 'github';
+    case "instagram":
+      return "instagram";
+    case "twitter":
+      return "twitter";
+    case "github":
+      return "github";
     default:
-      return 'link';
+      return "link";
   }
 }
 
@@ -35,29 +46,54 @@ export default function SobreScreen({ navigation }: any) {
   const about = aboutQuery.data;
 
   const openLink = (url: string) => {
-    Linking.openURL(url).catch((error) => console.error('Erro ao abrir link', error));
+    Linking.openURL(url).catch((error) =>
+      console.error("Erro ao abrir link", error),
+    );
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
             <Feather name="arrow-left" size={24} color={colors.white} />
             <Text style={styles.backText}>Sobre o App</Text>
           </TouchableOpacity>
 
           <View style={styles.logoContainer}>
-            <MaterialCommunityIcons name="piggy-bank" size={50} color={colors.white} />
+            <MaterialCommunityIcons
+              name="piggy-bank"
+              size={50}
+              color={colors.white}
+            />
           </View>
-          <Text style={styles.h1}>{about?.appName ?? 'Finance Control'}</Text>
-          <Text style={styles.captionHeader}>Versão {about?.version ?? '1.0.0'}</Text>
+          <Text style={styles.h1}>{about?.appName ?? "Finance Control"}</Text>
+          <Text style={styles.captionHeader}>
+            Versão {about?.version ?? "1.0.0"}
+          </Text>
         </View>
 
         <View style={styles.bodyWrapper}>
-          {aboutQuery.isLoading ? <View style={styles.card}><Text style={styles.bodyTextCenter}>Carregando conteúdo...</Text></View> : null}
-          {aboutQuery.isError ? <View style={styles.card}><Text style={styles.bodyTextCenter}>Não foi possível carregar o conteúdo institucional.</Text></View> : null}
+          {aboutQuery.isLoading ? (
+            <View style={styles.card}>
+              <Text style={styles.bodyTextCenter}>Carregando conteúdo...</Text>
+            </View>
+          ) : null}
+          {aboutQuery.isError ? (
+            <View style={styles.card}>
+              <Text style={styles.bodyTextCenter}>
+                Não foi possível carregar o conteúdo institucional.
+              </Text>
+            </View>
+          ) : null}
 
           {about ? (
             <>
@@ -77,11 +113,15 @@ export default function SobreScreen({ navigation }: any) {
 
               <View style={styles.starsContainer}>
                 {[1, 2, 3, 4, 5].map((item) => (
-                  <TouchableOpacity key={item} onPress={() => setRating(item)} activeOpacity={0.7}>
+                  <TouchableOpacity
+                    key={item}
+                    onPress={() => setRating(item)}
+                    activeOpacity={0.7}
+                  >
                     <FontAwesome5
                       name="star"
                       size={32}
-                      color={item <= rating ? '#FBBF24' : colors.border}
+                      color={item <= rating ? "#FBBF24" : colors.border}
                       solid={item <= rating}
                       style={styles.star}
                     />
@@ -90,7 +130,10 @@ export default function SobreScreen({ navigation }: any) {
               </View>
 
               <TouchableOpacity
-                style={[styles.buttonSuccess, { opacity: rating === 0 ? 0.5 : 1 }]}
+                style={[
+                  styles.buttonSuccess,
+                  { opacity: rating === 0 ? 0.5 : 1 },
+                ]}
                 disabled={rating === 0}
                 onPress={() => alert(`Obrigado pela nota ${rating}!`)}
               >
@@ -101,7 +144,10 @@ export default function SobreScreen({ navigation }: any) {
                 <Text style={styles.h2}>Siga-nos</Text>
                 <View style={styles.socialIconsContainer}>
                   {about.socialLinks.map((link) => (
-                    <TouchableOpacity key={link.id} onPress={() => openLink(link.url)}>
+                    <TouchableOpacity
+                      key={link.id}
+                      onPress={() => openLink(link.url)}
+                    >
                       <FontAwesome5
                         name={iconNameFromKey(link.key)}
                         size={28}
@@ -116,11 +162,20 @@ export default function SobreScreen({ navigation }: any) {
               <View style={styles.card}>
                 {about.legalLinks.map((link, index) => (
                   <React.Fragment key={link.id}>
-                    <TouchableOpacity style={styles.legalLink} onPress={() => openLink(link.url)}>
+                    <TouchableOpacity
+                      style={styles.legalLink}
+                      onPress={() => openLink(link.url)}
+                    >
                       <Text style={styles.legalText}>{link.label}</Text>
-                      <Feather name="external-link" size={16} color={colors.textSecondary} />
+                      <Feather
+                        name="external-link"
+                        size={16}
+                        color={colors.textSecondary}
+                      />
                     </TouchableOpacity>
-                    {index < about.legalLinks.length - 1 ? <View style={styles.divider} /> : null}
+                    {index < about.legalLinks.length - 1 ? (
+                      <View style={styles.divider} />
+                    ) : null}
                   </React.Fragment>
                 ))}
               </View>
@@ -150,17 +205,17 @@ const createStyles = (colors: AppColors) =>
       paddingTop: layout.pageHeaderTop,
       paddingBottom: spacing.xxl + spacing.sm,
       paddingHorizontal: layout.pageHorizontal,
-      alignItems: 'center',
+      alignItems: "center",
     },
     backButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      alignSelf: 'flex-start',
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
       marginBottom: spacing.xl,
     },
     backText: {
       color: colors.white,
-      ...typography.h2,
+      ...typography.h1,
       marginLeft: spacing.sm,
     },
     logoContainer: {
@@ -168,15 +223,15 @@ const createStyles = (colors: AppColors) =>
       height: 80,
       backgroundColor: colors.success,
       borderRadius: 20,
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: "center",
+      alignItems: "center",
       marginBottom: spacing.lg,
       elevation: 8,
     },
     h1: {
       ...typography.h1,
       color: colors.white,
-      fontWeight: '700',
+      fontWeight: "700",
     },
     h2: {
       ...typography.h2,
@@ -185,7 +240,7 @@ const createStyles = (colors: AppColors) =>
     },
     captionHeader: {
       ...typography.body,
-      color: 'rgba(255,255,255,0.72)',
+      color: "rgba(255,255,255,0.72)",
       marginTop: spacing.xs,
     },
     bodyWrapper: {
@@ -205,7 +260,7 @@ const createStyles = (colors: AppColors) =>
       elevation: 4,
     },
     centerCard: {
-      alignItems: 'center',
+      alignItems: "center",
     },
     bodyText: {
       ...typography.body,
@@ -216,11 +271,11 @@ const createStyles = (colors: AppColors) =>
       ...typography.body,
       color: colors.textSecondary,
       lineHeight: 22,
-      textAlign: 'center',
+      textAlign: "center",
     },
     listItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       marginBottom: spacing.sm,
     },
     bullet: {
@@ -231,49 +286,49 @@ const createStyles = (colors: AppColors) =>
       marginRight: spacing.md,
     },
     socialIconsContainer: {
-      flexDirection: 'row',
-      justifyContent: 'center',
+      flexDirection: "row",
+      justifyContent: "center",
       marginTop: spacing.sm,
     },
     socialIcon: {
       marginHorizontal: spacing.lg,
     },
     legalLink: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
       paddingVertical: spacing.sm + 4,
     },
     legalText: {
       ...typography.body,
       color: colors.textPrimary,
-      fontWeight: '500',
+      fontWeight: "500",
     },
     divider: {
       height: 1,
       backgroundColor: colors.border,
     },
     starsContainer: {
-      flexDirection: 'row',
+      flexDirection: "row",
       marginTop: spacing.sm,
       marginBottom: spacing.lg,
-      justifyContent: 'center',
+      justifyContent: "center",
     },
     star: {
       marginHorizontal: 6,
     },
     buttonSuccess: {
       backgroundColor: colors.success,
-      width: '100%',
+      width: "100%",
       height: 48,
       borderRadius: radius.md,
       marginBottom: spacing.lg,
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: "center",
+      alignItems: "center",
     },
     buttonText: {
       color: colors.white,
-      fontWeight: '700',
+      fontWeight: "700",
       fontSize: 16,
     },
   });

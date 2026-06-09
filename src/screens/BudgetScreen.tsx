@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,18 +10,28 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { Pencil, PiggyBank, Plus, Trash2, X } from 'lucide-react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+} from "react-native";
+import { Pencil, PiggyBank, Plus, Trash2, X } from "lucide-react-native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
-import { PageHeader } from '../components/PageHeader';
-import { PageShell } from '../components/PageShell';
-import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
-import { useBudgets, useDeleteBudgetMutation, useUpsertBudgetMutation } from '../features/budgets/hooks/useBudgets';
-import { formatMonthDate, monthLabel } from '../features/finance/utils';
-import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
-import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
-import { formatCurrencyBRL } from '../utils/format';
+import { PageHeader } from "../components/PageHeader";
+import { PageShell } from "../components/PageShell";
+import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
+import {
+  useBudgets,
+  useDeleteBudgetMutation,
+  useUpsertBudgetMutation,
+} from "../features/budgets/hooks/useBudgets";
+import { formatMonthDate, monthLabel } from "../features/finance/utils";
+import { useFinanceCategories } from "../features/transactions/hooks/useTransactions";
+import {
+  radius,
+  spacing,
+  typography,
+  type AppColors,
+  useThemeColors,
+} from "../theme";
+import { formatCurrencyBRL } from "../utils/format";
 
 export default function BudgetsScreen() {
   const colors = useThemeColors();
@@ -37,14 +47,28 @@ export default function BudgetsScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [limitAmount, setLimitAmount] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null,
+  );
+  const [limitAmount, setLimitAmount] = useState("");
+
+  function moneyMask(v: string) {
+    const raw = v.replace(/\D/g, "");
+    if (!raw) return "";
+    return (Number(raw) / 100)
+      .toFixed(2)
+      .replace(".", ",")
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
 
   const expenseCategories = useMemo(
-    () => (categoriesQuery.data ?? []).filter((category) => category.kind !== 'income'),
+    () =>
+      (categoriesQuery.data ?? []).filter(
+        (category) => category.kind !== "income",
+      ),
     [categoriesQuery.data],
   );
-  const showBackButton = route.name === 'Budgets';
+  const showBackButton = route.name === "Budgets";
 
   const totals = useMemo(() => {
     return (budgetsQuery.data ?? []).reduce(
@@ -61,14 +85,16 @@ export default function BudgetsScreen() {
     setModalVisible(false);
     setEditingId(null);
     setSelectedCategoryId(null);
-    setLimitAmount('');
+    setLimitAmount("");
   };
 
-  const handleEdit = (budget: NonNullable<typeof budgetsQuery.data>[number]) => {
+  const handleEdit = (
+    budget: NonNullable<typeof budgetsQuery.data>[number],
+  ) => {
     setEditingId(budget.id);
     setSelectedCategoryId(budget.categoryId);
     setLimitAmount(
-      budget.limitAmount.toLocaleString('pt-BR', {
+      budget.limitAmount.toLocaleString("pt-BR", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }),
@@ -78,7 +104,15 @@ export default function BudgetsScreen() {
 
   const handleSave = async () => {
     if (!selectedCategoryId) {
-      Alert.alert('Erro', 'Selecione uma categoria.');
+      Alert.alert("Erro", "Selecione uma categoria.");
+      return;
+    }
+
+    const parsedAmount = Number(
+      limitAmount.replace(/\./g, "").replace(",", ".") || 0,
+    );
+    if (parsedAmount <= 0) {
+      Alert.alert("Erro", "Informe um valor maior que zero.");
       return;
     }
 
@@ -86,12 +120,17 @@ export default function BudgetsScreen() {
       await upsertBudgetMutation.mutateAsync({
         id: editingId ?? undefined,
         categoryId: selectedCategoryId,
-        limitAmount: Number(limitAmount.replace(/\./g, '').replace(',', '.') || 0),
+        limitAmount: parsedAmount,
         monthDate,
       });
       closeModal();
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível salvar o orçamento.');
+      Alert.alert(
+        "Erro",
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar o orçamento.",
+      );
     }
   };
 
@@ -99,7 +138,12 @@ export default function BudgetsScreen() {
     try {
       await deleteBudgetMutation.mutateAsync(id);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível excluir o orçamento.');
+      Alert.alert(
+        "Erro",
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir o orçamento.",
+      );
     }
   };
 
@@ -112,8 +156,11 @@ export default function BudgetsScreen() {
           variant="primary"
           onBackPress={showBackButton ? () => navigation.goBack() : undefined}
           action={
-            <Pressable style={styles.btnHeader} onPress={() => setModalVisible(true)}>
-              <Plus size={18} color={colors.white} />
+            <Pressable
+              style={styles.btnHeader}
+              onPress={() => setModalVisible(true)}
+            >
+              <Plus size={16} color={colors.white} />
               <Text style={styles.btnHeaderText}>Novo</Text>
             </Pressable>
           }
@@ -121,12 +168,17 @@ export default function BudgetsScreen() {
 
         <View style={styles.summaryBox}>
           <View style={styles.summaryItem}>
-            <Text style={styles.caption}>Total Orcado</Text>
+            <Text style={styles.caption}>Total Orçado</Text>
             <Text style={styles.h1}>{formatCurrencyBRL(totals.limit)}</Text>
           </View>
           <View style={styles.summaryItem}>
             <Text style={styles.caption}>Total Gasto</Text>
-            <Text style={[styles.h1, totals.spent > totals.limit && styles.dangerText]}>
+            <Text
+              style={[
+                styles.h1,
+                totals.spent > totals.limit && styles.dangerText,
+              ]}
+            >
               {formatCurrencyBRL(totals.spent)}
             </Text>
           </View>
@@ -147,25 +199,41 @@ export default function BudgetsScreen() {
                   <View style={styles.cardHeader}>
                     <View style={styles.budgetInfo}>
                       <View style={styles.budgetTitleRow}>
-                        <View style={[styles.categoryBadge, { backgroundColor: `${item.categoryColor}18` }]}>
+                        <View
+                          style={[
+                            styles.categoryBadge,
+                            { backgroundColor: `${item.categoryColor}18` },
+                          ]}
+                        >
                           <PiggyBank size={16} color={item.categoryColor} />
                         </View>
                         <Text style={styles.h2}>{item.categoryLabel}</Text>
                       </View>
                       <Text style={styles.bodyText}>
-                        <Text style={[styles.amountStrong, isOverLimit && styles.dangerText]}>
+                        <Text
+                          style={[
+                            styles.amountStrong,
+                            isOverLimit && styles.dangerText,
+                          ]}
+                        >
                           {formatCurrencyBRL(item.spentAmount)}
                         </Text>
-                        {' / '}
+                        {" / "}
                         {formatCurrencyBRL(item.limitAmount)}
                       </Text>
                     </View>
 
                     <View style={styles.actionButtons}>
-                      <Pressable onPress={() => handleEdit(item)} style={styles.iconButton}>
+                      <Pressable
+                        onPress={() => handleEdit(item)}
+                        style={styles.iconButton}
+                      >
                         <Pencil size={18} color={colors.primaryLight} />
                       </Pressable>
-                      <Pressable onPress={() => handleDelete(item.id)} style={styles.iconButton}>
+                      <Pressable
+                        onPress={() => handleDelete(item.id)}
+                        style={styles.iconButton}
+                      >
                         <Trash2 size={18} color={colors.danger} />
                       </Pressable>
                     </View>
@@ -177,15 +245,26 @@ export default function BudgetsScreen() {
                         styles.progressBarFill,
                         {
                           width: `${percentage}%`,
-                          backgroundColor: isOverLimit ? colors.danger : item.categoryColor,
+                          backgroundColor: isOverLimit
+                            ? colors.danger
+                            : item.categoryColor,
                         },
                       ]}
                     />
                   </View>
 
                   <View style={styles.cardFooter}>
-                    <Text style={styles.caption}>{Math.round(item.progressPercent)}% usado</Text>
-                    <Text style={[styles.caption, item.progressPercent >= 80 ? styles.dangerText : styles.successText]}>
+                    <Text style={styles.caption}>
+                      {Math.round(item.progressPercent)}% usado
+                    </Text>
+                    <Text
+                      style={[
+                        styles.caption,
+                        item.progressPercent >= 80
+                          ? styles.dangerText
+                          : styles.successText,
+                      ]}
+                    >
                       Restam {formatCurrencyBRL(item.remainingAmount)}
                     </Text>
                   </View>
@@ -194,22 +273,31 @@ export default function BudgetsScreen() {
             })
           ) : (
             <View style={styles.emptyCard}>
-              <Text style={styles.h2}>Nenhum orçamento criado</Text>
-              <Text style={styles.bodyText}>Crie o primeiro limite mensal por categoria para acompanhar seus gastos.</Text>
+              <Text style={styles.bodyText}>
+                Crie o primeiro limite mensal por categoria para acompanhar seus
+                gastos.
+              </Text>
             </View>
           )}
         </View>
       </PageShell>
 
-      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={closeModal}>
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={closeModal}
+      >
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={styles.modalWrap}
           >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.h2}>{editingId ? 'Editar Orçamento' : 'Novo Orçamento'}</Text>
+                <Text style={styles.h2}>
+                  {editingId ? "Editar Orçamento" : "Novo Orçamento"}
+                </Text>
                 <Pressable onPress={closeModal}>
                   <X size={24} color={colors.textPrimary} />
                 </Pressable>
@@ -222,7 +310,7 @@ export default function BudgetsScreen() {
                 placeholderTextColor={colors.textSecondary}
                 style={styles.input}
                 value={limitAmount}
-                onChangeText={setLimitAmount}
+                onChangeText={(v) => setLimitAmount(moneyMask(v))}
               />
 
               <Text style={styles.inputLabel}>Categoria</Text>
@@ -242,7 +330,9 @@ export default function BudgetsScreen() {
                     <Text
                       style={[
                         styles.categoryChipText,
-                        selectedCategoryId === category.id && { color: category.color },
+                        selectedCategoryId === category.id && {
+                          color: category.color,
+                        },
                       ]}
                     >
                       {category.label}
@@ -252,19 +342,31 @@ export default function BudgetsScreen() {
               </View>
 
               <View style={styles.modalActions}>
-                <Pressable style={[styles.btnBase, styles.btnCancel]} onPress={closeModal}>
-                  <Text style={styles.btnTextCancel}>Cancelar</Text>
-                </Pressable>
                 <Pressable
-                  style={[styles.btnBase, styles.btnCreate, (!selectedCategoryId || upsertBudgetMutation.isPending) && styles.disabledButton]}
+                  style={[
+                    styles.btnBase,
+                    styles.btnCreate,
+                    (!selectedCategoryId || upsertBudgetMutation.isPending) &&
+                      styles.disabledButton,
+                  ]}
                   onPress={handleSave}
-                  disabled={!selectedCategoryId || upsertBudgetMutation.isPending}
+                  disabled={
+                    !selectedCategoryId || upsertBudgetMutation.isPending
+                  }
                 >
                   {upsertBudgetMutation.isPending ? (
                     <ActivityIndicator color={colors.white} />
                   ) : (
-                    <Text style={styles.btnTextCreate}>{editingId ? 'Salvar' : 'Criar'}</Text>
+                    <Text style={styles.btnTextCreate}>
+                      {editingId ? "Salvar" : "Criar"}
+                    </Text>
                   )}
+                </Pressable>
+                <Pressable
+                  style={[styles.btnBase, styles.btnCancel]}
+                  onPress={closeModal}
+                >
+                  <Text style={styles.btnTextCancel}>Cancelar</Text>
                 </Pressable>
               </View>
             </View>
@@ -275,214 +377,217 @@ export default function BudgetsScreen() {
   );
 }
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  btnHeader: {
-    flexDirection: 'row',
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  btnHeaderText: {
-    ...typography.body,
-    color: colors.white,
-    fontWeight: '700',
-  },
-  summaryBox: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  summaryItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  h1: {
-    ...typography.h1,
-    color: colors.textPrimary,
-  },
-  h2: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  caption: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  bodyText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  amountStrong: {
-    color: colors.textPrimary,
-    fontWeight: '700',
-  },
-  listContainer: {
-    gap: spacing.md,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  budgetInfo: {
-    flex: 1,
-  },
-  budgetTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  categoryBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  iconButton: {
-    padding: 8,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 8,
-  },
-  progressBarBg: {
-    height: 6,
-    backgroundColor: colors.border,
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginVertical: 12,
-  },
-  progressBarFill: {
-    height: '100%',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  successText: {
-    color: colors.success,
-    fontWeight: '600',
-  },
-  dangerText: {
-    color: colors.danger,
-  },
-  loadingWrap: {
-    paddingVertical: spacing.xl,
-    alignItems: 'center',
-  },
-  emptyCard: {
-    backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'flex-end',
-  },
-  modalWrap: {
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: spacing.xl,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-  inputLabel: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    marginBottom: 8,
-  },
-  input: {
-    height: 48,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
-    color: colors.textPrimary,
-    backgroundColor: colors.surface,
-  },
-  chipsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  categoryChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  categoryChipText: {
-    ...typography.caption,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  btnBase: {
-    flex: 1,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  btnCreate: {
-    backgroundColor: colors.primaryLight,
-  },
-  btnCancel: {
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  btnTextCreate: {
-    ...typography.body,
-    color: colors.white,
-    fontWeight: '700',
-  },
-  btnTextCancel: {
-    ...typography.body,
-    color: colors.textPrimary,
-    fontWeight: '700',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-});
+const createStyles = (colors: AppColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    btnHeader: {
+      flexDirection: "row",
+      backgroundColor: colors.primaryLight,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      alignItems: "center",
+      gap: spacing.sm,
+    },
+    btnHeaderText: {
+      ...typography.caption,
+      color: colors.white,
+      fontWeight: "700",
+    },
+    summaryBox: {
+      flexDirection: "row",
+      backgroundColor: colors.surface,
+      padding: spacing.lg,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    summaryItem: {
+      flex: 1,
+      alignItems: "center",
+    },
+    h1: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    h2: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    caption: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    bodyText: {
+      ...typography.body,
+      color: colors.textSecondary,
+      marginTop: 4,
+      textAlign: "center",
+    },
+    amountStrong: {
+      color: colors.textPrimary,
+      fontWeight: "700",
+    },
+    listContainer: {
+      gap: spacing.md,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      padding: spacing.lg,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    budgetInfo: {
+      flex: 1,
+    },
+    budgetTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    categoryBadge: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    actionButtons: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    iconButton: {
+      padding: 8,
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 8,
+    },
+    progressBarBg: {
+      height: 6,
+      backgroundColor: colors.border,
+      borderRadius: 3,
+      overflow: "hidden",
+      marginVertical: 12,
+    },
+    progressBarFill: {
+      height: "100%",
+    },
+    cardFooter: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    successText: {
+      color: colors.success,
+      fontWeight: "600",
+    },
+    dangerText: {
+      color: colors.danger,
+    },
+    loadingWrap: {
+      paddingVertical: spacing.xl,
+      alignItems: "center",
+    },
+    emptyCard: {
+      backgroundColor: colors.surface,
+      padding: spacing.lg,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+      justifyContent: "flex-end",
+    },
+    modalWrap: {
+      flex: 1,
+      justifyContent: "flex-end",
+    },
+    modalContent: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: spacing.xl,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 24,
+      alignItems: "center",
+    },
+    inputLabel: {
+      ...typography.caption,
+      fontWeight: "700",
+      color: colors.textSecondary,
+      marginBottom: 8,
+    },
+    input: {
+      height: 48,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: spacing.md,
+      marginBottom: spacing.md,
+      color: colors.textPrimary,
+      backgroundColor: colors.surface,
+    },
+    chipsWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.sm,
+      marginBottom: spacing.xl,
+    },
+    categoryChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    categoryChipText: {
+      ...typography.caption,
+      color: colors.textPrimary,
+      fontWeight: "600",
+    },
+    modalActions: {
+      flexDirection: "column",
+      gap: 12,
+    },
+    btnBase: {
+      width: "100%",
+      minHeight: 50,
+      borderRadius: 12,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    btnCreate: {
+      backgroundColor: colors.primary,
+    },
+    btnCancel: {
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    btnTextCreate: {
+      ...typography.body,
+      color: colors.white,
+      fontWeight: "700",
+    },
+    btnTextCancel: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: "700",
+    },
+    disabledButton: {
+      opacity: 0.6,
+    },
+  });

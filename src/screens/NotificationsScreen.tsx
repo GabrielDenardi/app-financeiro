@@ -1,6 +1,12 @@
-import { useMemo } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useMemo } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import {
   Bell,
   Check,
@@ -9,21 +15,27 @@ import {
   ShieldAlert,
   Trash2,
   TriangleAlert,
-} from 'lucide-react-native';
+} from "lucide-react-native";
 
-import { Card } from '../components/Card';
-import { PageHeader } from '../components/PageHeader';
-import { PageShell } from '../components/PageShell';
-import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import { Card } from "../components/Card";
+import { PageHeader } from "../components/PageHeader";
+import { PageShell } from "../components/PageShell";
+import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
 import {
   useDeleteAllNotificationsMutation,
   useDeleteNotificationMutation,
   useMarkAllNotificationsAsReadMutation,
   useMarkNotificationAsReadMutation,
   useUserNotifications,
-} from '../features/notifications/hooks/useNotifications';
-import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
-import type { UserNotification } from '../features/notifications/types';
+} from "../features/notifications/hooks/useNotifications";
+import {
+  radius,
+  spacing,
+  typography,
+  type AppColors,
+  useThemeColors,
+} from "../theme";
+import type { UserNotification } from "../features/notifications/types";
 
 export function NotificationsScreen() {
   const colors = useThemeColors();
@@ -44,13 +56,13 @@ export function NotificationsScreen() {
     deleteOneMutation.isPending ||
     deleteAllMutation.isPending;
 
-  function renderIcon(type: UserNotification['icon']) {
+  function renderIcon(type: UserNotification["icon"]) {
     switch (type) {
-      case 'success':
+      case "success":
         return <CircleCheck size={18} color={colors.success} />;
-      case 'warning':
+      case "warning":
         return <TriangleAlert size={18} color="#D97706" />;
-      case 'security':
+      case "security":
         return <ShieldAlert size={18} color={colors.primary} />;
       default:
         return <Info size={18} color={colors.textSecondary} />;
@@ -59,11 +71,18 @@ export function NotificationsScreen() {
 
   return (
     <PageShell>
-      <PageHeader title="Notificações" onBackPress={() => navigation.goBack()} />
+      <PageHeader
+        title="Notificações"
+        onBackPress={() => navigation.goBack()}
+      />
 
       <View style={styles.actionsRow}>
-        <Pressable style={styles.topActionBtn} onPress={() => markAllMutation.mutate()} disabled={loading}>
-          <Check size={16} color={colors.textPrimary} />
+        <Pressable
+          style={styles.topActionBtn}
+          onPress={() => markAllMutation.mutate()}
+          disabled={loading}
+        >
+          <Check size={14} color={colors.textPrimary} />
           <Text style={styles.topActionText}>Marcar todas como lidas</Text>
         </Pressable>
 
@@ -72,8 +91,10 @@ export function NotificationsScreen() {
           onPress={() => deleteAllMutation.mutate()}
           disabled={loading}
         >
-          <Trash2 size={16} color={colors.danger} />
-          <Text style={[styles.topActionText, styles.deleteText]}>Excluir todas</Text>
+          <Trash2 size={14} color={colors.danger} />
+          <Text style={[styles.topActionText, styles.deleteText]}>
+            Excluir todas
+          </Text>
         </Pressable>
       </View>
 
@@ -83,18 +104,25 @@ export function NotificationsScreen() {
         <Card style={styles.emptyState}>
           <Bell size={28} color={colors.textSecondary} />
           <Text style={styles.emptyTitle}>Nenhuma notificação</Text>
-          <Text style={styles.emptySubtitle}>Quando houver novidades, elas aparecerão aqui.</Text>
+          <Text style={styles.emptySubtitle}>
+            Quando houver novidades, elas aparecerão aqui.
+          </Text>
         </Card>
       ) : (
         notifications.map((item) => (
-          <Card key={item.id} style={[styles.card, !item.read && styles.unreadCard]}>
+          <Card
+            key={item.id}
+            style={[styles.card, !item.read && styles.unreadCard]}
+          >
             <View style={styles.cardTop}>
               <View style={styles.iconBox}>{renderIcon(item.icon)}</View>
 
               <View style={styles.cardText}>
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.description}>{item.description}</Text>
-                <Text style={styles.date}>{new Date(item.date).toLocaleString('pt-BR')}</Text>
+                <Text style={styles.date}>
+                  {new Date(item.date).toLocaleString("pt-BR")}
+                </Text>
               </View>
             </View>
 
@@ -105,7 +133,9 @@ export function NotificationsScreen() {
                 disabled={item.read || loading}
               >
                 <Check size={16} color={colors.textPrimary} />
-                <Text style={styles.actionText}>{item.read ? 'Visualizada' : 'Marcar visualização'}</Text>
+                <Text style={styles.actionText}>
+                  {item.read ? "Visualizada" : "Marcar visualização"}
+                </Text>
               </Pressable>
 
               <Pressable
@@ -114,7 +144,9 @@ export function NotificationsScreen() {
                 disabled={loading}
               >
                 <Trash2 size={16} color={colors.danger} />
-                <Text style={[styles.actionText, styles.deleteText]}>Excluir</Text>
+                <Text style={[styles.actionText, styles.deleteText]}>
+                  Excluir
+                </Text>
               </Pressable>
             </View>
           </Card>
@@ -127,7 +159,7 @@ export function NotificationsScreen() {
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
     actionsRow: {
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: spacing.sm,
     },
     topActionBtn: {
@@ -136,17 +168,17 @@ const createStyles = (colors: AppColors) =>
       borderRadius: radius.md,
       borderWidth: 1,
       borderColor: colors.border,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: spacing.sm,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.xs,
       backgroundColor: colors.surface,
       paddingHorizontal: spacing.sm,
     },
     topActionText: {
       ...typography.caption,
       color: colors.textPrimary,
-      fontWeight: '700',
+      fontWeight: "600",
     },
     deleteAction: {
       borderColor: colors.danger,
@@ -160,8 +192,8 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
     },
     emptyState: {
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       paddingVertical: spacing.xl,
       gap: spacing.sm,
     },
@@ -172,7 +204,7 @@ const createStyles = (colors: AppColors) =>
     emptySubtitle: {
       ...typography.body,
       color: colors.textSecondary,
-      textAlign: 'center',
+      textAlign: "center",
       lineHeight: 20,
     },
     card: {
@@ -183,16 +215,16 @@ const createStyles = (colors: AppColors) =>
       backgroundColor: colors.primarySoft,
     },
     cardTop: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
+      flexDirection: "row",
+      alignItems: "flex-start",
       gap: spacing.md,
     },
     iconBox: {
       width: 36,
       height: 36,
       borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       backgroundColor: colors.surfaceMuted,
     },
     cardText: {
@@ -201,7 +233,7 @@ const createStyles = (colors: AppColors) =>
     title: {
       ...typography.body,
       color: colors.textPrimary,
-      fontWeight: '700',
+      fontWeight: "700",
     },
     description: {
       ...typography.caption,
@@ -215,7 +247,7 @@ const createStyles = (colors: AppColors) =>
       marginTop: spacing.sm,
     },
     cardActions: {
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: spacing.sm,
     },
     actionBtn: {
@@ -224,9 +256,9 @@ const createStyles = (colors: AppColors) =>
       borderRadius: radius.md,
       borderWidth: 1,
       borderColor: colors.border,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
       gap: spacing.sm,
       backgroundColor: colors.surface,
       paddingHorizontal: spacing.sm,
@@ -234,7 +266,7 @@ const createStyles = (colors: AppColors) =>
     actionText: {
       ...typography.caption,
       color: colors.textPrimary,
-      fontWeight: '700',
+      fontWeight: "700",
     },
     disabledBtn: {
       opacity: 0.6,

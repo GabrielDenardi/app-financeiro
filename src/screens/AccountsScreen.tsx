@@ -33,7 +33,10 @@ import {
 } from "../features/accounts/hooks/useAccounts";
 import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
 import { useCurrentPlan } from "../features/plans/hooks";
-import { canCreateAccount, getAccountLimitMessage } from "../features/plans/plans";
+import {
+  canCreateAccount,
+  getAccountLimitMessage,
+} from "../features/plans/plans";
 import {
   layout,
   radius,
@@ -83,7 +86,10 @@ export function AccountsScreen({ navigation }: any) {
 
   const handleOpenAddAccount = () => {
     if (!canCreateAccount(currentPlan.plan.id, activeAccounts.length)) {
-      Alert.alert("Limite do plano", getAccountLimitMessage(currentPlan.plan.id));
+      Alert.alert(
+        "Limite do plano",
+        getAccountLimitMessage(currentPlan.plan.id),
+      );
       return;
     }
 
@@ -119,7 +125,7 @@ export function AccountsScreen({ navigation }: any) {
               <ArrowLeft color={colors.white} size={22} />
             </Pressable>
 
-            <Text style={styles.headerTitle}>Minhas Contas</Text>
+            <Text style={styles.headerTitle}>Contas</Text>
 
             <View style={styles.headerActions}>
               <Pressable
@@ -170,7 +176,7 @@ export function AccountsScreen({ navigation }: any) {
                   <View style={styles.statDivider} />
                   <View style={styles.statItem}>
                     <Text style={styles.statLabel}>Dívidas</Text>
-                    <Text style={[styles.statValue, styles.debtValue]}>
+                    <Text style={styles.statValue}>
                       {showBalances
                         ? formatCurrencyBRL(overview?.totalLiabilities ?? 0)
                         : "R$ ••••"}
@@ -180,7 +186,8 @@ export function AccountsScreen({ navigation }: any) {
                   <View style={styles.statItem}>
                     <Text style={styles.statLabel}>Contas</Text>
                     <Text style={styles.statValue}>
-                      {activeAccounts.length}/{currentPlan.entitlements.accountLimit}
+                      {activeAccounts.length}/
+                      {currentPlan.entitlements.accountLimit}
                     </Text>
                   </View>
                 </View>
@@ -285,7 +292,6 @@ export function AccountsScreen({ navigation }: any) {
                         : "••••"}
                     </Text>
                   </View>
-                  <ChevronRight size={16} color={colors.border} />
                 </View>
               </View>
             );
@@ -294,7 +300,7 @@ export function AccountsScreen({ navigation }: any) {
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>Nenhuma conta cadastrada</Text>
             <Text style={styles.emptyText}>
-              Crie a primeira conta para ver o patrimônio real do app.
+              Crie a primeira conta para ver o patrimônio real do aplicativo.
             </Text>
           </View>
         )}
@@ -315,25 +321,7 @@ export function AccountsScreen({ navigation }: any) {
                 </Text>
               </View>
             </View>
-            <ChevronRight size={18} color={colors.border} />
-          </Pressable>
-
-          <Pressable
-            style={styles.quickActionCard}
-            onPress={() => setTransferVisible(true)}
-          >
-            <View style={styles.quickActionContent}>
-              <View style={styles.quickActionIcon}>
-                <Repeat size={20} color={colors.primary} />
-              </View>
-              <View>
-                <Text style={styles.quickActionTitle}>Transferir</Text>
-                <Text style={styles.quickActionSubtitle}>
-                  Entre suas contas
-                </Text>
-              </View>
-            </View>
-            <ChevronRight size={18} color={colors.border} />
+            <ChevronRight size={18} color={colors.primary} />
           </Pressable>
         </View>
       </ScrollView>
@@ -416,7 +404,6 @@ const createStyles = (colors: AppColors) =>
       ...typography.caption,
       color: colors.white,
       fontWeight: "700",
-      fontSize: 11,
     },
     totalCard: {
       backgroundColor: "rgba(255,255,255,0.1)",
@@ -466,9 +453,6 @@ const createStyles = (colors: AppColors) =>
       color: colors.white,
       fontWeight: "700",
       marginTop: spacing.xs,
-    },
-    debtValue: {
-      color: colors.danger,
     },
     scrollContent: {
       flex: 1,
@@ -618,7 +602,7 @@ const createStyles = (colors: AppColors) =>
     quickActionContent: {
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.md,
+      gap: spacing.sm,
     },
     quickActionIcon: {
       width: 44,
