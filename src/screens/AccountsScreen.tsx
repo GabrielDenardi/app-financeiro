@@ -176,7 +176,7 @@ export function AccountsScreen({ navigation }: any) {
                   <View style={styles.statDivider} />
                   <View style={styles.statItem}>
                     <Text style={styles.statLabel}>Dívidas</Text>
-                    <Text style={[styles.statValue]}>
+                    <Text style={styles.statValue}>
                       {showBalances
                         ? formatCurrencyBRL(overview?.totalLiabilities ?? 0)
                         : "R$ ••••"}
