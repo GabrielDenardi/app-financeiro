@@ -15,8 +15,10 @@ function AppNavigation() {
 
   useEffect(() => {
     const hideNavigationBar = async () => {
-      await NavigationBar.setVisibilityAsync("hidden");
-      await NavigationBar.setBehaviorAsync("overlay-swipe");
+      try {
+        await NavigationBar.setVisibilityAsync("hidden");
+        await NavigationBar.setBehaviorAsync("overlay-swipe");
+      } catch {}
     };
 
     hideNavigationBar();
