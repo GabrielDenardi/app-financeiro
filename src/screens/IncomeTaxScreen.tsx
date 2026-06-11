@@ -7,6 +7,7 @@ import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { useExportIncomeTax, useIncomeTaxReport } from '../features/incomeTax/hooks/useIncomeTax';
+import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
 import { useCurrentPlan } from '../features/plans/hooks';
 import { getUpgradeMessage } from '../features/plans/plans';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
@@ -23,13 +24,14 @@ export default function IncomeTaxScreen({ navigation }: any) {
   const allowed = currentPlan.entitlements.dataImportExport;
   const [year, setYear] = useState(CURRENT_YEAR - 1);
   const [yearOpen, setYearOpen] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const reportQuery = useIncomeTaxReport(user?.id, year, allowed);
   const exportMutation = useExportIncomeTax();
   const report = reportQuery.data;
 
   const onExport = async (format: 'pdf' | 'xlsx') => {
     if (!allowed) {
-      Alert.alert('Plano necessario', getUpgradeMessage('Exportar para o Imposto de Renda'));
+      setPaywallOpen(true);
       return;
     }
 
@@ -55,7 +57,17 @@ export default function IncomeTaxScreen({ navigation }: any) {
           </View>
           <Text style={styles.cardTitle}>Recurso do Plano Pro</Text>
           <Text style={styles.cardSub}>{getUpgradeMessage('Exportação para o Imposto de Renda')}</Text>
+          <Pressable style={styles.unlockButton} onPress={() => setPaywallOpen(true)}>
+            <Text style={styles.unlockButtonText}>Ver opcoes de desbloqueio</Text>
+          </Pressable>
         </Card>
+
+        <UpgradePaywallSheet
+          visible={paywallOpen}
+          onClose={() => setPaywallOpen(false)}
+          featureTitle="Imposto de Renda"
+          description="Gere o relatorio anual organizado por categoria e exporte em PDF ou Excel para a sua declaracao — recurso do Plano Pro."
+        />
       </PageShell>
     );
   }
@@ -212,6 +224,19 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
       lineHeight: 19,
       textAlign: 'center',
+    },
+    unlockButton: {
+      minHeight: 48,
+      borderRadius: radius.md,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: spacing.xs,
+    },
+    unlockButtonText: {
+      ...typography.body,
+      color: colors.white,
+      fontWeight: '800',
     },
     selector: {
       flexDirection: 'row',

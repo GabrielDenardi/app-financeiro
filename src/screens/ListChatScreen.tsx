@@ -17,6 +17,7 @@ import { Card } from '../components/Card';
 import { FloatingActionButton } from '../components/FloatingActionButton';
 import { BOTTOM_TAB_BAR_HEIGHT } from '../components/BottomTabBarMock';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
 import { useCurrentPlan } from '../features/plans/hooks';
 import { getUpgradeMessage } from '../features/plans/plans';
 import {
@@ -52,6 +53,7 @@ export default function ListChatScreen() {
   const createConversationMutation = useCreateSupportConversationMutation(user?.id);
   const [searchText, setSearchText] = useState('');
   const [addTalkVisible, setAddTalkVisible] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [activeTab, setActiveTab] = useState<DetailsTab>('all');
@@ -115,7 +117,17 @@ export default function ListChatScreen() {
           <Card style={styles.lockedCard}>
             <Text style={styles.lockedTitle}>Chat de suporte Pro</Text>
             <Text style={styles.lockedText}>{getUpgradeMessage('Chat de suporte')}</Text>
+            <Pressable style={styles.unlockButton} onPress={() => setPaywallVisible(true)}>
+              <Text style={styles.unlockButtonText}>Ver opcoes de desbloqueio</Text>
+            </Pressable>
           </Card>
+
+          <UpgradePaywallSheet
+            visible={paywallVisible}
+            onClose={() => setPaywallVisible(false)}
+            featureTitle="Chat de suporte"
+            description="Fale direto com o suporte dentro do app — recurso exclusivo do Plano Pro."
+          />
         </View>
       ) : (
         <>
@@ -515,6 +527,19 @@ const createStyles = (colors: AppColors) =>
       ...typography.body,
       color: colors.textSecondary,
       lineHeight: 19,
+    },
+    unlockButton: {
+      minHeight: 48,
+      borderRadius: radius.md,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: spacing.sm,
+    },
+    unlockButtonText: {
+      ...typography.body,
+      color: colors.white,
+      fontWeight: '800',
     },
     tabsRow: {
       flexDirection: 'row',

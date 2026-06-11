@@ -62,6 +62,9 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, SubscriptionPlan> = 
   },
 };
 
+export const TRIAL_PLAN_ID: SubscriptionPlanId = 'intermediate';
+export const TRIAL_DURATION_DAYS = 7;
+
 export function normalizePlanId(planId?: string | null): SubscriptionPlanId {
   return planId === 'intermediate' || planId === 'pro' ? planId : DEFAULT_PLAN_ID;
 }
@@ -70,12 +73,41 @@ export function isValidPlanId(planId?: string | null): planId is SubscriptionPla
   return planId === 'basic' || planId === 'intermediate' || planId === 'pro';
 }
 
+export function isTrialActive(trialEndsAt?: string | null): boolean {
+  if (!trialEndsAt) {
+    return false;
+  }
+
+  const endsAt = new Date(trialEndsAt).getTime();
+  return Number.isFinite(endsAt) && endsAt > Date.now();
+}
+
+/**
+ * Plano efetivo do usuario: durante o trial, planos abaixo do Intermediario
+ * passam a valer como Intermediario; planos iguais ou superiores nao mudam.
+ */
+export function getEffectivePlanId(
+  planId?: string | null,
+  trialEndsAt?: string | null,
+): SubscriptionPlanId {
+  const normalized = normalizePlanId(planId);
+
+  if (isTrialActive(trialEndsAt) && normalized !== 'intermediate' && normalized !== 'pro') {
+    return TRIAL_PLAN_ID;
+  }
+
+  return normalized;
+}
+
 export function getPlan(planId?: string | null): SubscriptionPlan {
   return SUBSCRIPTION_PLANS[normalizePlanId(planId)];
 }
 
-export function getPlanEntitlements(planId?: string | null): PlanEntitlements {
-  const plan = getPlan(planId);
+export function getPlanEntitlements(
+  planId?: string | null,
+  trialEndsAt?: string | null,
+): PlanEntitlements {
+  const plan = SUBSCRIPTION_PLANS[getEffectivePlanId(planId, trialEndsAt)];
 
   return {
     accountLimit: plan.accountLimit,

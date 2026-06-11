@@ -19,8 +19,8 @@ import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
 import { appEnv } from '../config/env';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
 import { useCurrentPlan } from '../features/plans/hooks';
-import { getUpgradeMessage } from '../features/plans/plans';
 import {
   useDisableTotpMutation,
   useEnrollTotpMutation,
@@ -52,6 +52,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
 
   const [mfaOpen, setMfaOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const [mfaCode, setMfaCode] = useState('');
   const [reason, setReason] = useState('');
   const [password, setPassword] = useState('');
@@ -121,7 +122,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
 
   const onExport = async () => {
     if (!currentPlan.entitlements.dataImportExport) {
-      Alert.alert('Plano necessario', getUpgradeMessage('Exportar dados'));
+      setPaywallOpen(true);
       return;
     }
 
@@ -283,6 +284,13 @@ export function PrivacySecurityScreen({ navigation }: any) {
           <Text style={styles.policyLink}>Ler politica completa</Text>
         </Pressable>
       </View>
+
+      <UpgradePaywallSheet
+        visible={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        featureTitle="Exportar dados"
+        description="Baixe uma copia completa dos seus dados financeiros — recurso do Plano Pro."
+      />
 
       <Modal visible={mfaOpen} transparent animationType="slide" onRequestClose={() => setMfaOpen(false)}>
         <View style={styles.overlay}>

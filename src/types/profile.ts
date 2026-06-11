@@ -4,6 +4,8 @@ export type UserProfile = {
   id: string;
   email: string;
   subscriptionPlan: SubscriptionPlanId;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
   fullName: string;
   phone: string;
   birthDate: string | null;

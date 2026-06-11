@@ -25,12 +25,13 @@ type LoginEventRow = {
 
 type ProfilePlanRow = {
   subscription_plan: string | null;
+  trial_ends_at: string | null;
 };
 
 async function ensureDataImportExportAllowed(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('subscription_plan')
+    .select('subscription_plan, trial_ends_at')
     .eq('id', userId)
     .maybeSingle();
 
@@ -38,7 +39,10 @@ async function ensureDataImportExportAllowed(userId: string) {
     throw new Error(error.message);
   }
 
-  const entitlements = getPlanEntitlements(normalizePlanId((data as ProfilePlanRow | null)?.subscription_plan));
+  const entitlements = getPlanEntitlements(
+    normalizePlanId((data as ProfilePlanRow | null)?.subscription_plan),
+    (data as ProfilePlanRow | null)?.trial_ends_at,
+  );
   if (!entitlements.dataImportExport) {
     throw new Error(getUpgradeMessage('Exportar dados'));
   }

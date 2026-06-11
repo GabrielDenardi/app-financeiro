@@ -77,4 +77,8 @@ export const financeQueryKeys = {
     all: ['finance', 'notifications'] as const,
     list: (userId?: string | null) => ['finance', 'notifications', 'list', userId] as const,
   },
+  plans: {
+    all: ['finance', 'plans'] as const,
+    paywallStats: (userId?: string | null) => ['finance', 'plans', 'paywall-stats', userId] as const,
+  },
 };

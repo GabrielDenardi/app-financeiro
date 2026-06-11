@@ -95,6 +95,7 @@ type MembershipRoleRow = {
 
 type ProfilePlanRow = {
   subscription_plan: string | null;
+  trial_ends_at: string | null;
 };
 
 export type GroupsServiceErrorCode =
@@ -441,7 +442,7 @@ export async function createGroup(input: CreateGroupInput): Promise<string> {
   const userId = await requireCurrentUserId();
   const { data, error } = await supabase
     .from('profiles')
-    .select('subscription_plan')
+    .select('subscription_plan, trial_ends_at')
     .eq('id', userId)
     .maybeSingle();
 
@@ -449,7 +450,10 @@ export async function createGroup(input: CreateGroupInput): Promise<string> {
     throw new GroupsServiceError('unknown', error.message);
   }
 
-  const entitlements = getPlanEntitlements(normalizePlanId((data as ProfilePlanRow | null)?.subscription_plan));
+  const entitlements = getPlanEntitlements(
+    normalizePlanId((data as ProfilePlanRow | null)?.subscription_plan),
+    (data as ProfilePlanRow | null)?.trial_ends_at,
+  );
   if (!entitlements.createGroups) {
     throw new GroupsServiceError('unknown', getUpgradeMessage('Criar grupos'));
   }

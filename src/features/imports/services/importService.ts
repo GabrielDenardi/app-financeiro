@@ -23,6 +23,7 @@ type ImportBatchRow = {
 
 type ProfilePlanRow = {
   subscription_plan: string | null;
+  trial_ends_at: string | null;
 };
 
 type PickedAsset = {
@@ -312,7 +313,7 @@ export async function importTransactionsFromAsset(asset: PickedAsset) {
   const userId = await requireCurrentUserId();
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
-    .select('subscription_plan')
+    .select('subscription_plan, trial_ends_at')
     .eq('id', userId)
     .maybeSingle();
 
@@ -320,7 +321,10 @@ export async function importTransactionsFromAsset(asset: PickedAsset) {
     throw new Error(profileError.message);
   }
 
-  const entitlements = getPlanEntitlements(normalizePlanId((profileData as ProfilePlanRow | null)?.subscription_plan));
+  const entitlements = getPlanEntitlements(
+    normalizePlanId((profileData as ProfilePlanRow | null)?.subscription_plan),
+    (profileData as ProfilePlanRow | null)?.trial_ends_at,
+  );
   if (!entitlements.dataImportExport) {
     throw new Error(getUpgradeMessage('Importar dados'));
   }

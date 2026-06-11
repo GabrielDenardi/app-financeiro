@@ -1,10 +1,15 @@
 import {
   canCreateAccount,
+  getEffectivePlanId,
   getPlan,
   getPlanEntitlements,
+  isTrialActive,
   normalizePlanId,
   SUBSCRIPTION_PLANS,
 } from '../plans';
+
+const FUTURE_DATE = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+const PAST_DATE = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
 describe('subscription plans', () => {
   it('defaults unknown or missing plan ids to basic', () => {
@@ -39,6 +44,38 @@ describe('subscription plans', () => {
       supportChat: true,
       voiceCapture: true,
       dataImportExport: true,
+    });
+  });
+
+  it('detects active and expired trials', () => {
+    expect(isTrialActive(null)).toBe(false);
+    expect(isTrialActive(undefined)).toBe(false);
+    expect(isTrialActive(PAST_DATE)).toBe(false);
+    expect(isTrialActive(FUTURE_DATE)).toBe(true);
+  });
+
+  it('upgrades the effective plan to intermediate during an active trial', () => {
+    expect(getEffectivePlanId('basic', FUTURE_DATE)).toBe('intermediate');
+    expect(getEffectivePlanId('basic', PAST_DATE)).toBe('basic');
+    expect(getEffectivePlanId('basic', null)).toBe('basic');
+    // Planos iguais ou superiores nao mudam durante o trial.
+    expect(getEffectivePlanId('intermediate', FUTURE_DATE)).toBe('intermediate');
+    expect(getEffectivePlanId('pro', FUTURE_DATE)).toBe('pro');
+  });
+
+  it('grants intermediate entitlements while the trial is active', () => {
+    expect(getPlanEntitlements('basic', FUTURE_DATE)).toMatchObject({
+      accountLimit: 2,
+      fullReports: true,
+      createGroups: true,
+      voiceCapture: true,
+      supportChat: false,
+      dataImportExport: false,
+    });
+
+    expect(getPlanEntitlements('basic', PAST_DATE)).toMatchObject({
+      accountLimit: 1,
+      fullReports: false,
     });
   });
 
