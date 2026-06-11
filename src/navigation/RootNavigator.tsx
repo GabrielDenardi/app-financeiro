@@ -1,15 +1,13 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import * as Linking from 'expo-linking';
-import * as WebBrowser from 'expo-web-browser';
 import type { Session } from '@supabase/supabase-js';
 
 import { AuthCallbackResult } from '../features/auth/components/AuthCallbackResult';
 import { AuthFlowProvider } from '../features/auth/context/AuthFlowContext';
 import { PasswordRecoveryScreen } from '../features/auth/screens/AuthScreens';
-import { startAbacatepaySubscription } from '../features/billing/abacatepayService';
-import { isValidPlanId, SUBSCRIPTION_PLANS } from '../features/plans/plans';
-import type { SubscriptionPlanId } from '../features/plans/types';
+import { isValidPlanId } from '../features/plans/plans';
+import { selectFreePlan } from '../features/plans/services/plansService';
 import {
   createSessionFromAuthUrl,
   isAuthCallbackUrl,
@@ -19,7 +17,7 @@ import {
   authenticateWithBiometrics,
   isBiometricLockEnabledLocally,
 } from '../features/preferences/services/biometricService';
-import { getPreferences, registerLoginEvent } from '../features/preferences/services/preferencesService';
+import { registerLoginEvent } from '../features/preferences/services/preferencesService';
 import { supabase } from '../lib/supabase';
 import { type AppColors, useThemeColors } from '../theme';
 import type { AuthSessionState, AuthenticatedUserSummary } from '../types/auth';
@@ -45,9 +43,7 @@ type CallbackNotice = {
  * - 'unlocked': Biometric passed or not required; AppStack is mounted safely
  */
 type AppUnlockState = 'locked' | 'checking' | 'unlocked';
-type PlanGateState = 'checking' | 'required' | 'ready';
-
-const PLAN_ORDER: SubscriptionPlanId[] = ['basic', 'intermediate', 'pro'];
+type PlanGateState = 'checking' | 'ready';
 
 function isRecoveryUrl(url: string): boolean {
   return /(?:[?#&]|^)type=recovery(?:[&#]|$)/i.test(url);
@@ -86,12 +82,8 @@ export function RootNavigator() {
   const [sessionState, setSessionState] = useState<AuthSessionState>('loading');
   const [callbackNotice, setCallbackNotice] = useState<CallbackNotice | null>(null);
   const [planGateState, setPlanGateState] = useState<PlanGateState>('checking');
-  const [planGateError, setPlanGateError] = useState<string | null>(null);
-  const [isSelectingPlan, setIsSelectingPlan] = useState(false);
-  const [isVerifyingPlan, setIsVerifyingPlan] = useState(false);
   const [isPasswordRecoveryFlow, setIsPasswordRecoveryFlow] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthenticatedUserSummary | null>(null);
-  const [isBiometricLocked, setIsBiometricLocked] = useState(false);
 
   /**
    * SECURITY: Unlock state gates rendering of AppStack to prevent data leakage.
@@ -103,52 +95,6 @@ export function RootNavigator() {
   const lastLoggedUserIdRef = useRef<string | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const isCheckingRef = useRef(false);
-
-  const refreshPlanGate = async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const session = sessionData.session;
-
-    if (!session?.user) {
-      setSessionState('unauthenticated');
-      setPlanGateState('checking');
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('full_name, subscription_plan')
-      .eq('id', session.user.id)
-      .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    if (!isValidPlanId(data?.subscription_plan)) {
-      setPlanGateState('required');
-      return;
-    }
-
-    setCurrentUser({
-      id: session.user.id,
-      email: session.user.email ?? null,
-      fullName:
-        typeof data?.full_name === 'string' && data.full_name.trim().length > 0
-          ? data.full_name.trim()
-          : typeof session.user.user_metadata.full_name === 'string'
-            ? session.user.user_metadata.full_name.trim()
-            : '',
-    });
-    setPlanGateState('ready');
-
-    const [preferences, biometricEnabledLocally] = await Promise.all([
-      getPreferences(),
-      isBiometricLockEnabledLocally(),
-    ]);
-    const shouldLock = preferences.biometricEnabled && biometricEnabledLocally;
-    setIsBiometricLocked(shouldLock);
-    setAppUnlockState(shouldLock ? 'locked' : 'unlocked');
-  };
 
   useEffect(() => {
     let isMounted = true;
@@ -167,11 +113,6 @@ export function RootNavigator() {
           ? session.user.user_metadata.full_name.trim()
           : '';
 
-      if (isMounted) {
-        setPlanGateState('checking');
-        setAppUnlockState('locked');
-      }
-
       const { data } = await supabase
         .from('profiles')
         .select('full_name, subscription_plan')
@@ -182,14 +123,9 @@ export function RootNavigator() {
         return false;
       }
 
+      // Perfis sem plano definido entram automaticamente no plano Free.
       if (!isValidPlanId(data?.subscription_plan)) {
-        setPlanGateState('required');
-        setCurrentUser({
-          id: session.user.id,
-          email: session.user.email ?? null,
-          fullName: fallbackFullName || 'Usuario',
-        });
-        return false;
+        selectFreePlan().catch(() => undefined);
       }
 
       setPlanGateState('ready');
@@ -220,17 +156,17 @@ export function RootNavigator() {
       }
     };
 
+    /**
+     * SECURITY: A decisão de bloquear depende apenas do flag local (SecureStore),
+     * sem chamadas de rede — uma preferência dessincronizada no servidor não pode
+     * destravar o app sozinha.
+     */
     const isBiometricLockRequired = async (session: Session | null): Promise<boolean> => {
       if (!session?.user) {
         return false;
       }
 
-      const [preferences, biometricEnabledLocally] = await Promise.all([
-        getPreferences(),
-        isBiometricLockEnabledLocally(),
-      ]);
-
-      return preferences.biometricEnabled && biometricEnabledLocally;
+      return isBiometricLockEnabledLocally();
     };
 
     /**
@@ -240,7 +176,6 @@ export function RootNavigator() {
     const performBiometricCheck = async (session: Session | null): Promise<void> => {
       if (!session?.user) {
         if (isMounted) {
-          setIsBiometricLocked(false);
           setAppUnlockState('locked');
         }
         return;
@@ -254,23 +189,11 @@ export function RootNavigator() {
 
         const shouldLock = await isBiometricLockRequired(session);
 
-        // Se o usuário desativou a biometria nas configurações, libera o app direto
-        if (!shouldLock) {
-          if (isMounted) {
-            setIsBiometricLocked(false);
-            setAppUnlockState('unlocked');
-          }
-          return;
-        }
-
-        // Com biometria ativa, mantém o app bloqueado até desbloqueio manual no LockScreen.
         if (isMounted) {
-          setIsBiometricLocked(true);
-          setAppUnlockState('locked');
+          setAppUnlockState(shouldLock ? 'locked' : 'unlocked');
         }
       } catch {
         if (isMounted) {
-          setIsBiometricLocked(true);
           setAppUnlockState('locked');
         }
       } finally {
@@ -360,16 +283,15 @@ export function RootNavigator() {
       const planCheckPromise = loadCurrentUser(session).catch(() => {
         if (isMounted) {
           setCurrentUser(null);
-          setPlanGateState(session ? 'required' : 'checking');
+          setPlanGateState(session ? 'ready' : 'checking');
         }
-        return false;
+        return Boolean(session);
       });
       if (_event === 'SIGNED_IN') {
         maybeRegisterLogin(session).catch(() => undefined);
       }
       if (!session) {
         lastLoggedUserIdRef.current = null;
-        setIsBiometricLocked(false);
         setAppUnlockState('locked');
       }
 
@@ -391,12 +313,28 @@ export function RootNavigator() {
     });
 
     /**
-     * SECURITY: AppState listener resolves lock state on background->foreground transition.
-     * It only locks users who have biometric lock enabled, avoiding trapping accounts that opted out.
+     * SECURITY: O app é bloqueado assim que vai para background (protegendo os dados
+     * na troca de apps) e NUNCA se desbloqueia sozinho ao voltar — quem tem o bloqueio
+     * ativo só entra após autenticar no LockScreen (biometria ou PIN do aparelho).
      */
     const appStateSubscription = AppState.addEventListener('change', (nextState) => {
       const previousState = appStateRef.current;
       appStateRef.current = nextState;
+
+      if (nextState === 'background') {
+        isBiometricLockEnabledLocally()
+          .then((enabled) => {
+            if (enabled && isMounted) {
+              setAppUnlockState('locked');
+            }
+          })
+          .catch(() => {
+            if (isMounted) {
+              setAppUnlockState('locked');
+            }
+          });
+        return;
+      }
 
       const becameActive = previousState.match(/inactive|background/) && nextState === 'active';
       if (!becameActive) return;
@@ -404,18 +342,18 @@ export function RootNavigator() {
       supabase.auth
         .getSession()
         .then(async ({ data: sessionData }) => {
+          if (!sessionData.session?.user) return;
+
           const shouldLock = await isBiometricLockRequired(sessionData.session);
           if (!isMounted) return;
 
-          setIsBiometricLocked(shouldLock);
-          setAppUnlockState(shouldLock ? 'locked' : 'unlocked');
-        })
-        .catch(() => {
-          if (isMounted) {
-            setIsBiometricLocked(true);
-            setAppUnlockState('locked');
+          // Libera apenas quem não usa o bloqueio; quem usa permanece travado
+          // até autenticar no LockScreen.
+          if (!shouldLock) {
+            setAppUnlockState('unlocked');
           }
-        });
+        })
+        .catch(() => undefined);
     });
 
     return () => {
@@ -463,70 +401,6 @@ export function RootNavigator() {
       );
     }
 
-    if (planGateState === 'required') {
-      return (
-        <RequiredPlanScreen
-          colors={colors}
-          styles={styles}
-          errorMessage={planGateError}
-          isSelectingPlan={isSelectingPlan}
-          isVerifyingPlan={isVerifyingPlan}
-          onSelectPlan={async (planId) => {
-            if (!currentUser?.id) {
-              return;
-            }
-
-            setIsSelectingPlan(true);
-            setPlanGateError(null);
-            try {
-              const checkoutUrl = await startAbacatepaySubscription(planId);
-              const result = await WebBrowser.openAuthSessionAsync(
-                checkoutUrl,
-                'appfinanceiro://billing',
-              );
-              if (result.type === 'success') {
-                await refreshPlanGate();
-              }
-            } catch (error) {
-              const message =
-                error instanceof Error ? error.message : 'Nao foi possivel iniciar a assinatura.';
-              setPlanGateError(message);
-            } finally {
-              setIsSelectingPlan(false);
-            }
-          }}
-          onVerifyPlan={async () => {
-            setIsVerifyingPlan(true);
-            setPlanGateError(null);
-            try {
-              await refreshPlanGate();
-              const { data } = await supabase.auth.getSession();
-              if (data.session) {
-                const { data: profile } = await supabase
-                  .from('profiles')
-                  .select('subscription_plan')
-                  .eq('id', data.session.user.id)
-                  .maybeSingle();
-
-                if (!isValidPlanId(profile?.subscription_plan)) {
-                  setPlanGateError('Pagamento ainda nao confirmado. Tente novamente em instantes.');
-                }
-              }
-            } catch (error) {
-              const message =
-                error instanceof Error ? error.message : 'Nao foi possivel verificar a assinatura.';
-              setPlanGateError(message);
-            } finally {
-              setIsVerifyingPlan(false);
-            }
-          }}
-          onSignOut={async () => {
-            await supabase.auth.signOut();
-          }}
-        />
-      );
-    }
-
     // SECURITY BARRIER: App is locked or biometric check in progress
     // Shows neutral LockScreen without any sensitive data
     if (appUnlockState === 'locked' || appUnlockState === 'checking') {
@@ -534,13 +408,10 @@ export function RootNavigator() {
         <LockScreen
           isCheckingBiometric={appUnlockState === 'checking'}
           onManualUnlock={async () => {
-            setAppUnlockState('checking');
             const result = await authenticateWithBiometrics('Desbloqueie o app');
             if (result.success) {
-              setIsBiometricLocked(false);
               setAppUnlockState('unlocked');
             } else {
-              setIsBiometricLocked(true);
               setAppUnlockState('locked');
             }
           }}
@@ -566,84 +437,6 @@ export function RootNavigator() {
   );
 }
 
-function RequiredPlanScreen({
-  colors,
-  styles,
-  errorMessage,
-  isSelectingPlan,
-  isVerifyingPlan,
-  onSelectPlan,
-  onVerifyPlan,
-  onSignOut,
-}: {
-  colors: AppColors;
-  styles: ReturnType<typeof createStyles>;
-  errorMessage: string | null;
-  isSelectingPlan: boolean;
-  isVerifyingPlan: boolean;
-  onSelectPlan: (planId: SubscriptionPlanId) => Promise<void>;
-  onVerifyPlan: () => Promise<void>;
-  onSignOut: () => Promise<void>;
-}) {
-  return (
-    <View style={styles.planGateContainer}>
-      <ScrollView contentContainerStyle={styles.planGateContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.planGateTitle}>Escolha um plano</Text>
-        <Text style={styles.planGateSubtitle}>
-          Sua conta foi criada. Para acessar o aplicativo, assine um plano.
-        </Text>
-        {errorMessage ? <Text style={styles.planGateError}>{errorMessage}</Text> : null}
-
-        {PLAN_ORDER.map((planId) => {
-          const plan = SUBSCRIPTION_PLANS[planId];
-
-          return (
-            <View key={plan.id} style={styles.planGateCard}>
-              <View style={styles.planGateHeader}>
-                <View>
-                  <Text style={styles.planGateName}>{plan.name}</Text>
-                  <Text style={styles.planGatePrice}>{plan.priceLabel}/mes</Text>
-                </View>
-                <Text style={styles.planGateLimit}>{plan.accountLimit} conta(s)</Text>
-              </View>
-
-              {plan.benefits.map((benefit) => (
-                <Text key={benefit} style={styles.planGateBenefit}>
-                  - {benefit}
-                </Text>
-              ))}
-
-              <Pressable
-                style={[styles.planGateButton, isSelectingPlan && styles.planGateButtonDisabled]}
-                disabled={isSelectingPlan}
-                onPress={() => onSelectPlan(plan.id)}
-              >
-                <Text style={styles.planGateButtonText}>
-                  {isSelectingPlan ? 'Abrindo checkout...' : 'Assinar plano'}
-                </Text>
-              </Pressable>
-            </View>
-          );
-        })}
-
-        <Pressable
-          style={[styles.planGateSecondaryButton, isVerifyingPlan && styles.planGateButtonDisabled]}
-          disabled={isVerifyingPlan}
-          onPress={onVerifyPlan}
-        >
-          <Text style={styles.planGateSecondaryButtonText}>
-            {isVerifyingPlan ? 'Verificando...' : 'Ja paguei, verificar'}
-          </Text>
-        </Pressable>
-
-        <Pressable style={styles.planGateSignOut} onPress={onSignOut}>
-          <Text style={styles.planGateSignOutText}>Sair da conta</Text>
-        </Pressable>
-      </ScrollView>
-    </View>
-  );
-}
-
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
     loadingContainer: {
@@ -651,105 +444,6 @@ const createStyles = (colors: AppColors) =>
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.background,
-    },
-    planGateContainer: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    planGateContent: {
-      padding: 24,
-      gap: 16,
-      paddingTop: 56,
-      paddingBottom: 36,
-    },
-    planGateTitle: {
-      color: colors.textPrimary,
-      fontSize: 28,
-      fontWeight: '800',
-    },
-    planGateSubtitle: {
-      color: colors.textSecondary,
-      fontSize: 15,
-      lineHeight: 21,
-    },
-    planGateError: {
-      color: colors.danger,
-      fontSize: 14,
-      fontWeight: '700',
-      lineHeight: 20,
-    },
-    planGateCard: {
-      gap: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 16,
-      backgroundColor: colors.surface,
-      padding: 16,
-    },
-    planGateHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      gap: 12,
-    },
-    planGateName: {
-      color: colors.textPrimary,
-      fontSize: 18,
-      fontWeight: '800',
-    },
-    planGatePrice: {
-      color: colors.primary,
-      fontSize: 15,
-      fontWeight: '800',
-      marginTop: 4,
-    },
-    planGateLimit: {
-      color: colors.textSecondary,
-      fontSize: 12,
-      fontWeight: '700',
-    },
-    planGateBenefit: {
-      color: colors.textSecondary,
-      fontSize: 14,
-      lineHeight: 19,
-    },
-    planGateButton: {
-      minHeight: 48,
-      borderRadius: 12,
-      backgroundColor: colors.primaryLight,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginTop: 4,
-    },
-    planGateButtonDisabled: {
-      opacity: 0.7,
-    },
-    planGateButtonText: {
-      color: colors.white,
-      fontSize: 15,
-      fontWeight: '800',
-    },
-    planGateSecondaryButton: {
-      minHeight: 48,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    planGateSecondaryButtonText: {
-      color: colors.textPrimary,
-      fontSize: 15,
-      fontWeight: '800',
-    },
-    planGateSignOut: {
-      alignItems: 'center',
-      paddingVertical: 12,
-    },
-    planGateSignOutText: {
-      color: colors.textSecondary,
-      fontSize: 14,
-      fontWeight: '700',
     },
   });
 

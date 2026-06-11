@@ -16,8 +16,9 @@ function AppNavigation() {
   useEffect(() => {
     const hideNavigationBar = async () => {
       try {
+        // setBehaviorAsync não é suportado com edge-to-edge (padrão no SDK 54+);
+        // com edge-to-edge o gesto de swipe já é controlado pelo sistema.
         await NavigationBar.setVisibilityAsync("hidden");
-        await NavigationBar.setBehaviorAsync("overlay-swipe");
       } catch {}
     };
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { PremiumGate } from '../features/plans/components/PremiumGate';
 import { EditProfileScreen } from '../features/profile/screens/EditProfileScreen';
 import { GroupDetailsScreen } from '../features/groups/screens/GroupDetailsScreen';
 import { GroupsScreen } from '../features/groups/screens/GroupsScreen';
@@ -40,21 +41,83 @@ export function AppStack({ currentUser }: AppStackProps) {
       <Stack.Screen name="Help" component={HelpScreen} />
       <Stack.Screen name="Privacy" component={PrivacySecurityScreen} />
       <Stack.Screen name="Plans" component={PlansScreen} />
-      <Stack.Screen name="Import" component={ImportScreen} />
-      <Stack.Screen name="IncomeTax" component={IncomeTaxScreen} />
+      <Stack.Screen name="Import">
+        {(props) => (
+          <PremiumGate featureTitle="Importacao de dados">
+            <ImportScreen {...(props as any)} />
+          </PremiumGate>
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="IncomeTax">
+        {(props) => (
+          <PremiumGate featureTitle="Imposto de Renda">
+            <IncomeTaxScreen {...(props as any)} />
+          </PremiumGate>
+        )}
+      </Stack.Screen>
       <Stack.Screen name="About" component={SobreScreen} />
-      <Stack.Screen name="Budgets" component={BudgetsScreen} />
-      <Stack.Screen name="Reports" component={ReportsScreen} />
-      <Stack.Screen name="Accounts" component={AccountsScreen} />
-      <Stack.Screen name="Cards" component={CardsScreen} />
-      <Stack.Screen name="ListChat" component={ListChatScreen} />
-      <Stack.Screen name="Chat" component={ChatScreen} />
-      <Stack.Screen name="RecurringTransactions" component={RecurringTransactionsScreen} />
+      <Stack.Screen name="Budgets">
+        {(props) => (
+          <PremiumGate featureTitle="Orcamentos mensais">
+            <BudgetsScreen {...(props as any)} />
+          </PremiumGate>
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="Reports">
+        {(props) => (
+          <PremiumGate featureTitle="Relatorios">
+            <ReportsScreen {...(props as any)} />
+          </PremiumGate>
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="Accounts">
+        {(props) => (
+          <PremiumGate featureTitle="Contas financeiras">
+            <AccountsScreen {...(props as any)} />
+          </PremiumGate>
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="Cards">
+        {(props) => (
+          <PremiumGate featureTitle="Cartoes de credito">
+            <CardsScreen {...(props as any)} />
+          </PremiumGate>
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="ListChat">
+        {(props) => (
+          <PremiumGate featureTitle="Chat de suporte">
+            <ListChatScreen {...(props as any)} />
+          </PremiumGate>
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="Chat">
+        {(props) => (
+          <PremiumGate featureTitle="Chat de suporte">
+            <ChatScreen {...(props as any)} />
+          </PremiumGate>
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="RecurringTransactions">
+        {(props) => (
+          <PremiumGate featureTitle="Transacoes recorrentes">
+            <RecurringTransactionsScreen {...(props as any)} />
+          </PremiumGate>
+        )}
+      </Stack.Screen>
       <Stack.Screen name="Groups">
-        {() => <GroupsScreen currentUser={currentUser} />}
+        {() => (
+          <PremiumGate featureTitle="Grupos de despesas">
+            <GroupsScreen currentUser={currentUser} />
+          </PremiumGate>
+        )}
       </Stack.Screen>
       <Stack.Screen name="GroupDetails">
-        {({ route }) => <GroupDetailsScreen currentUser={currentUser} groupId={route.params.groupId} />}
+        {({ route }) => (
+          <PremiumGate featureTitle="Grupos de despesas">
+            <GroupDetailsScreen currentUser={currentUser} groupId={route.params.groupId} />
+          </PremiumGate>
+        )}
       </Stack.Screen>
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>

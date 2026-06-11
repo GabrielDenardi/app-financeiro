@@ -1,11 +1,15 @@
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Fingerprint } from 'lucide-react-native';
 import { type AppColors, useThemeColors } from '../theme';
 
 /**
  * SECURITY: Neutral lock screen shown while biometric authentication is in progress.
  * Displays no financial data or sensitive information.
- * Serves as a visual shield during background→foreground transitions.
+ *
+ * O prompt de biometria (com fallback para o PIN do aparelho) é disparado
+ * automaticamente ao montar e sempre que o app volta para primeiro plano —
+ * comportamento estilo Nubank/WhatsApp. O app só desbloqueia após sucesso.
  */
 interface LockScreenProps {
   isCheckingBiometric: boolean;
@@ -22,6 +26,63 @@ export function LockScreen({
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isPrompting, setIsPrompting] = useState(false);
+  const isPromptingRef = useRef(false);
+  const lastPromptEndedAtRef = useRef(0);
+  const onManualUnlockRef = useRef(onManualUnlock);
+  onManualUnlockRef.current = onManualUnlock;
+
+  const promptUnlock = useCallback(async (): Promise<void> => {
+    if (isPromptingRef.current) {
+      return;
+    }
+
+    isPromptingRef.current = true;
+    setIsPrompting(true);
+
+    // Se o prompt nativo travar (ex.: disparado antes da Activity estar pronta),
+    // o watchdog libera o botao "Tentar novamente" em vez de prender em "Aguardando...".
+    const watchdog = setTimeout(() => {
+      isPromptingRef.current = false;
+      setIsPrompting(false);
+    }, 15000);
+
+    try {
+      await onManualUnlockRef.current();
+    } finally {
+      clearTimeout(watchdog);
+      isPromptingRef.current = false;
+      lastPromptEndedAtRef.current = Date.now();
+      setIsPrompting(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // Pequeno atraso antes do prompt automatico: no cold start do Android o
+    // authenticateAsync disparado cedo demais (Activity ainda nao em primeiro
+    // plano) nao exibe nada e nunca resolve.
+    const initialPrompt = setTimeout(() => {
+      if (!cancelled && AppState.currentState === 'active') {
+        promptUnlock().catch(() => undefined);
+      }
+    }, 400);
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      // O fechamento do proprio prompt biometrico gera uma transicao para
+      // 'active'; o cooldown evita reabrir o prompt em loop apos um cancelamento.
+      if (nextState === 'active' && Date.now() - lastPromptEndedAtRef.current > 1000) {
+        promptUnlock().catch(() => undefined);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(initialPrompt);
+      subscription.remove();
+    };
+  }, [promptUnlock]);
 
   const handleSignOut = async (): Promise<void> => {
     setSignOutError(null);
@@ -37,36 +98,37 @@ export function LockScreen({
     }
   };
 
-  if (isCheckingBiometric) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={colors.primaryLight} />
-        <Text style={styles.checkingText}>Verificando biometria...</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <View style={styles.contentWrapper}>
+        <View style={styles.iconWrapper}>
+          <Fingerprint size={36} color={colors.primary} />
+        </View>
+
         <Text style={styles.lockTitle}>App bloqueado</Text>
         <Text style={styles.lockMessage}>
-          A autenticação biométrica está ativada para esta conta. Use o botão abaixo para
-          desbloquear.
+          {isPrompting || isCheckingBiometric
+            ? 'Confirme sua identidade para continuar.'
+            : 'Use sua biometria ou o PIN do aparelho para desbloquear.'}
         </Text>
 
         <Pressable
-          style={({ pressed }) => [styles.unlockButton, pressed && styles.unlockButtonPressed]}
-          onPress={onManualUnlock}
-          disabled={isCheckingBiometric}
+          style={({ pressed }) => [
+            styles.unlockButton,
+            (pressed || isPrompting) && styles.unlockButtonPressed,
+          ]}
+          onPress={() => promptUnlock().catch(() => undefined)}
+          disabled={isPrompting || isCheckingBiometric}
         >
-          <Text style={styles.unlockButtonText}>Desbloquear</Text>
+          <Text style={styles.unlockButtonText}>
+            {isPrompting || isCheckingBiometric ? 'Aguardando...' : 'Tentar novamente'}
+          </Text>
         </Pressable>
 
         <Pressable
           style={({ pressed }) => [styles.signOutButton, pressed && styles.signOutButtonPressed]}
           onPress={handleSignOut}
-          disabled={isCheckingBiometric || isSigningOut}
+          disabled={isPrompting || isCheckingBiometric || isSigningOut}
         >
           <Text style={styles.signOutText}>{isSigningOut ? 'Saindo...' : 'Sair da conta'}</Text>
         </Pressable>
@@ -91,6 +153,14 @@ const createStyles = (colors: AppColors) =>
       maxWidth: 320,
       gap: 20,
       alignItems: 'center',
+    },
+    iconWrapper: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: colors.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     lockTitle: {
       fontSize: 24,
@@ -140,11 +210,5 @@ const createStyles = (colors: AppColors) =>
       fontSize: 13,
       lineHeight: 18,
       textAlign: 'center',
-    },
-    checkingText: {
-      marginTop: 16,
-      fontSize: 14,
-      color: colors.textSecondary,
-      fontWeight: '500',
     },
   });
