@@ -19,7 +19,11 @@ export async function startIntermediateTrial(): Promise<string> {
     throw new Error(error.message || 'Nao foi possivel iniciar o periodo de teste.');
   }
 
-  return data as string;
+  if (!data || typeof data !== 'string') {
+    throw new Error('RPC retornou dados invalidos.');
+  }
+
+  return data;
 }
 
 /**
