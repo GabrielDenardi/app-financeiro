@@ -32,7 +32,11 @@ import {
   useUpdatePreferencesMutation,
   useVerifyTotpMutation,
 } from '../features/preferences/hooks/usePreferences';
-import { canUseBiometricLock, setBiometricLockEnabled } from '../features/preferences/services/biometricService';
+import {
+  authenticateWithBiometrics,
+  canUseBiometricLock,
+  setBiometricLockEnabled,
+} from '../features/preferences/services/biometricService';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 export function PrivacySecurityScreen({ navigation }: any) {
@@ -79,8 +83,17 @@ export function PrivacySecurityScreen({ navigation }: any) {
         return;
       }
 
-      await setBiometricLockEnabled(value);
+      // Exige autenticacao tanto para ativar quanto para desativar o bloqueio,
+      // impedindo que alguem com o celular desbloqueado desative a protecao.
+      const result = await authenticateWithBiometrics(
+        value ? 'Confirme para ativar o bloqueio' : 'Confirme para desativar o bloqueio',
+      );
+      if (!result.success) {
+        return;
+      }
+
       await updatePref.mutateAsync({ biometricEnabled: value });
+      await setBiometricLockEnabled(value);
     } catch (error) {
       Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar a biometria.');
     }
@@ -198,7 +211,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
             />
             <PrefRow
               label="Bloqueio por biometria"
-              desc="Use biometria ao abrir o app."
+              desc="Exige biometria ou o PIN do aparelho ao abrir o app."
               value={prefs.biometricEnabled}
               loading={updatePref.isPending}
               onChange={onToggleBiometric}

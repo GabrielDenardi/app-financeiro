@@ -12,13 +12,23 @@ const FUTURE_DATE = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
 const PAST_DATE = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
 describe('subscription plans', () => {
-  it('defaults unknown or missing plan ids to basic', () => {
-    expect(normalizePlanId(null)).toBe('basic');
-    expect(normalizePlanId('unknown')).toBe('basic');
-    expect(getPlan(undefined)).toEqual(SUBSCRIPTION_PLANS.basic);
+  it('defaults unknown or missing plan ids to free', () => {
+    expect(normalizePlanId(null)).toBe('free');
+    expect(normalizePlanId('unknown')).toBe('free');
+    expect(normalizePlanId('basic')).toBe('basic');
+    expect(getPlan(undefined)).toEqual(SUBSCRIPTION_PLANS.free);
   });
 
   it('exposes the expected entitlement matrix', () => {
+    expect(getPlanEntitlements('free')).toMatchObject({
+      accountLimit: 1,
+      fullReports: false,
+      createGroups: false,
+      supportChat: false,
+      voiceCapture: false,
+      dataImportExport: false,
+    });
+
     expect(getPlanEntitlements('basic')).toMatchObject({
       accountLimit: 1,
       fullReports: false,
@@ -80,6 +90,8 @@ describe('subscription plans', () => {
   });
 
   it('checks account creation limits by active account count', () => {
+    expect(canCreateAccount('free', 0)).toBe(true);
+    expect(canCreateAccount('free', 1)).toBe(false);
     expect(canCreateAccount('basic', 0)).toBe(true);
     expect(canCreateAccount('basic', 1)).toBe(false);
     expect(canCreateAccount('intermediate', 1)).toBe(true);

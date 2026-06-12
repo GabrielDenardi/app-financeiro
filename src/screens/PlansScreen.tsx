@@ -10,9 +10,10 @@ import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUse
 import { startAbacatepaySubscription } from '../features/billing/abacatepayService';
 import { useCurrentPlan, useStartTrialMutation } from '../features/plans/hooks';
 import { SUBSCRIPTION_PLANS, TRIAL_DURATION_DAYS } from '../features/plans/plans';
+import { selectFreePlan } from '../features/plans/services/plansService';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
-const PLAN_ORDER = ['basic', 'intermediate', 'pro'] as const;
+const PLAN_ORDER = ['free', 'basic', 'intermediate', 'pro'] as const;
 
 export function PlansScreen({ navigation }: any) {
   const colors = useThemeColors();
@@ -39,6 +40,35 @@ export function PlansScreen({ navigation }: any) {
 
   const handleSelectPlan = async (planId: (typeof PLAN_ORDER)[number]) => {
     if ((currentPlan.basePlanId ?? currentPlan.plan.id) === planId || selectingPlanId) {
+      return;
+    }
+
+    if (planId === 'free') {
+      Alert.alert(
+        'Mudar para o plano Free',
+        'Voce perdera o acesso aos recursos pagos. Deseja continuar?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Confirmar',
+            style: 'destructive',
+            onPress: async () => {
+              setSelectingPlanId(planId);
+              try {
+                await selectFreePlan();
+                await currentPlan.refetch();
+              } catch (error) {
+                Alert.alert(
+                  'Planos',
+                  error instanceof Error ? error.message : 'Nao foi possivel mudar de plano.',
+                );
+              } finally {
+                setSelectingPlanId(null);
+              }
+            },
+          },
+        ],
+      );
       return;
     }
 
@@ -108,7 +138,9 @@ export function PlansScreen({ navigation }: any) {
             <View style={styles.planHeader}>
               <View>
                 <Text style={styles.planName}>{plan.name}</Text>
-                <Text style={styles.planPrice}>{plan.priceLabel}/mes</Text>
+                <Text style={styles.planPrice}>
+                  {plan.id === 'free' ? plan.priceLabel : `${plan.priceLabel}/mes`}
+                </Text>
               </View>
               {active ? (
                 <View style={styles.activeBadge}>
@@ -132,7 +164,15 @@ export function PlansScreen({ navigation }: any) {
               onPress={() => handleSelectPlan(plan.id)}
             >
               <Text style={[styles.planButtonText, (active || selecting) && styles.planButtonMutedText]}>
-                {active ? 'Plano atual' : selecting ? 'Abrindo checkout...' : 'Assinar'}
+                {active
+                  ? 'Plano atual'
+                  : selecting
+                    ? plan.id === 'free'
+                      ? 'Ativando...'
+                      : 'Abrindo checkout...'
+                    : plan.id === 'free'
+                      ? 'Usar plano Free'
+                      : 'Assinar'}
               </Text>
             </Pressable>
           </Card>
