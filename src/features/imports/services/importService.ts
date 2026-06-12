@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
+import type { ProfilePlanRow } from '../../plans/types';
 import { listCategories } from '../../transactions/services/transactionsService';
 import type { ImportBatch, ImportPreviewRow } from '../types';
 
@@ -21,9 +22,6 @@ type ImportBatchRow = {
   finalized_at: string | null;
 };
 
-type ProfilePlanRow = {
-  subscription_plan: string | null;
-};
 
 type PickedAsset = {
   uri: string;
@@ -312,7 +310,7 @@ export async function importTransactionsFromAsset(asset: PickedAsset) {
   const userId = await requireCurrentUserId();
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
-    .select('subscription_plan')
+    .select('subscription_plan, trial_ends_at')
     .eq('id', userId)
     .maybeSingle();
 
@@ -320,7 +318,10 @@ export async function importTransactionsFromAsset(asset: PickedAsset) {
     throw new Error(profileError.message);
   }
 
-  const entitlements = getPlanEntitlements(normalizePlanId((profileData as ProfilePlanRow | null)?.subscription_plan));
+  const entitlements = getPlanEntitlements(
+    normalizePlanId((profileData as ProfilePlanRow | null)?.subscription_plan),
+    (profileData as ProfilePlanRow | null)?.trial_ends_at,
+  );
   if (!entitlements.dataImportExport) {
     throw new Error(getUpgradeMessage('Importar dados'));
   }

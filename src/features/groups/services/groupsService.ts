@@ -2,6 +2,7 @@ import { hasSupabaseEnv } from '../../../config/env';
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
+import type { ProfilePlanRow } from '../../plans/types';
 import type {
   CreateGroupInput,
   CreateGroupSplitInput,
@@ -93,9 +94,6 @@ type MembershipRoleRow = {
   role: GroupRole;
 };
 
-type ProfilePlanRow = {
-  subscription_plan: string | null;
-};
 
 export type GroupsServiceErrorCode =
   | 'missing_env'
@@ -441,7 +439,7 @@ export async function createGroup(input: CreateGroupInput): Promise<string> {
   const userId = await requireCurrentUserId();
   const { data, error } = await supabase
     .from('profiles')
-    .select('subscription_plan')
+    .select('subscription_plan, trial_ends_at')
     .eq('id', userId)
     .maybeSingle();
 
@@ -449,7 +447,10 @@ export async function createGroup(input: CreateGroupInput): Promise<string> {
     throw new GroupsServiceError('unknown', error.message);
   }
 
-  const entitlements = getPlanEntitlements(normalizePlanId((data as ProfilePlanRow | null)?.subscription_plan));
+  const entitlements = getPlanEntitlements(
+    normalizePlanId((data as ProfilePlanRow | null)?.subscription_plan),
+    (data as ProfilePlanRow | null)?.trial_ends_at,
+  );
   if (!entitlements.createGroups) {
     throw new GroupsServiceError('unknown', getUpgradeMessage('Criar grupos'));
   }

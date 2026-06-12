@@ -19,8 +19,8 @@ import { Card } from '../../../components/Card';
 import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import type { AuthenticatedUserSummary } from '../../../types/auth';
 import { formatCurrencyBRL } from '../../../utils/format';
+import { UpgradePaywallSheet } from '../../plans/components/UpgradePaywallSheet';
 import { useCurrentPlan } from '../../plans/hooks';
-import { getUpgradeMessage } from '../../plans/plans';
 import { useCreateGroupMutation, useGroups, useJoinGroupMutation } from '../hooks/useGroups';
 
 type GroupsScreenProps = {
@@ -45,6 +45,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
   const navigation = useNavigation<any>();
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [isJoinModalVisible, setIsJoinModalVisible] = useState(false);
+  const [isPaywallVisible, setIsPaywallVisible] = useState(false);
   const [groupTitle, setGroupTitle] = useState('');
   const [groupDescription, setGroupDescription] = useState('');
   const [joinCode, setJoinCode] = useState('');
@@ -56,7 +57,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
 
   const openCreateModal = () => {
     if (!currentPlan.entitlements.createGroups) {
-      Alert.alert('Plano necessario', getUpgradeMessage('Criar grupos'));
+      setIsPaywallVisible(true);
       return;
     }
 
@@ -338,6 +339,13 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
           </Card>
         </View>
       </Modal>
+
+      <UpgradePaywallSheet
+        visible={isPaywallVisible}
+        onClose={() => setIsPaywallVisible(false)}
+        featureTitle="Criar grupos"
+        description="Crie grupos para dividir despesas com amigos e familia — disponivel a partir do Plano Intermediario."
+      />
     </SafeAreaView>
   );
 }

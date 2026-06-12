@@ -8,6 +8,7 @@ import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { formatCurrencyBRL } from '../../../utils/format';
 import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
+import type { ProfilePlanRow } from '../../plans/types';
 import { listTransactionFeed } from '../../transactions/services/transactionsService';
 import type { TransactionFeedItem } from '../../transactions/types';
 import type {
@@ -17,9 +18,6 @@ import type {
   IncomeTaxSection,
 } from '../types';
 
-type ProfilePlanRow = {
-  subscription_plan: string | null;
-};
 
 type AttachmentRow = {
   transaction_id: string | null;
@@ -109,7 +107,7 @@ function sumAmount(items: TransactionFeedItem[]) {
 async function ensureExportAllowed(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
-    .select('subscription_plan')
+    .select('subscription_plan, trial_ends_at')
     .eq('id', userId)
     .maybeSingle();
 
@@ -117,7 +115,10 @@ async function ensureExportAllowed(userId: string) {
     throw new Error(error.message);
   }
 
-  const entitlements = getPlanEntitlements(normalizePlanId((data as ProfilePlanRow | null)?.subscription_plan));
+  const entitlements = getPlanEntitlements(
+    normalizePlanId((data as ProfilePlanRow | null)?.subscription_plan),
+    (data as ProfilePlanRow | null)?.trial_ends_at,
+  );
   if (!entitlements.dataImportExport) {
     throw new Error(getUpgradeMessage('Exportar para o Imposto de Renda'));
   }

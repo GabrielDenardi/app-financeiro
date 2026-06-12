@@ -8,6 +8,8 @@ type ProfileRow = {
   id: string;
   email: string;
   subscription_plan: string | null;
+  trial_started_at: string | null;
+  trial_ends_at: string | null;
   full_name: string;
   phone: string;
   birth_date: string | null;
@@ -21,7 +23,7 @@ type ProfileRow = {
 };
 
 const PROFILE_SELECT_FIELDS =
-  'id, email, subscription_plan, full_name, phone, birth_date, cep, street, address_number, complement, city, state, bio';
+  'id, email, subscription_plan, trial_started_at, trial_ends_at, full_name, phone, birth_date, cep, street, address_number, complement, city, state, bio';
 
 function toIsoDateString(date: Date): string {
   const year = date.getFullYear();
@@ -69,6 +71,8 @@ function mapProfileRow(row: ProfileRow): UserProfile {
     id: row.id,
     email: row.email,
     subscriptionPlan: normalizePlanId(row.subscription_plan),
+    trialStartedAt: row.trial_started_at ?? null,
+    trialEndsAt: row.trial_ends_at ?? null,
     fullName: row.full_name,
     phone: row.phone,
     birthDate: row.birth_date,

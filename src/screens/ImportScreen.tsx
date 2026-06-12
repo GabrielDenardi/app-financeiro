@@ -8,6 +8,7 @@ import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { useImportBatches, useImportTransactionsMutation } from '../features/imports/hooks/useImports';
+import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
 import { useCurrentPlan } from '../features/plans/hooks';
 import { getUpgradeMessage } from '../features/plans/plans';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
@@ -20,6 +21,7 @@ export default function ImportScreen({ navigation }: any) {
   const batchesQuery = useImportBatches(user?.id, currentPlan.entitlements.dataImportExport);
   const importMutation = useImportTransactionsMutation(user?.id);
   const [asset, setAsset] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const [doneOpen, setDoneOpen] = useState(false);
   const [summary, setSummary] = useState<{ accepted: number; duplicate: number; failed: number } | null>(null);
 
@@ -44,7 +46,7 @@ export default function ImportScreen({ navigation }: any) {
     }
 
     if (!currentPlan.entitlements.dataImportExport) {
-      Alert.alert('Plano necessario', getUpgradeMessage('Importar dados'));
+      setPaywallOpen(true);
       return;
     }
 
@@ -94,6 +96,9 @@ export default function ImportScreen({ navigation }: any) {
           </View>
           <Text style={styles.cardTitle}>Recurso do Plano Pro</Text>
           <Text style={styles.cardSub}>{getUpgradeMessage('Importacao de dados')}</Text>
+          <Pressable style={styles.primary} onPress={() => setPaywallOpen(true)}>
+            <Text style={styles.primaryText}>Ver opcoes de desbloqueio</Text>
+          </Pressable>
         </Card>
       ) : (
         <>
@@ -190,6 +195,13 @@ export default function ImportScreen({ navigation }: any) {
       </Modal>
         </>
       )}
+
+      <UpgradePaywallSheet
+        visible={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        featureTitle="Importacao de dados"
+        description="Importe extratos em CSV ou Excel e traga seu historico financeiro de uma vez — recurso do Plano Pro."
+      />
     </PageShell>
   );
 }

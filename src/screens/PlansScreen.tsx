@@ -8,8 +8,8 @@ import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { startAbacatepaySubscription } from '../features/billing/abacatepayService';
-import { useCurrentPlan } from '../features/plans/hooks';
-import { SUBSCRIPTION_PLANS } from '../features/plans/plans';
+import { useCurrentPlan, useStartTrialMutation } from '../features/plans/hooks';
+import { SUBSCRIPTION_PLANS, TRIAL_DURATION_DAYS } from '../features/plans/plans';
 import { selectFreePlan } from '../features/plans/services/plansService';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
@@ -20,10 +20,26 @@ export function PlansScreen({ navigation }: any) {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
+  const startTrial = useStartTrialMutation(user?.id);
   const [selectingPlanId, setSelectingPlanId] = useState<string | null>(null);
 
+  const handleStartTrial = async () => {
+    try {
+      await startTrial.mutateAsync();
+      Alert.alert(
+        'Teste gratuito ativado',
+        `Voce tem ${TRIAL_DURATION_DAYS} dias com os recursos do Plano Intermediario. Aproveite!`,
+      );
+    } catch (error) {
+      Alert.alert(
+        'Teste gratuito',
+        error instanceof Error ? error.message : 'Nao foi possivel iniciar o periodo de teste.',
+      );
+    }
+  };
+
   const handleSelectPlan = async (planId: (typeof PLAN_ORDER)[number]) => {
-    if (currentPlan.plan.id === planId || selectingPlanId) {
+    if ((currentPlan.basePlanId ?? currentPlan.plan.id) === planId || selectingPlanId) {
       return;
     }
 
@@ -80,14 +96,41 @@ export function PlansScreen({ navigation }: any) {
       <Card style={styles.currentCard}>
         <Text style={styles.currentLabel}>Plano atual</Text>
         <Text style={styles.currentTitle}>{currentPlan.plan.name}</Text>
+        {currentPlan.trial.isActive ? (
+          <Text style={styles.currentTrial}>
+            Teste gratuito — {currentPlan.trial.daysLeft}{' '}
+            {currentPlan.trial.daysLeft === 1 ? 'dia restante' : 'dias restantes'}
+          </Text>
+        ) : null}
         <Text style={styles.currentText}>
           {currentPlan.entitlements.accountLimit} conta(s) financeira(s) e recursos conforme o plano.
         </Text>
       </Card>
 
+      {currentPlan.trial.isEligible ? (
+        <Card style={styles.trialCard}>
+          <Text style={styles.trialTitle}>Experimente o Plano Intermediario</Text>
+          <Text style={styles.trialText}>
+            {TRIAL_DURATION_DAYS} dias gratis com relatorios completos, grupos e cadastro por voz.
+            Sem cartao de credito.
+          </Text>
+          <Pressable
+            style={[styles.planButton, startTrial.isPending && styles.planButtonMuted]}
+            disabled={startTrial.isPending}
+            onPress={handleStartTrial}
+          >
+            <Text style={[styles.planButtonText, startTrial.isPending && styles.planButtonMutedText]}>
+              {startTrial.isPending
+                ? 'Ativando...'
+                : `Experimentar gratis por ${TRIAL_DURATION_DAYS} dias`}
+            </Text>
+          </Pressable>
+        </Card>
+      ) : null}
+
       {PLAN_ORDER.map((planId) => {
         const plan = SUBSCRIPTION_PLANS[planId];
-        const active = currentPlan.plan.id === plan.id;
+        const active = (currentPlan.basePlanId ?? currentPlan.plan.id) === plan.id;
         const selecting = selectingPlanId === plan.id;
 
         return (
@@ -158,6 +201,24 @@ const createStyles = (colors: AppColors) =>
     currentText: {
       ...typography.body,
       color: 'rgba(255,255,255,0.84)',
+      lineHeight: 19,
+    },
+    currentTrial: {
+      ...typography.caption,
+      color: colors.white,
+      fontWeight: '800',
+    },
+    trialCard: {
+      gap: spacing.sm,
+      borderColor: colors.primaryLight,
+    },
+    trialTitle: {
+      ...typography.h2,
+      color: colors.textPrimary,
+    },
+    trialText: {
+      ...typography.body,
+      color: colors.textSecondary,
       lineHeight: 19,
     },
     planCard: {
