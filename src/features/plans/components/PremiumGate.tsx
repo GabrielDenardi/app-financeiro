@@ -39,6 +39,20 @@ export function PremiumGate({ featureTitle, description, children }: PremiumGate
     );
   }
 
+  if (currentPlan.isError) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.subtitle}>Não foi possível validar seu plano agora.</Text>
+        <Pressable
+          style={({ pressed }) => [styles.primaryButton, styles.retryButton, pressed && styles.pressed]}
+          onPress={() => { void currentPlan.refetch(); }}
+        >
+          <Text style={styles.primaryButtonText}>Tentar novamente</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (!isFreePlan(currentPlan.plan.id)) {
     return <>{children}</>;
   }
@@ -154,6 +168,9 @@ const createStyles = (colors: AppColors) =>
       backgroundColor: colors.primaryLight,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    retryButton: {
+      marginTop: spacing.md,
     },
     primaryButtonText: {
       ...typography.body,

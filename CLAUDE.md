@@ -56,7 +56,7 @@ npx expo start -c      # Limpar cache do bundler
 
 ## Estrutura de Diretórios
 
-```
+```text
 app-financeiro/
 ├── App.tsx                    # Root: QueryClientProvider + AppThemeProvider + Navigation
 ├── index.ts                   # Entry point (registerRootComponent)
@@ -148,7 +148,7 @@ app-financeiro/
 - `AppUnlockState`: `locked | checking | unlocked` — com o lock ativado, o app **bloqueia ao ir para background** e o `LockScreen` dispara a biometria automaticamente (com fallback para o PIN do aparelho); **nunca desbloqueia sem autenticação**. A decisão de bloquear usa apenas o flag local no SecureStore (sem rede).
 - `PlanGateState`: `checking | ready` — perfis sem plano recebem automaticamente o plano **Free** (RPC `select_free_plan`); não há mais tela obrigatória de escolha de plano
 
-```
+```text
 RootNavigator
 ├── AuthStack (não autenticado)
 │   Welcome → Cpf → ExistingPassword (login)
@@ -237,7 +237,7 @@ Utilitários compartilhados em `supabase/functions/_shared/transactionParsing.ts
 
 No app (`.env`, prefixo `EXPO_PUBLIC_` exposto ao cliente):
 
-```
+```dotenv
 EXPO_PUBLIC_SUPABASE_URL
 EXPO_PUBLIC_SUPABASE_ANON_KEY
 EXPO_PUBLIC_PRIVACY_POLICY_URL
@@ -246,7 +246,7 @@ EXPO_PUBLIC_EMAIL_REDIRECT_URL      # appfinanceiro://auth/callback
 
 Nas Edge Functions (secrets do Supabase, nunca no cliente):
 
-```
+```dotenv
 OPENAI_API_KEY / OPENAI_OCR_MODEL / OPENAI_PARSER_MODEL / OPENAI_TRANSCRIBE_MODEL
 RESEND_API_KEY / RESEND_FROM_EMAIL
 ```
@@ -300,7 +300,7 @@ Variantes "soft" para fundos de status: `primarySoft`, `successSoft`, `dangerSof
 
 ### Arquitetura em camadas (por feature)
 
-```
+```text
 Screen/Component → Hook (React Query) → Service (Supabase) → Banco
 ```
 

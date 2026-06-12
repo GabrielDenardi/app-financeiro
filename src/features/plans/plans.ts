@@ -18,7 +18,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, SubscriptionPlan> = 
       dataImportExport: false,
     },
     benefits: [
-      'Dashboard com resumo do mes',
+      'Dashboard com resumo do mês',
       'Cadastro de receitas e despesas',
       'Acesso ao perfil',
     ],
