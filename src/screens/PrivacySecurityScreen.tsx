@@ -91,8 +91,8 @@ export function PrivacySecurityScreen({ navigation }: any) {
         return;
       }
 
-      await setBiometricLockEnabled(value);
       await updatePref.mutateAsync({ biometricEnabled: value });
+      await setBiometricLockEnabled(value);
     } catch (error) {
       Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar a biometria.');
     }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Fingerprint } from 'lucide-react-native';
-import { type AppColors, useThemeColors } from '../theme';
+import { radius, type AppColors, useThemeColors } from '../theme';
 
 /**
  * SECURITY: Neutral lock screen shown while biometric authentication is in progress.
@@ -157,7 +157,7 @@ const createStyles = (colors: AppColors) =>
     iconWrapper: {
       width: 72,
       height: 72,
-      borderRadius: 36,
+      borderRadius: radius.pill,
       backgroundColor: colors.primarySoft,
       alignItems: 'center',
       justifyContent: 'center',

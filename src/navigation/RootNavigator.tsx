@@ -125,7 +125,9 @@ export function RootNavigator() {
 
       // Perfis sem plano definido entram automaticamente no plano Free.
       if (!isValidPlanId(data?.subscription_plan)) {
-        selectFreePlan().catch(() => undefined);
+        selectFreePlan().catch((err) => {
+          console.warn('Failed to auto-select free plan:', err);
+        });
       }
 
       setPlanGateState('ready');
