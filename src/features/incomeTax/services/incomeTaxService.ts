@@ -8,6 +8,7 @@ import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { formatCurrencyBRL } from '../../../utils/format';
 import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
+import type { ProfilePlanRow } from '../../plans/types';
 import { listTransactionFeed } from '../../transactions/services/transactionsService';
 import type { TransactionFeedItem } from '../../transactions/types';
 import type {
@@ -17,10 +18,6 @@ import type {
   IncomeTaxSection,
 } from '../types';
 
-type ProfilePlanRow = {
-  subscription_plan: string | null;
-  trial_ends_at: string | null;
-};
 
 type AttachmentRow = {
   transaction_id: string | null;

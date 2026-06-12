@@ -83,6 +83,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, SubscriptionPlan> = 
 };
 
 export const TRIAL_PLAN_ID: SubscriptionPlanId = 'intermediate';
+// Must stay in sync with `interval '7 days'` in supabase/migrations/202606110002_intermediate_trial.sql.
 export const TRIAL_DURATION_DAYS = 7;
 
 export function normalizePlanId(planId?: string | null): SubscriptionPlanId {
@@ -139,8 +140,12 @@ export function getPlanEntitlements(
   };
 }
 
-export function canCreateAccount(planId: string | null | undefined, activeAccountCount: number) {
-  return activeAccountCount < getPlanEntitlements(planId).accountLimit;
+export function canCreateAccount(
+  planId: string | null | undefined,
+  activeAccountCount: number,
+  trialEndsAt?: string | null,
+) {
+  return activeAccountCount < getPlanEntitlements(planId, trialEndsAt).accountLimit;
 }
 
 export function getAccountLimitMessage(planId: string | null | undefined) {

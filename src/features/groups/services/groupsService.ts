@@ -2,6 +2,7 @@ import { hasSupabaseEnv } from '../../../config/env';
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
+import type { ProfilePlanRow } from '../../plans/types';
 import type {
   CreateGroupInput,
   CreateGroupSplitInput,
@@ -93,10 +94,6 @@ type MembershipRoleRow = {
   role: GroupRole;
 };
 
-type ProfilePlanRow = {
-  subscription_plan: string | null;
-  trial_ends_at: string | null;
-};
 
 export type GroupsServiceErrorCode =
   | 'missing_env'

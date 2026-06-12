@@ -73,7 +73,10 @@ export function useStartTrialMutation(userId?: string | null) {
 export function usePaywallStats(userId?: string | null, enabled = true) {
   return useQuery({
     queryKey: financeQueryKeys.plans.paywallStats(userId),
-    queryFn: () => getPaywallStats(userId as string),
+    queryFn: () => {
+      if (!userId) throw new Error('userId is required');
+      return getPaywallStats(userId);
+    },
     enabled: Boolean(userId) && enabled,
     staleTime: 60 * 1000,
   });

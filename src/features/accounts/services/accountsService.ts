@@ -1,6 +1,7 @@
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { getAccountLimitMessage, getPlanEntitlements, normalizePlanId } from '../../plans/plans';
+import type { ProfilePlanRow } from '../../plans/types';
 import { endOfMonth, startOfMonth, toNumber } from '../../finance/utils';
 import type {
   AccountBalanceSnapshot,
@@ -30,11 +31,6 @@ type AccountBalanceRow = {
 type MonthlyTransactionRow = {
   type: 'income' | 'expense';
   amount: number | string;
-};
-
-type ProfilePlanRow = {
-  subscription_plan: string | null;
-  trial_ends_at: string | null;
 };
 
 function mapAccount(

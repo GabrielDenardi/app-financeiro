@@ -42,6 +42,7 @@ begin
     raise exception 'Seu plano atual ja inclui esses recursos.';
   end if;
 
+  -- Must stay in sync with TRIAL_DURATION_DAYS = 7 in src/features/plans/plans.ts.
   v_ends_at := now() + interval '7 days';
 
   update public.profiles

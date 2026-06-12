@@ -1,6 +1,7 @@
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
+import type { ProfilePlanRow } from '../../plans/types';
 import type {
   CreateSupportConversationInput,
   SendSupportMessageInput,
@@ -25,10 +26,6 @@ type MessageRow = {
   created_at: string;
 };
 
-type ProfilePlanRow = {
-  subscription_plan: string | null;
-  trial_ends_at: string | null;
-};
 
 async function ensureSupportChatAllowed(userId: string) {
   const { data, error } = await supabase

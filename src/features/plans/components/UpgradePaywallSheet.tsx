@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { CheckCircle2, Lock } from 'lucide-react-native';
 
 import { useAuthenticatedUser } from '../../auth/hooks/useAuthenticatedUser';
+import type { AppStackParamList } from '../../../navigation/types';
 import { formatCurrencyBRL } from '../../../utils/format';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import { SUBSCRIPTION_PLANS, TRIAL_DURATION_DAYS } from '../plans';
@@ -29,7 +30,7 @@ export function UpgradePaywallSheet({
 }: UpgradePaywallSheetProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NavigationProp<AppStackParamList>>();
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
   const statsQuery = usePaywallStats(user?.id, visible);

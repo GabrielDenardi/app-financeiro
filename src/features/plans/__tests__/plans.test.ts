@@ -99,4 +99,12 @@ describe('subscription plans', () => {
     expect(canCreateAccount('pro', 3)).toBe(true);
     expect(canCreateAccount('pro', 4)).toBe(false);
   });
+
+  it('applies trial-upgraded account limits when trial is active', () => {
+    // Basic user with active trial gets intermediate limits (2 accounts).
+    expect(canCreateAccount('basic', 1, FUTURE_DATE)).toBe(true);
+    expect(canCreateAccount('basic', 2, FUTURE_DATE)).toBe(false);
+    // After trial expires, reverts to basic limits (1 account).
+    expect(canCreateAccount('basic', 1, PAST_DATE)).toBe(false);
+  });
 });

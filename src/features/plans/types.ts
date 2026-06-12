@@ -19,3 +19,8 @@ export type SubscriptionPlan = {
 export type PlanEntitlements = SubscriptionPlan['features'] & {
   accountLimit: number;
 };
+
+export type ProfilePlanRow = {
+  subscription_plan: string | null;
+  trial_ends_at: string | null;
+};

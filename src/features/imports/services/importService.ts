@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
+import type { ProfilePlanRow } from '../../plans/types';
 import { listCategories } from '../../transactions/services/transactionsService';
 import type { ImportBatch, ImportPreviewRow } from '../types';
 
@@ -21,10 +22,6 @@ type ImportBatchRow = {
   finalized_at: string | null;
 };
 
-type ProfilePlanRow = {
-  subscription_plan: string | null;
-  trial_ends_at: string | null;
-};
 
 type PickedAsset = {
   uri: string;
