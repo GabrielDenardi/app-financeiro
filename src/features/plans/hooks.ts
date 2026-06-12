@@ -25,8 +25,8 @@ export function useCurrentPlan(userId?: string | null) {
   const trial = useMemo(() => {
     const active = isTrialActive(trialEndsAt);
     const hasUsed = Boolean(trialStartedAt);
-    const daysLeft = active
-      ? Math.max(1, Math.ceil((new Date(trialEndsAt as string).getTime() - Date.now()) / DAY_MS))
+    const daysLeft = active && trialEndsAt
+      ? Math.max(1, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / DAY_MS))
       : 0;
 
     return {
