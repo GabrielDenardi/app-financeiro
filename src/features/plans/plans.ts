@@ -1,8 +1,28 @@
 import type { PlanEntitlements, SubscriptionPlan, SubscriptionPlanId } from './types';
 
-export const DEFAULT_PLAN_ID: SubscriptionPlanId = 'basic';
+export const DEFAULT_PLAN_ID: SubscriptionPlanId = 'free';
+
+export const PAID_PLAN_IDS: SubscriptionPlanId[] = ['basic', 'intermediate', 'pro'];
 
 export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, SubscriptionPlan> = {
+  free: {
+    id: 'free',
+    name: 'Plano Free',
+    priceLabel: 'Gratis',
+    accountLimit: 1,
+    features: {
+      fullReports: false,
+      createGroups: false,
+      supportChat: false,
+      voiceCapture: false,
+      dataImportExport: false,
+    },
+    benefits: [
+      'Dashboard com resumo do mês',
+      'Cadastro de receitas e despesas',
+      'Acesso ao perfil',
+    ],
+  },
   basic: {
     id: 'basic',
     name: 'Plano Basico',
@@ -63,11 +83,15 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, SubscriptionPlan> = 
 };
 
 export function normalizePlanId(planId?: string | null): SubscriptionPlanId {
-  return planId === 'intermediate' || planId === 'pro' ? planId : DEFAULT_PLAN_ID;
+  return isValidPlanId(planId) ? planId : DEFAULT_PLAN_ID;
 }
 
 export function isValidPlanId(planId?: string | null): planId is SubscriptionPlanId {
-  return planId === 'basic' || planId === 'intermediate' || planId === 'pro';
+  return planId === 'free' || planId === 'basic' || planId === 'intermediate' || planId === 'pro';
+}
+
+export function isFreePlan(planId?: string | null): boolean {
+  return normalizePlanId(planId) === 'free';
 }
 
 export function getPlan(planId?: string | null): SubscriptionPlan {

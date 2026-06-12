@@ -1,4 +1,4 @@
-export type SubscriptionPlanId = 'basic' | 'intermediate' | 'pro';
+export type SubscriptionPlanId = 'free' | 'basic' | 'intermediate' | 'pro';
 
 export type PlanFeatureKey =
   | 'fullReports'

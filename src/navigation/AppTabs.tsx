@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { BottomTabBarMock } from '../components/BottomTabBarMock';
+import { PremiumGate } from '../features/plans/components/PremiumGate';
 import BudgetsScreen from '../screens/BudgetScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { MenuScreen } from '../screens/MenuScreen';
@@ -25,9 +26,27 @@ export function AppTabs({ currentUser }: AppTabsProps) {
       <Tab.Screen name="Home">
         {() => <HomeScreen currentUser={currentUser} />}
       </Tab.Screen>
-      <Tab.Screen name="Transactions" component={TransactionsScreen} />
-      <Tab.Screen name="Goals" component={MetasScreen} />
-      <Tab.Screen name="Budget" component={BudgetsScreen} />
+      <Tab.Screen name="Transactions">
+        {(props) => (
+          <PremiumGate featureTitle="Extrato de transacoes">
+            <TransactionsScreen {...(props as any)} />
+          </PremiumGate>
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="Goals">
+        {(props) => (
+          <PremiumGate featureTitle="Metas financeiras">
+            <MetasScreen {...(props as any)} />
+          </PremiumGate>
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="Budget">
+        {(props) => (
+          <PremiumGate featureTitle="Orcamentos mensais">
+            <BudgetsScreen {...(props as any)} />
+          </PremiumGate>
+        )}
+      </Tab.Screen>
       <Tab.Screen name="Settings">
         {({ navigation }) => <MenuScreen navigation={navigation} user={currentUser} />}
       </Tab.Screen>

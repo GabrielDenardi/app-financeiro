@@ -44,6 +44,16 @@ export async function authenticateWithBiometrics(promptMessage = 'Desbloqueie o 
     return { success: true as const };
   }
 
+  if (Platform.OS === 'android') {
+    // Encerra qualquer prompt nativo pendurado (ex.: disparado durante o cold
+    // start) que impediria a abertura de um novo.
+    try {
+      await LocalAuthentication.cancelAuthenticate();
+    } catch {
+      // Sem prompt pendente — segue normalmente.
+    }
+  }
+
   return LocalAuthentication.authenticateAsync({
     promptMessage,
     fallbackLabel: 'Usar senha do aparelho',

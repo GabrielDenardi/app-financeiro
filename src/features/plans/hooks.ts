@@ -14,7 +14,9 @@ export function useCurrentPlan(userId?: string | null) {
   return {
     plan,
     entitlements,
-    isLoading: profileQuery.isLoading,
+    // isPending cobre também a query desabilitada (userId ainda não resolvido),
+    // evitando que o plano caia no default 'free' antes do perfil carregar.
+    isLoading: profileQuery.isPending,
     isError: profileQuery.isError,
     refetch: profileQuery.refetch,
   };
