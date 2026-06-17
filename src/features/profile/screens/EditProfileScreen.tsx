@@ -1,11 +1,9 @@
-import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
   type KeyboardTypeOptions,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +13,7 @@ import {
 import { Card } from "../../../components/Card";
 import { PageHeader } from "../../../components/PageHeader";
 import { PageShell } from "../../../components/PageShell";
+import { Button } from "../../../components/Button";
 import { brazilStates } from "../../auth/constants/locations";
 import {
   formatAddressNumber,
@@ -517,20 +516,13 @@ export function EditProfileScreen({
         />
       </Card>
 
-      <Pressable
+      <Button
+        label="Salvar Alterações"
+        fullWidth
         onPress={handleSave}
-        disabled={updateProfileMutation.isPending}
-        style={({ pressed }) => [
-          styles.saveButton,
-          (pressed || updateProfileMutation.isPending) && styles.pressed,
-        ]}
-      >
-        {updateProfileMutation.isPending ? (
-          <ActivityIndicator size="small" color={colors.white} />
-        ) : (
-          <Text style={styles.saveButtonText}>Salvar Alterações</Text>
-        )}
-      </Pressable>
+        loading={updateProfileMutation.isPending}
+        style={styles.saveButton}
+      />
     </PageShell>
   );
 }
@@ -625,7 +617,7 @@ const createStyles = (colors: AppColors) =>
     avatar: {
       width: 88,
       height: 88,
-      borderRadius: 44,
+      borderRadius: radius.pill,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: colors.primary,
@@ -699,20 +691,7 @@ const createStyles = (colors: AppColors) =>
       flex: 1,
     },
     saveButton: {
-      minHeight: 52,
-      borderRadius: radius.md,
-      backgroundColor: colors.primary,
-      alignItems: "center",
-      justifyContent: "center",
       marginBottom: spacing.xl,
-    },
-    saveButtonText: {
-      ...typography.body,
-      color: colors.white,
-      fontWeight: "700",
-    },
-    pressed: {
-      opacity: 0.85,
     },
     inlineState: {
       flexDirection: "row",
@@ -726,7 +705,7 @@ const createStyles = (colors: AppColors) =>
     },
     noticeCard: {
       backgroundColor: colors.warningSoft,
-      borderColor: "#F59E0B",
+      borderColor: colors.warning,
       gap: spacing.xs,
     },
     noticeTitle: {

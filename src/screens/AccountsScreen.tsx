@@ -485,7 +485,7 @@ const createStyles = (colors: AppColors) =>
       flexDirection: "row",
       alignItems: "center",
       gap: spacing.xs,
-      marginBottom: 4,
+      marginBottom: spacing.xs,
     },
     summarySmallLabel: {
       ...typography.caption,
@@ -542,7 +542,7 @@ const createStyles = (colors: AppColors) =>
       gap: spacing.xs,
     },
     typeIconContainer: {
-      padding: 4,
+      padding: spacing.xs,
       borderRadius: radius.pill,
     },
     accountTypeLabel: {

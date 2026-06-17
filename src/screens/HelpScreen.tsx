@@ -35,7 +35,13 @@ import {
   useHelpCategories,
 } from "../features/help/hooks/useHelp";
 import type { HelpArticle } from "../features/help/types";
-import { type AppColors, layout, useThemeColors } from "../theme";
+import {
+  type AppColors,
+  layout,
+  radius,
+  spacing,
+  useThemeColors,
+} from "../theme";
 
 const { width } = Dimensions.get("window");
 
@@ -473,19 +479,19 @@ const createStyles = (colors: AppColors) =>
     headerBackground: {
       backgroundColor: colors.primary,
       paddingBottom: 40,
-      borderBottomLeftRadius: 32,
-      borderBottomRightRadius: 32,
+      borderBottomLeftRadius: radius.xl,
+      borderBottomRightRadius: radius.xl,
     },
     headerTop: {
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 20,
       marginTop: layout.pageHeaderTop,
-      gap: 12,
+      gap: spacing.md,
     },
     backButton: {
-      padding: 8,
-      borderRadius: 99,
+      padding: spacing.sm,
+      borderRadius: radius.pill,
     },
     headerTitle: {
       fontSize: 24,
@@ -505,8 +511,8 @@ const createStyles = (colors: AppColors) =>
       alignItems: "center",
       backgroundColor: colors.surface,
       height: 56,
-      borderRadius: 18,
-      paddingHorizontal: 16,
+      borderRadius: radius.lg,
+      paddingHorizontal: spacing.lg,
       elevation: 4,
       shadowColor: "#000",
       shadowOpacity: 0.1,
@@ -529,7 +535,7 @@ const createStyles = (colors: AppColors) =>
     },
     card: {
       backgroundColor: colors.surface,
-      borderRadius: 24,
+      borderRadius: radius.xl,
       padding: 20,
       marginBottom: 20,
       elevation: 2,
@@ -546,7 +552,7 @@ const createStyles = (colors: AppColors) =>
     iconAmber: {
       backgroundColor: colors.warningSoft,
       padding: 6,
-      borderRadius: 8,
+      borderRadius: radius.sm,
     },
     cardTitle: {
       fontSize: 17,
@@ -563,10 +569,10 @@ const createStyles = (colors: AppColors) =>
     categoryCircle: {
       width: 40,
       height: 40,
-      borderRadius: 12,
+      borderRadius: radius.md,
       alignItems: "center",
       justifyContent: "center",
-      marginRight: 12,
+      marginRight: spacing.md,
     },
     articleItemText: {
       fontSize: 15,
@@ -593,8 +599,8 @@ const createStyles = (colors: AppColors) =>
     gridItem: {
       backgroundColor: colors.surface,
       width: (width - 55) / 2,
-      padding: 12,
-      borderRadius: 20,
+      padding: spacing.md,
+      borderRadius: radius.lg,
       marginBottom: 15,
       alignItems: "center",
       flexDirection: "row",
@@ -603,9 +609,9 @@ const createStyles = (colors: AppColors) =>
       overflow: "hidden",
     },
     gridIcon: {
-      padding: 8,
-      borderRadius: 10,
-      marginRight: 8,
+      padding: spacing.sm,
+      borderRadius: radius.md,
+      marginRight: spacing.sm,
     },
     gridText: {
       fontSize: 14,
@@ -614,7 +620,7 @@ const createStyles = (colors: AppColors) =>
     },
     contactCard: {
       backgroundColor: colors.primary,
-      borderRadius: 24,
+      borderRadius: radius.xl,
       padding: 20,
       marginTop: 10,
       overflow: "hidden",
@@ -631,24 +637,24 @@ const createStyles = (colors: AppColors) =>
       marginBottom: 20,
     },
     contactActions: {
-      gap: 12,
+      gap: spacing.md,
     },
     contactButton: {
       backgroundColor: "rgba(255,255,255,0.1)",
       height: 64,
-      borderRadius: 16,
+      borderRadius: radius.lg,
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 16,
+      paddingHorizontal: spacing.lg,
     },
     contactIconWrapper: {
       width: 40,
       height: 40,
-      borderRadius: 12,
+      borderRadius: radius.md,
       backgroundColor: "rgba(255,255,255,0.1)",
       alignItems: "center",
       justifyContent: "center",
-      marginRight: 12,
+      marginRight: spacing.md,
     },
     contactTextContainer: {
       flex: 1,
@@ -672,16 +678,16 @@ const createStyles = (colors: AppColors) =>
     detailHeader: {
       flexDirection: "row",
       alignItems: "center",
-      padding: 16,
+      padding: spacing.lg,
       backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
-      gap: 12,
+      gap: spacing.md,
       paddingTop: 20,
     },
     backButtonDetail: {
-      padding: 8,
-      borderRadius: 20,
+      padding: spacing.sm,
+      borderRadius: radius.lg,
     },
     detailHeaderTitle: {
       flex: 1,
@@ -692,8 +698,8 @@ const createStyles = (colors: AppColors) =>
     badge: {
       backgroundColor: colors.primaryLight,
       paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 8,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.sm,
     },
     badgeText: {
       fontSize: 11,
@@ -702,16 +708,16 @@ const createStyles = (colors: AppColors) =>
     },
     detailCard: {
       backgroundColor: colors.surface,
-      borderRadius: 24,
+      borderRadius: radius.xl,
       overflow: "hidden",
       elevation: 2,
     },
     stepHeader: {
       backgroundColor: colors.primary,
-      padding: 16,
+      padding: spacing.lg,
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
+      gap: spacing.sm,
     },
     stepHeaderText: {
       color: colors.white,
@@ -729,7 +735,7 @@ const createStyles = (colors: AppColors) =>
     stepNumber: {
       width: 28,
       height: 28,
-      borderRadius: 14,
+      borderRadius: radius.pill,
       backgroundColor: colors.primary,
       alignItems: "center",
       justifyContent: "center",
@@ -749,13 +755,13 @@ const createStyles = (colors: AppColors) =>
     },
     tipBox: {
       backgroundColor: colors.warningSoft,
-      padding: 16,
-      borderRadius: 20,
+      padding: spacing.lg,
+      borderRadius: radius.lg,
       borderLeftWidth: 4,
       borderLeftColor: colors.primaryLight,
       flexDirection: "row",
-      gap: 12,
-      marginTop: 24,
+      gap: spacing.md,
+      marginTop: spacing.xl,
     },
     tipTitle: {
       fontSize: 14,
@@ -775,19 +781,19 @@ const createStyles = (colors: AppColors) =>
     usefulText: {
       color: colors.textSecondary,
       fontWeight: "600",
-      marginBottom: 16,
+      marginBottom: spacing.lg,
     },
     usefulButtons: {
       flexDirection: "row",
-      gap: 12,
+      gap: spacing.md,
     },
     usefulBtnYes: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
-      paddingHorizontal: 24,
-      paddingVertical: 12,
-      borderRadius: 14,
+      gap: spacing.sm,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+      borderRadius: radius.md,
       borderWidth: 1,
       borderColor: colors.success,
     },
@@ -796,9 +802,9 @@ const createStyles = (colors: AppColors) =>
       fontWeight: "700",
     },
     usefulBtnNo: {
-      paddingHorizontal: 24,
-      paddingVertical: 12,
-      borderRadius: 14,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+      borderRadius: radius.md,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -808,7 +814,7 @@ const createStyles = (colors: AppColors) =>
     },
     resultsCard: {
       backgroundColor: colors.surface,
-      borderRadius: 20,
+      borderRadius: radius.lg,
       overflow: "hidden",
       marginBottom: 20,
       elevation: 4,
@@ -820,17 +826,17 @@ const createStyles = (colors: AppColors) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      padding: 16,
+      padding: spacing.lg,
     },
     resultsHeaderLeft: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
+      gap: spacing.md,
     },
     resultsHeaderIcon: {
       width: 40,
       height: 40,
-      borderRadius: 10,
+      borderRadius: radius.md,
       backgroundColor: "rgba(255,255,255,0.2)",
       alignItems: "center",
       justifyContent: "center",
@@ -845,7 +851,7 @@ const createStyles = (colors: AppColors) =>
       fontSize: 13,
     },
     resultsList: {
-      paddingVertical: 8,
+      paddingVertical: spacing.sm,
     },
     resultItem: {
       flexDirection: "row",
@@ -869,9 +875,9 @@ const createStyles = (colors: AppColors) =>
       gap: 10,
     },
     levelBadge: {
-      paddingHorizontal: 12,
-      paddingVertical: 4,
-      borderRadius: 8,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.sm,
     },
     levelBadgeText: {
       fontSize: 12,

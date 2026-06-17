@@ -1,28 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Modal,
-  PanResponder,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { ArrowLeftRight, RefreshCw, X } from "lucide-react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ArrowLeftRight, RefreshCw } from "lucide-react-native";
 
 import type {
   AccountBalanceSnapshot,
   CreateTransferInput,
 } from "../features/accounts/types";
-import { spacing, typography, type AppColors, useThemeColors } from "../theme";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { radius, spacing, typography, type AppColors, useThemeColors } from "../theme";
+import { BottomSheet } from "./BottomSheet";
+import { Button } from "./Button";
+import { Chip } from "./Chip";
 
 type TransferModalProps = {
   visible: boolean;
@@ -53,51 +40,6 @@ export function TransferModal({
   const [fromAccountId, setFromAccountId] = useState("");
   const [toAccountId, setToAccountId] = useState("");
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-
-  const resetForm = useCallback(() => {
-    setAmount("");
-    setFromAccountId(activeAccounts[0]?.id ?? "");
-    setToAccountId(activeAccounts[1]?.id ?? activeAccounts[0]?.id ?? "");
-    fadeAnim.setValue(0);
-    translateY.setValue(SCREEN_HEIGHT);
-  }, [activeAccounts, fadeAnim, translateY]);
-
-  const animateIn = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 260,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 320,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fadeAnim, translateY]);
-
-  const requestClose = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: SCREEN_HEIGHT,
-        duration: 280,
-        useNativeDriver: true,
-      }),
-    ]).start(({ finished }) => {
-      if (finished) {
-        onClose();
-      }
-    });
-  }, [fadeAnim, onClose, translateY]);
-
   useEffect(() => {
     if (visible) {
       if (!fromAccountId) {
@@ -106,42 +48,13 @@ export function TransferModal({
       if (!toAccountId) {
         setToAccountId(activeAccounts[1]?.id ?? activeAccounts[0]?.id ?? "");
       }
-      animateIn();
       return;
     }
 
-    resetForm();
-  }, [
-    activeAccounts,
-    animateIn,
-    fromAccountId,
-    resetForm,
-    toAccountId,
-    visible,
-  ]);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 5,
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          translateY.setValue(gestureState.dy);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 120) {
-          requestClose();
-          return;
-        }
-
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 180,
-          useNativeDriver: true,
-        }).start();
-      },
-    }),
-  ).current;
+    setAmount("");
+    setFromAccountId(activeAccounts[0]?.id ?? "");
+    setToAccountId(activeAccounts[1]?.id ?? activeAccounts[0]?.id ?? "");
+  }, [activeAccounts, fromAccountId, toAccountId, visible]);
 
   const selectedFrom = activeAccounts.find(
     (account) => account.id === fromAccountId,
@@ -169,276 +82,121 @@ export function TransferModal({
     !Number.isFinite(parseCurrencyInput(amount)) ||
     !fromAccountId ||
     !toAccountId ||
-    fromAccountId === toAccountId ||
-    submitting;
+    fromAccountId === toAccountId;
 
   return (
-    <Modal
+    <BottomSheet
       visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={requestClose}
-    >
-      <View style={styles.overlay}>
-        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-          <TouchableOpacity
-            style={styles.backdropTouch}
-            activeOpacity={1}
-            onPress={requestClose}
+      onClose={onClose}
+      title="Transferência"
+      subtitle="Mover saldo entre suas contas"
+      maxHeightRatio={0.85}
+      footer={(close) => (
+        <>
+          <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+          <Button
+            label="Confirmar"
+            fullWidth
+            onPress={handleTransfer}
+            disabled={saveDisabled}
+            loading={submitting}
+            icon={<RefreshCw size={18} color={colors.white} />}
           />
-        </Animated.View>
+        </>
+      )}
+    >
+      <View style={styles.transferFlowCard}>
+        <View style={styles.flowItem}>
+          <Text style={styles.flowLabel}>De (Origem)</Text>
+          <Text style={styles.flowAccountName} numberOfLines={1}>
+            {selectedFrom?.name || "Selecionar"}
+          </Text>
+        </View>
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.keyboardWrap}
+        <TouchableOpacity
+          onPress={swapAccounts}
+          style={styles.swapButton}
+          activeOpacity={0.75}
         >
-          <Animated.View
-            style={[styles.sheet, { transform: [{ translateY }] }]}
-          >
-            <View {...panResponder.panHandlers} style={styles.gestureCapture}>
-              <View style={styles.handle} />
-              <View style={styles.header}>
-                <View>
-                  <Text style={styles.title}>Transferência</Text>
-                  <Text style={styles.subtitle}>
-                    Mover saldo entre suas contas
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={requestClose}
-                  style={styles.closeButton}
-                >
-                  <X size={18} color={colors.textPrimary} />
-                </TouchableOpacity>
-              </View>
-            </View>
+          <ArrowLeftRight size={18} color={colors.primary} />
+        </TouchableOpacity>
 
-            <ScrollView
-              bounces={false}
-              contentContainerStyle={styles.content}
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.transferFlowCard}>
-                <View style={styles.flowItem}>
-                  <Text style={styles.flowLabel}>De (Origem)</Text>
-                  <Text style={styles.flowAccountName} numberOfLines={1}>
-                    {selectedFrom?.name || "Selecionar"}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  onPress={swapAccounts}
-                  style={styles.swapButton}
-                  activeOpacity={0.75}
-                >
-                  <ArrowLeftRight size={18} color={colors.primary} />
-                </TouchableOpacity>
-
-                <View style={[styles.flowItem, styles.flowItemRight]}>
-                  <Text style={styles.flowLabel}>Para (Destino)</Text>
-                  <Text
-                    style={[styles.flowAccountName, styles.rightText]}
-                    numberOfLines={1}
-                  >
-                    {selectedTo?.name || "Selecionar"}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.sectionLabel}>Conta de Saída</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}
-              >
-                {activeAccounts.map((account) => (
-                  <TouchableOpacity
-                    key={`from-${account.id}`}
-                    onPress={() => setFromAccountId(account.id)}
-                    style={[
-                      styles.accountChip,
-                      fromAccountId === account.id && styles.accountChipActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.accountChipText,
-                        fromAccountId === account.id &&
-                          styles.accountChipTextActive,
-                      ]}
-                    >
-                      {account.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <Text style={styles.sectionLabel}>Conta de Entrada</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}
-              >
-                {activeAccounts.map((account) => {
-                  const disabled = account.id === fromAccountId;
-                  const selected = toAccountId === account.id;
-
-                  return (
-                    <TouchableOpacity
-                      key={`to-${account.id}`}
-                      onPress={() => setToAccountId(account.id)}
-                      disabled={disabled}
-                      style={[
-                        styles.accountChip,
-                        selected && styles.accountChipActive,
-                        disabled && styles.accountDisabled,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.accountChipText,
-                          selected && styles.accountChipTextActive,
-                        ]}
-                      >
-                        {account.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-
-              <View style={styles.inputCard}>
-                <Text style={styles.inputLabel}>Quanto deseja transferir?</Text>
-                <View style={styles.amountContainer}>
-                  <Text style={styles.currencyPrefix}>R$</Text>
-                  <TextInput
-                    placeholder="0,00"
-                    placeholderTextColor={colors.textSecondary}
-                    keyboardType="decimal-pad"
-                    maxLength={10}
-                    style={styles.amountInput}
-                    value={amount}
-                    onChangeText={setAmount}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.bottomSpacer} />
-            </ScrollView>
-
-            <View style={styles.fixedFooter}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={requestClose}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  saveDisabled && styles.disabledButton,
-                ]}
-                onPress={handleTransfer}
-                disabled={saveDisabled}
-              >
-                {submitting ? (
-                  <ActivityIndicator color={colors.white} />
-                ) : (
-                  <>
-                    <RefreshCw
-                      size={18}
-                      color={colors.white}
-                      style={styles.refreshIcon}
-                    />
-                    <Text style={styles.saveButtonText}>Confirmar</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        </KeyboardAvoidingView>
+        <View style={[styles.flowItem, styles.flowItemRight]}>
+          <Text style={styles.flowLabel}>Para (Destino)</Text>
+          <Text style={[styles.flowAccountName, styles.rightText]} numberOfLines={1}>
+            {selectedTo?.name || "Selecionar"}
+          </Text>
+        </View>
       </View>
-    </Modal>
+
+      <Text style={styles.sectionLabel}>Conta de Saída</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.horizontalScroll}
+        contentContainerStyle={styles.horizontalScrollContent}
+      >
+        {activeAccounts.map((account) => (
+          <Chip
+            key={`from-${account.id}`}
+            label={account.name}
+            selected={fromAccountId === account.id}
+            onPress={() => setFromAccountId(account.id)}
+          />
+        ))}
+      </ScrollView>
+
+      <Text style={styles.sectionLabel}>Conta de Entrada</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.horizontalScroll}
+        contentContainerStyle={styles.horizontalScrollContent}
+      >
+        {activeAccounts.map((account) => (
+          <Chip
+            key={`to-${account.id}`}
+            label={account.name}
+            selected={toAccountId === account.id}
+            disabled={account.id === fromAccountId}
+            onPress={() => setToAccountId(account.id)}
+          />
+        ))}
+      </ScrollView>
+
+      <View style={styles.inputCard}>
+        <Text style={styles.inputLabel}>Quanto deseja transferir?</Text>
+        <View style={styles.amountContainer}>
+          <Text style={styles.currencyPrefix}>R$</Text>
+          <TextInput
+            placeholder="0,00"
+            placeholderTextColor={colors.textSecondary}
+            keyboardType="decimal-pad"
+            maxLength={10}
+            style={styles.amountInput}
+            value={amount}
+            onChangeText={setAmount}
+          />
+        </View>
+      </View>
+
+      <View style={styles.bottomSpacer} />
+    </BottomSheet>
   );
 }
 
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
-    overlay: {
-      flex: 1,
-      justifyContent: "flex-end",
-    },
-    backdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: colors.overlay,
-    },
-    backdropTouch: {
-      flex: 1,
-    },
-    keyboardWrap: {
-      justifyContent: "flex-end",
-    },
-    sheet: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: 32,
-      borderTopRightRadius: 32,
-      maxHeight: SCREEN_HEIGHT * 0.85,
-    },
-    gestureCapture: {
-      paddingTop: 12,
-      backgroundColor: colors.background,
-      borderTopLeftRadius: 32,
-      borderTopRightRadius: 32,
-      zIndex: 10,
-    },
-    handle: {
-      width: 40,
-      height: 4,
-      backgroundColor: colors.border,
-      borderRadius: 2,
-      alignSelf: "center",
-      marginBottom: 12,
-    },
-    header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: 24,
-      marginBottom: 20,
-    },
-    title: {
-      ...typography.h2,
-      color: colors.textPrimary,
-    },
-    subtitle: {
-      ...typography.caption,
-      color: colors.textSecondary,
-      marginTop: 2,
-    },
-    closeButton: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      backgroundColor: colors.surface,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    content: {
-      paddingHorizontal: 24,
-    },
     transferFlowCard: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       backgroundColor: colors.surface,
-      padding: 20,
-      borderRadius: 20,
+      padding: spacing.xl,
+      borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.border,
-      marginBottom: 24,
+      marginBottom: spacing.xl,
     },
     flowItem: {
       flex: 1,
@@ -451,7 +209,7 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
       fontWeight: "700",
       textTransform: "uppercase",
-      marginBottom: 4,
+      marginBottom: spacing.xs,
       letterSpacing: 0.5,
     },
     flowAccountName: {
@@ -465,57 +223,36 @@ const createStyles = (colors: AppColors) =>
     swapButton: {
       width: 42,
       height: 42,
-      borderRadius: 21,
+      borderRadius: radius.pill,
       backgroundColor: colors.primarySoft,
       alignItems: "center",
       justifyContent: "center",
-      marginHorizontal: 12,
+      marginHorizontal: spacing.md,
       borderColor: colors.border,
       borderWidth: 1,
     },
     sectionLabel: {
       ...typography.caption,
       color: colors.textSecondary,
-      marginBottom: 12,
+      marginBottom: spacing.md,
       fontWeight: "700",
       textTransform: "uppercase",
+      letterSpacing: 0.5,
     },
     horizontalScroll: {
-      marginHorizontal: -24,
-      paddingHorizontal: 24,
-      marginBottom: 24,
+      marginHorizontal: -spacing.xl,
+      marginBottom: spacing.xl,
     },
-    accountChip: {
-      paddingHorizontal: 16,
-      height: 40,
-      justifyContent: "center",
-      backgroundColor: colors.surface,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: colors.border,
-      marginRight: 8,
-    },
-    accountChipActive: {
-      backgroundColor: colors.primarySoft,
-      borderColor: colors.primary,
-    },
-    accountDisabled: {
-      opacity: 0.4,
-    },
-    accountChipText: {
-      ...typography.body,
-      color: colors.textPrimary,
-      fontWeight: "600",
-    },
-    accountChipTextActive: {
-      color: colors.primary,
+    horizontalScrollContent: {
+      paddingHorizontal: spacing.xl,
+      gap: spacing.sm,
     },
     inputCard: {
       backgroundColor: colors.surface,
-      borderRadius: 18,
+      borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: 20,
+      padding: spacing.xl,
     },
     inputLabel: {
       ...typography.body,
@@ -525,14 +262,14 @@ const createStyles = (colors: AppColors) =>
     amountContainer: {
       flexDirection: "row",
       alignItems: "center",
-      marginTop: 12,
+      marginTop: spacing.md,
     },
     currencyPrefix: {
       fontSize: 24,
       lineHeight: 30,
       fontWeight: "700",
       color: colors.textPrimary,
-      marginRight: 8,
+      marginRight: spacing.sm,
     },
     amountInput: {
       fontSize: 28,
@@ -540,51 +277,6 @@ const createStyles = (colors: AppColors) =>
       fontWeight: "700",
       color: colors.textPrimary,
       flex: 1,
-    },
-    fixedFooter: {
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      backgroundColor: colors.background,
-      paddingHorizontal: 24,
-      paddingTop: 16,
-      paddingBottom: 28,
-      flexDirection: "row",
-      gap: spacing.md,
-    },
-    cancelButton: {
-      flex: 1,
-      minHeight: 52,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.surface,
-    },
-    cancelButtonText: {
-      ...typography.body,
-      color: colors.textPrimary,
-      fontWeight: "600",
-    },
-    saveButton: {
-      flex: 1,
-      minHeight: 52,
-      borderRadius: 14,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.primaryLight,
-      flexDirection: "row",
-    },
-    disabledButton: {
-      opacity: 0.5,
-    },
-    refreshIcon: {
-      marginRight: 8,
-    },
-    saveButtonText: {
-      ...typography.body,
-      color: colors.white,
-      fontWeight: "700",
     },
     bottomSpacer: {
       height: 140,

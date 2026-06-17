@@ -5,6 +5,7 @@ export type AppColors = {
   primaryLight: string;
   success: string;
   danger: string;
+  warning: string;
   primarySoft: string;
   successSoft: string;
   dangerSoft: string;
@@ -26,6 +27,7 @@ export const lightColors: AppColors = {
   primaryLight: "#2563EB",
   success: "#16A34A",
   danger: "#DC2626",
+  warning: "#F59E0B",
   primarySoft: "#DBEAFE",
   successSoft: "#DCFCE7",
   dangerSoft: "#FEE2E2",
@@ -47,6 +49,7 @@ export const darkColors: AppColors = {
   primaryLight: "#3376c2",
   success: "#16A34A",
   danger: "#DC2626",
+  warning: "#D97706",
   primarySoft: "#172554",
   successSoft: "#14532D",
   dangerSoft: "#7F1D1D",

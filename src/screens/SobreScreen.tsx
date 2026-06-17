@@ -121,7 +121,7 @@ export default function SobreScreen({ navigation }: any) {
                     <FontAwesome5
                       name="star"
                       size={32}
-                      color={item <= rating ? "#FBBF24" : colors.border}
+                      color={item <= rating ? colors.warning : colors.border}
                       solid={item <= rating}
                       style={styles.star}
                     />
@@ -222,7 +222,7 @@ const createStyles = (colors: AppColors) =>
       width: 80,
       height: 80,
       backgroundColor: colors.success,
-      borderRadius: 20,
+      borderRadius: radius.lg,
       justifyContent: "center",
       alignItems: "center",
       marginBottom: spacing.lg,

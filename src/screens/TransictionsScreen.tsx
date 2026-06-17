@@ -296,7 +296,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.background,
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   chipActive: {
     backgroundColor: colors.primarySoft,

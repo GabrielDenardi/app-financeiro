@@ -28,12 +28,14 @@ export function formatHiddenSignedCurrencyBRL(type: EntryType): string {
 }
 
 export function formatShortDate(dateISO: string): string {
-  const date = new Date(dateISO);
-
-  if (Number.isNaN(date.getTime())) {
-    return '--/--';
-  }
-
+  if (!dateISO) return '--/--';
+  // Parse only the date part (YYYY-MM-DD) using local time components to avoid
+  // the UTC-offset gotcha: new Date('2026-06-01') = UTC midnight → May 31 in UTC-3.
+  const datePart = dateISO.split('T')[0];
+  const [y, m, d] = datePart.split('-').map(Number);
+  if (!y || !m || !d) return '--/--';
+  const date = new Date(y, m - 1, d);
+  if (Number.isNaN(date.getTime())) return '--/--';
   return shortDateFormatter.format(date);
 }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Fingerprint } from 'lucide-react-native';
-import { radius, type AppColors, useThemeColors } from '../theme';
+import { radius, spacing, type AppColors, useThemeColors } from '../theme';
 
 /**
  * SECURITY: Neutral lock screen shown while biometric authentication is in progress.
@@ -146,7 +146,7 @@ const createStyles = (colors: AppColors) =>
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.background,
-      paddingHorizontal: 24,
+      paddingHorizontal: spacing.xl,
     },
     contentWrapper: {
       width: '100%',
@@ -177,7 +177,7 @@ const createStyles = (colors: AppColors) =>
     unlockButton: {
       width: '100%',
       minHeight: 48,
-      borderRadius: 12,
+      borderRadius: radius.md,
       backgroundColor: colors.primaryLight,
       alignItems: 'center',
       justifyContent: 'center',
@@ -187,7 +187,7 @@ const createStyles = (colors: AppColors) =>
       opacity: 0.85,
     },
     unlockButtonText: {
-      color: '#FFFFFF',
+      color: colors.white,
       fontWeight: '700',
       fontSize: 16,
     },

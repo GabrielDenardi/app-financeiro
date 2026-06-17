@@ -359,8 +359,8 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     color: colors.white,
   },
   backButton: {
-    padding: 8,
-    marginLeft: -8,
+    padding: spacing.sm,
+    marginLeft: -spacing.sm,
   },
   addButton: {
     flexDirection: 'row',
@@ -444,7 +444,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#F59E0B',
+    borderColor: colors.warning,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
@@ -509,7 +509,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     gap: spacing.sm,
   },
   cardVisual: {
-    borderRadius: 28,
+    borderRadius: radius.xl,
     padding: spacing.lg,
     minHeight: 210,
     justifyContent: 'space-between',

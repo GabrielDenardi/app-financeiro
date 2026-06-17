@@ -2,14 +2,11 @@ import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import {
@@ -22,13 +19,17 @@ import {
   Play,
   Plus,
   Trash2,
-  X,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import { Card } from '../components/Card';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
+import { BottomSheet } from '../components/BottomSheet';
+import { Button } from '../components/Button';
+import { Badge } from '../components/Badge';
+import { Chip } from '../components/Chip';
+import { FieldCard, FieldDivider, FieldRow } from '../components/FormField';
 import { useAccounts } from '../features/accounts/hooks/useAccounts';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import {
@@ -53,10 +54,18 @@ function moneyValue(v: string) {
   return Number((v || '0').replace(/\./g, '').replace(',', '.'));
 }
 
-function ruleMonthDate(dayOfMonth: number) {
+function currentMonthDate() {
   const now = new Date();
-  const safeDay = Math.min(Math.max(dayOfMonth, 1), 28);
-  return new Date(now.getFullYear(), now.getMonth(), safeDay).toISOString().slice(0, 10);
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+}
+
+function isConfirmedThisMonth(lastExecutionMonth: string | null): boolean {
+  if (!lastExecutionMonth) return false;
+  const now = new Date();
+  const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return lastExecutionMonth.startsWith(prefix);
 }
 
 export default function RecurringTransactionsScreen() {
@@ -167,6 +176,20 @@ export default function RecurringTransactionsScreen() {
     setConfirmModalVisible(true);
   };
 
+  const handleConfirmFixed = async (item: RecurringTransaction) => {
+    try {
+      await confirmMutation.mutateAsync({
+        ruleId: item.id,
+        amount: item.amount,
+        note: item.notes,
+        executionMonth: currentMonthDate(),
+      });
+      Alert.alert('Confirmado', `${item.title} (${formatCurrencyBRL(item.amount)}) lançado no extrato.`);
+    } catch (error) {
+      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível confirmar o lançamento.');
+    }
+  };
+
   const finalizeTransaction = async () => {
     if (!selectedItem) {
       return;
@@ -177,7 +200,7 @@ export default function RecurringTransactionsScreen() {
         ruleId: selectedItem.id,
         amount: moneyValue(adjustmentValue),
         note: selectedItem.notes,
-        executionMonth: ruleMonthDate(selectedItem.dayOfMonth),
+        executionMonth: currentMonthDate(),
       });
       Alert.alert('Sucesso', `Lançamento de ${formatCurrencyBRL(moneyValue(adjustmentValue))} confirmado no extrato.`);
       setConfirmModalVisible(false);
@@ -249,10 +272,12 @@ export default function RecurringTransactionsScreen() {
         </Card>
 
         <Card style={styles.buttonCard}>
-          <Pressable style={styles.newButton} onPress={handleOpenCreate}>
-            <Plus size={20} color={colors.white} />
-            <Text style={styles.newButtonText}>Adicionar Transação</Text>
-          </Pressable>
+          <Button
+            label="Adicionar Transação"
+            icon={<Plus size={20} color={colors.white} />}
+            onPress={handleOpenCreate}
+            fullWidth
+          />
         </Card>
 
         {recurringQuery.isLoading ? <Card style={styles.card}><ActivityIndicator /></Card> : null}
@@ -271,9 +296,7 @@ export default function RecurringTransactionsScreen() {
                 <View style={styles.titleRow}>
                   <Text style={styles.cardTitle}>{item.title}</Text>
                   {item.isVariable ? (
-                    <View style={styles.variableBadge}>
-                      <Text style={styles.variableBadgeText}>VARIÁVEL</Text>
-                    </View>
+                    <Badge label="VARIÁVEL" tone="neutral" />
                   ) : null}
                 </View>
                 <Text style={styles.cardSubtitle}>
@@ -286,15 +309,27 @@ export default function RecurringTransactionsScreen() {
               </Text>
             </View>
 
-            {item.isVariable && item.isActive ? (
-              <Pressable style={styles.confirmBtn} onPress={() => handleConfirmMonthly(item)}>
-                <Calendar size={14} color={colors.primary} />
-                <Text style={styles.confirmBtnText}>Confirmar valor do mês</Text>
-              </Pressable>
-            ) : null}
-
-            {item.lastExecutionMonth ? (
-              <Text style={styles.executionText}>Última confirmação: {item.lastExecutionMonth.split('-').reverse().join('/')}</Text>
+            {item.isActive ? (
+              isConfirmedThisMonth(item.lastExecutionMonth) ? (
+                <View style={styles.confirmedBadge}>
+                  <CheckCircle2 size={14} color={colors.success} />
+                  <Text style={styles.confirmedBadgeText}>Confirmado este mês</Text>
+                </View>
+              ) : item.isVariable ? (
+                <Pressable style={styles.confirmBtn} onPress={() => handleConfirmMonthly(item)}>
+                  <Calendar size={14} color={colors.primary} />
+                  <Text style={styles.confirmBtnText}>Confirmar valor do mês</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  style={styles.confirmBtn}
+                  onPress={() => handleConfirmFixed(item)}
+                  disabled={confirmMutation.isPending}
+                >
+                  <Calendar size={14} color={colors.primary} />
+                  <Text style={styles.confirmBtnText}>Confirmar lançamento</Text>
+                </Pressable>
+              )
             ) : null}
 
             <View style={styles.cardFooter}>
@@ -322,121 +357,111 @@ export default function RecurringTransactionsScreen() {
         ) : null}
       </PageShell>
 
-      <Modal visible={mainModalVisible} animationType="slide" transparent onRequestClose={closeMainModal}>
-        <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>{editingId ? 'Editar Recorrência' : 'Nova Transação Recorrente'}</Text>
-                <Text style={styles.modalSubTitle}>
-                  {editingId ? 'Edite sua transação recorrente' : 'Crie uma nova transação recorrente'}
-                </Text>
-              </View>
-              <Pressable onPress={closeMainModal}>
-                <X size={24} color={colors.textPrimary} />
-              </Pressable>
-            </View>
-
-            <View style={styles.typeToggle}>
-              <Pressable style={[styles.typeBtn, type === 'income' && styles.typeBtnActiveIncome]} onPress={() => setType('income')}>
-                <Text style={[styles.typeBtnText, type === 'income' && { color: colors.success }]}>Receita</Text>
-              </Pressable>
-              <Pressable style={[styles.typeBtn, type === 'expense' && styles.typeBtnActiveExpense]} onPress={() => setType('expense')}>
-                <Text style={[styles.typeBtnText, type === 'expense' && { color: colors.danger }]}>Despesa</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.form}>
-              <Text style={styles.label}>Título</Text>
-              <TextInput
-                style={styles.input}
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Ex: Conta de Água"
-                placeholderTextColor={colors.textSecondary}
-              />
-
-              <Text style={styles.label}>Valor Base</Text>
-              <TextInput
-                style={styles.input}
-                value={amount}
-                onChangeText={(value) => setAmount(moneyMask(value))}
-                keyboardType="numeric"
-                placeholder="0,00"
-                placeholderTextColor={colors.textSecondary}
-              />
-
-              <Text style={styles.label}>Conta</Text>
-              <View style={styles.wrapRow}>
-                {accounts.map((account) => (
-                  <Pressable
-                    key={account.id}
-                    style={[styles.choiceChip, accountId === account.id && styles.choiceChipActive]}
-                    onPress={() => setAccountId(account.id)}
-                  >
-                    <Text style={[styles.choiceChipText, accountId === account.id && styles.choiceChipTextActive]}>{account.name}</Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <Text style={styles.label}>Categoria</Text>
-              <View style={styles.wrapRow}>
-                {filteredCategories.map((category) => (
-                  <Pressable
-                    key={category.id}
-                    style={[styles.choiceChip, categoryId === category.id && styles.choiceChipActive]}
-                    onPress={() => setCategoryId(category.id)}
-                  >
-                    <Text style={[styles.choiceChipText, categoryId === category.id && styles.choiceChipTextActive]}>{category.label}</Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <Text style={styles.label}>Dia do mês</Text>
-              <TextInput
-                style={styles.input}
-                value={day}
-                onChangeText={setDay}
-                keyboardType="numeric"
-                placeholder="1"
-                placeholderTextColor={colors.textSecondary}
-              />
-
-              <Text style={styles.label}>Observação</Text>
-              <TextInput
-                style={styles.input}
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="Observação opcional"
-                placeholderTextColor={colors.textSecondary}
-              />
-
-              <View style={styles.switchRow}>
-                <View style={styles.switchCopy}>
-                  <Text style={styles.label}>Valor variável?</Text>
-                  <Text style={styles.inputSubtitle}>Use para contas cujo valor muda todo mês.</Text>
-                </View>
-                <Switch
-                  value={isVariable}
-                  onValueChange={setIsVariable}
-                  trackColor={{ true: `${colors.primary}66`, false: colors.border }}
-                  thumbColor={isVariable ? colors.primaryLight : colors.white}
-                />
-              </View>
-            </View>
-
-            <View style={styles.modalActions}>
-              <Pressable style={styles.cancelBtn} onPress={closeMainModal}>
-                <Text style={styles.cancelBtnText}>Cancelar</Text>
-              </Pressable>
-              <Pressable style={styles.saveBtn} onPress={handleSave}>
-                <Text style={styles.saveBtnText}>Salvar Recorrência</Text>
-              </Pressable>
-            </View>
-          </KeyboardAvoidingView>
+      {/* Formulário de criação/edição */}
+      <BottomSheet
+        visible={mainModalVisible}
+        onClose={closeMainModal}
+        title={editingId ? 'Editar Recorrência' : 'Nova Transação Recorrente'}
+        subtitle={editingId ? 'Edite sua transação recorrente' : 'Crie uma nova transação recorrente'}
+        maxHeightRatio={0.92}
+        footer={(close) => (
+          <>
+            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+            <Button label="Salvar" fullWidth onPress={handleSave} />
+          </>
+        )}
+      >
+        <View style={styles.typeToggle}>
+          <Chip
+            label="Receita"
+            selected={type === 'income'}
+            activeColor={colors.success}
+            onPress={() => setType('income')}
+            style={styles.typeChip}
+          />
+          <Chip
+            label="Despesa"
+            selected={type === 'expense'}
+            activeColor={colors.danger}
+            onPress={() => setType('expense')}
+            style={styles.typeChip}
+          />
         </View>
-      </Modal>
 
+        <FieldCard>
+          <FieldRow
+            label="Título"
+            placeholder="Ex: Conta de Água"
+            value={title}
+            onChangeText={setTitle}
+          />
+          <FieldDivider />
+          <FieldRow
+            label="Valor Base"
+            prefix="R$"
+            placeholder="0,00"
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={(v) => setAmount(moneyMask(v))}
+          />
+          <FieldDivider />
+          <FieldRow
+            label="Dia do mês"
+            placeholder="1"
+            keyboardType="numeric"
+            value={day}
+            onChangeText={setDay}
+          />
+          <FieldDivider />
+          <FieldRow
+            label="Observação"
+            placeholder="Opcional"
+            value={notes}
+            onChangeText={setNotes}
+          />
+        </FieldCard>
+
+        <Text style={styles.sectionLabel}>Conta</Text>
+        <View style={styles.wrapRow}>
+          {accounts.map((account) => (
+            <Chip
+              key={account.id}
+              label={account.name}
+              selected={accountId === account.id}
+              onPress={() => setAccountId(account.id)}
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>Categoria</Text>
+        <View style={styles.wrapRow}>
+          {filteredCategories.map((category) => (
+            <Chip
+              key={category.id}
+              label={category.label}
+              selected={categoryId === category.id}
+              onPress={() => setCategoryId(category.id)}
+            />
+          ))}
+        </View>
+
+        <View style={styles.switchRow}>
+          <View style={styles.switchCopy}>
+            <Text style={styles.switchLabel}>Valor variável?</Text>
+            <Text style={styles.inputSubtitle}>Use para contas cujo valor muda todo mês.</Text>
+          </View>
+          <Switch
+            value={isVariable}
+            onValueChange={setIsVariable}
+            trackColor={{ true: `${colors.primary}66`, false: colors.border }}
+            thumbColor={isVariable ? colors.primaryLight : colors.white}
+          />
+        </View>
+
+        <View style={styles.bottomSpacer} />
+      </BottomSheet>
+
+      {/* Diálogo de confirmação de valor variável */}
       <Modal visible={confirmModalVisible} animationType="fade" transparent onRequestClose={() => setConfirmModalVisible(false)}>
         <View style={styles.miniModalOverlay}>
           <View style={styles.miniModalContent}>
@@ -446,26 +471,25 @@ export default function RecurringTransactionsScreen() {
 
             <View style={styles.miniInputContainer}>
               <Text style={styles.currencyPrefix}>R$</Text>
-              <TextInput
-                style={styles.miniInput}
-                value={adjustmentValue}
-                onChangeText={(value) => setAdjustmentValue(moneyMask(value))}
+              <FieldRow
+                label=""
+                placeholder="0,00"
                 keyboardType="numeric"
+                value={adjustmentValue}
+                onChangeText={(v) => setAdjustmentValue(moneyMask(v))}
                 autoFocus
+                inputStyle={styles.miniInput}
               />
             </View>
 
             <View style={styles.miniModalActions}>
-              <Pressable style={styles.cancelMiniBtn} onPress={() => setConfirmModalVisible(false)}>
-                <Text style={styles.cancelMiniText}>Cancelar</Text>
-              </Pressable>
-              <Pressable style={styles.confirmMiniBtn} onPress={finalizeTransaction}>
-                {confirmMutation.isPending ? (
-                  <ActivityIndicator color={colors.white} />
-                ) : (
-                  <Text style={styles.confirmMiniText}>Confirmar</Text>
-                )}
-              </Pressable>
+              <Button label="Cancelar" variant="secondary" fullWidth onPress={() => setConfirmModalVisible(false)} />
+              <Button
+                label="Confirmar"
+                fullWidth
+                onPress={finalizeTransaction}
+                loading={confirmMutation.isPending}
+              />
             </View>
           </View>
         </View>
@@ -507,22 +531,6 @@ const createStyles = (colors: AppColors) =>
     buttonCard: {
       padding: spacing.sm,
     },
-    newButton: {
-      backgroundColor: colors.primaryLight,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
-      borderRadius: radius.md,
-      gap: spacing.sm,
-      minHeight: 50,
-    },
-    newButtonText: {
-      ...typography.body,
-      color: colors.white,
-      fontWeight: '700',
-    },
     card: {
       gap: spacing.md,
     },
@@ -561,20 +569,6 @@ const createStyles = (colors: AppColors) =>
       color: colors.textPrimary,
       fontWeight: '700',
     },
-    variableBadge: {
-      backgroundColor: colors.surfaceMuted,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    variableBadgeText: {
-      ...typography.caption,
-      fontSize: 8,
-      fontWeight: '800',
-      color: colors.textSecondary,
-    },
     cardSubtitle: {
       ...typography.caption,
       color: colors.textSecondary,
@@ -586,6 +580,20 @@ const createStyles = (colors: AppColors) =>
     },
     cardAmount: {
       ...typography.body,
+      fontWeight: '700',
+    },
+    confirmedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.md,
+      backgroundColor: colors.successSoft,
+    },
+    confirmedBadgeText: {
+      ...typography.caption,
+      color: colors.success,
       fontWeight: '700',
     },
     confirmBtn: {
@@ -627,103 +635,28 @@ const createStyles = (colors: AppColors) =>
       ...typography.body,
       color: colors.textSecondary,
     },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: colors.overlay,
-      justifyContent: 'flex-end',
-    },
-    modalSheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      padding: spacing.xl,
-      minHeight: '75%',
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: spacing.lg,
-      gap: spacing.md,
-    },
-    modalTitle: {
-      ...typography.h2,
-      color: colors.textPrimary,
-    },
-    modalSubTitle: {
-      ...typography.body,
-      color: colors.textSecondary,
-      marginTop: spacing.xs,
-    },
     typeToggle: {
       flexDirection: 'row',
       gap: spacing.md,
       marginBottom: spacing.lg,
     },
-    typeBtn: {
+    typeChip: {
       flex: 1,
-      minHeight: 45,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.surface,
     },
-    typeBtnActiveIncome: {
-      backgroundColor: colors.successSoft,
-      borderColor: colors.success,
-    },
-    typeBtnActiveExpense: {
-      backgroundColor: colors.dangerSoft,
-      borderColor: colors.danger,
-    },
-    typeBtnText: {
-      ...typography.body,
-      fontWeight: '600',
+    sectionLabel: {
+      ...typography.caption,
+      fontWeight: '700',
       color: colors.textSecondary,
-    },
-    form: {
-      gap: spacing.md,
-      paddingBottom: spacing.xxl,
-    },
-    label: {
-      ...typography.body,
-      fontWeight: '600',
-      color: colors.textPrimary,
-    },
-    input: {
-      minHeight: 50,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      paddingHorizontal: spacing.md,
-      color: colors.textPrimary,
-      backgroundColor: colors.surface,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginTop: spacing.lg,
+      marginBottom: spacing.sm,
     },
     wrapRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: spacing.sm,
-    },
-    choiceChip: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.pill,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    choiceChipActive: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primarySoft,
-    },
-    choiceChipText: {
-      ...typography.caption,
-      color: colors.textSecondary,
-      fontWeight: '700',
-    },
-    choiceChipTextActive: {
-      color: colors.primary,
     },
     inputSubtitle: {
       ...typography.caption,
@@ -733,45 +666,19 @@ const createStyles = (colors: AppColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.md,
-      marginTop: spacing.xs,
+      marginTop: spacing.lg,
     },
     switchCopy: {
       flex: 1,
       gap: spacing.xs,
     },
-    modalActions: {
-      flexDirection: 'row',
-      gap: spacing.md,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      paddingTop: spacing.lg,
-      backgroundColor: colors.surface,
-    },
-    saveBtn: {
-      flex: 1,
-      minHeight: 52,
-      backgroundColor: colors.primaryLight,
-      borderRadius: radius.lg,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    saveBtnText: {
+    switchLabel: {
       ...typography.body,
-      color: colors.white,
-      fontWeight: '700',
-    },
-    cancelBtn: {
-      flex: 1,
-      minHeight: 52,
-      backgroundColor: colors.surfaceMuted,
-      borderRadius: radius.lg,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    cancelBtnText: {
-      ...typography.body,
-      color: colors.textPrimary,
       fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    bottomSpacer: {
+      height: spacing.lg,
     },
     miniModalOverlay: {
       flex: 1,
@@ -784,7 +691,7 @@ const createStyles = (colors: AppColors) =>
       width: '100%',
       maxWidth: 360,
       backgroundColor: colors.surface,
-      borderRadius: 24,
+      borderRadius: radius.xl,
       padding: spacing.xl,
       alignItems: 'center',
       gap: spacing.sm,
@@ -807,6 +714,7 @@ const createStyles = (colors: AppColors) =>
       borderBottomWidth: 2,
       borderBottomColor: colors.primary,
       paddingBottom: spacing.sm,
+      width: '100%',
     },
     currencyPrefix: {
       ...typography.value,
@@ -815,10 +723,8 @@ const createStyles = (colors: AppColors) =>
       marginRight: spacing.sm,
     },
     miniInput: {
-      ...typography.value,
       fontSize: 32,
-      color: colors.textPrimary,
-      maxWidth: 120,
+      fontWeight: '700',
       flex: 1,
     },
     miniModalActions: {
@@ -826,31 +732,5 @@ const createStyles = (colors: AppColors) =>
       gap: spacing.md,
       width: '100%',
       marginTop: spacing.md,
-    },
-    cancelMiniBtn: {
-      flex: 1,
-      minHeight: 50,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surfaceMuted,
-    },
-    cancelMiniText: {
-      ...typography.body,
-      color: colors.textPrimary,
-      fontWeight: '600',
-    },
-    confirmMiniBtn: {
-      flex: 1,
-      minHeight: 50,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.primaryLight,
-    },
-    confirmMiniText: {
-      ...typography.body,
-      color: colors.white,
-      fontWeight: '700',
     },
   });
