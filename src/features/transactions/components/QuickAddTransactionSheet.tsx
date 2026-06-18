@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import {
@@ -21,6 +20,7 @@ import {
 import { BottomSheet } from "../../../components/BottomSheet";
 import { Button } from "../../../components/Button";
 import { Chip } from "../../../components/Chip";
+import { FieldCard, FieldDivider, FieldRow } from "../../../components/FormField";
 import {
   radius,
   spacing,
@@ -721,9 +721,7 @@ export function QuickAddTransactionSheet({
               : "O rascunho foi preenchido automaticamente e pode ser ajustado."}
           </Text>
         </View>
-        <Pressable style={styles.backButton} onPress={() => setStep("mode")}>
-          <Text style={styles.backButtonText}>Voltar</Text>
-        </Pressable>
+        <Button label="Voltar" variant="ghost" size="sm" onPress={() => setStep("mode")} />
       </View>
 
       <View style={styles.typeRow}>
@@ -745,32 +743,34 @@ export function QuickAddTransactionSheet({
         ))}
       </View>
 
-      <TextInput
-        placeholder="Descrição"
-        value={title}
-        onChangeText={setTitle}
-        style={styles.input}
-        placeholderTextColor={colors.textSecondary}
-      />
-      <TextInput
-        placeholder="0,00"
-        value={formatCentsToDisplay(amountDigits)}
-        onChangeText={(text) =>
-          setAmountDigits(text.replace(/\D/g, "").replace(/^0+/, ""))
-        }
-        keyboardType="numeric"
-        style={styles.input}
-        placeholderTextColor={colors.textSecondary}
-      />
-      <TextInput
-        placeholder="DD/MM/AAAA"
-        value={occurredOnDisplay}
-        onChangeText={handleOccurredOnChange}
-        style={styles.input}
-        placeholderTextColor={colors.textSecondary}
-        keyboardType="numeric"
-        maxLength={10}
-      />
+      <FieldCard>
+        <FieldRow
+          label="Descrição"
+          placeholder="Ex.: Mercado, Salário..."
+          value={title}
+          onChangeText={setTitle}
+        />
+        <FieldDivider />
+        <FieldRow
+          label="Valor"
+          prefix="R$"
+          placeholder="0,00"
+          value={formatCentsToDisplay(amountDigits)}
+          onChangeText={(text) =>
+            setAmountDigits(text.replace(/\D/g, "").replace(/^0+/, ""))
+          }
+          keyboardType="numeric"
+        />
+        <FieldDivider />
+        <FieldRow
+          label="Data"
+          placeholder="DD/MM/AAAA"
+          value={occurredOnDisplay}
+          onChangeText={handleOccurredOnChange}
+          keyboardType="numeric"
+          maxLength={10}
+        />
+      </FieldCard>
 
       <Text style={styles.label}>Conta</Text>
       <View style={styles.wrapRow}>
@@ -808,14 +808,16 @@ export function QuickAddTransactionSheet({
         ))}
       </View>
 
-      <TextInput
-        placeholder="Observações"
-        value={notes}
-        onChangeText={setNotes}
-        style={[styles.input, styles.notesInput]}
-        placeholderTextColor={colors.textSecondary}
-        multiline
-      />
+      <FieldCard>
+        <FieldRow
+          label="Observações"
+          placeholder="Observações (opcional)"
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          inputStyle={{ minHeight: 72, textAlignVertical: "top" }}
+        />
+      </FieldCard>
 
       <View style={styles.recurringRow}>
         <View style={styles.recurringCopy}>
@@ -947,20 +949,6 @@ const createStyles = (colors: AppColors) =>
       flex: 1,
       justifyContent: "center",
     },
-    input: {
-      minHeight: 48,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-      paddingHorizontal: spacing.md,
-      color: colors.textPrimary,
-    },
-    notesInput: {
-      minHeight: 88,
-      paddingTop: spacing.md,
-      textAlignVertical: "top",
-    },
     label: {
       ...typography.caption,
       color: colors.textSecondary,
@@ -1041,18 +1029,6 @@ const createStyles = (colors: AppColors) =>
       ...typography.caption,
       color: colors.textSecondary,
       lineHeight: 18,
-    },
-    backButton: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.pill,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    backButtonText: {
-      ...typography.caption,
-      color: colors.textPrimary,
-      fontWeight: "700",
     },
     modeCardActionButton: {
       marginTop: spacing.xs,
