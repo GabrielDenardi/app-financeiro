@@ -1,13 +1,12 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
-  Dimensions,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import {
@@ -40,10 +39,9 @@ import {
   layout,
   radius,
   spacing,
+  typography,
   useThemeColors,
 } from "../theme";
-
-const { width } = Dimensions.get("window");
 
 const CATEGORY_CONFIG: Record<string, { color: string; icon: any }> = {
   transactions: { color: "#10b981", icon: ArrowLeftRight },
@@ -67,28 +65,37 @@ function getCategoryVisual(code: string, colors: AppColors) {
 function ArticleDetail({
   article,
   onBack,
+  onNotHelpful,
 }: {
   article: HelpArticle;
   onBack: () => void;
+  onNotHelpful: () => void;
 }) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const [feedback, setFeedback] = useState<"idle" | "helpful">("idle");
 
   return (
     <View style={styles.container}>
       <View style={styles.detailHeader}>
-        <TouchableOpacity onPress={onBack} style={styles.backButtonDetail}>
+        <Pressable
+          onPress={onBack}
+          style={({ pressed }) => [
+            styles.detailBackButton,
+            pressed && styles.pressed,
+          ]}
+        >
           <ArrowLeft size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
+        </Pressable>
         <Text style={styles.detailHeaderTitle} numberOfLines={1}>
           {article.title}
         </Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{article.level}</Text>
+        <View style={styles.levelBadge}>
+          <Text style={styles.levelBadgeText}>{article.level}</Text>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContentPadding}>
+      <ScrollView contentContainerStyle={styles.detailScrollContent}>
         <View style={styles.detailCard}>
           <View style={styles.stepHeader}>
             <BookOpen size={16} color={colors.white} />
@@ -117,16 +124,39 @@ function ArticleDetail({
         ) : null}
 
         <View style={styles.usefulCard}>
-          <Text style={styles.usefulText}>Este artigo foi útil?</Text>
-          <View style={styles.usefulButtons}>
-            <TouchableOpacity style={styles.usefulBtnYes}>
-              <CheckCircle2 size={16} color={colors.success} />
-              <Text style={styles.usefulBtnYesText}>Sim, ajudou!</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.usefulBtnNo}>
-              <Text style={styles.usefulBtnNoText}>Não resolveu</Text>
-            </TouchableOpacity>
-          </View>
+          {feedback === "helpful" ? (
+            <View style={styles.feedbackThanks}>
+              <CheckCircle2 size={20} color={colors.success} />
+              <Text style={styles.feedbackThanksText}>
+                Obrigado pelo feedback!
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.usefulText}>Este artigo foi útil?</Text>
+              <View style={styles.usefulButtons}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.usefulBtnYes,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => setFeedback("helpful")}
+                >
+                  <CheckCircle2 size={16} color={colors.success} />
+                  <Text style={styles.usefulBtnYesText}>Sim, ajudou!</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.usefulBtnNo,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={onNotHelpful}
+                >
+                  <Text style={styles.usefulBtnNoText}>Não resolveu</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -136,6 +166,7 @@ function ArticleDetail({
 export function HelpScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const scrollRef = useRef<ScrollView>(null);
   const [searchText, setSearchText] = useState("");
   const [selectedCategoryCode, setSelectedCategoryCode] = useState<
     string | null
@@ -150,15 +181,23 @@ export function HelpScreen({ navigation }: any) {
   const articles = articlesQuery.data ?? [];
   const categories = categoriesQuery.data ?? [];
   const popularArticles = useMemo(
-    () => articles.filter((article) => article.popular).slice(0, 3),
+    () => articles.filter((a) => a.popular).slice(0, 3),
     [articles],
   );
+
+  const handleNotHelpful = () => {
+    setSelectedArticle(null);
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
 
   if (selectedArticle) {
     return (
       <ArticleDetail
         article={selectedArticle}
         onBack={() => setSelectedArticle(null)}
+        onNotHelpful={handleNotHelpful}
       />
     );
   }
@@ -168,28 +207,30 @@ export function HelpScreen({ navigation }: any) {
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.screenScrollContent}
       >
-        <View style={styles.headerBackground}>
+        <View style={styles.heroHeader}>
           <SafeAreaView>
-            <View style={styles.headerTop}>
-              <TouchableOpacity
-                style={styles.backButton}
+            <View style={styles.heroTop}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.backButton,
+                  pressed && styles.pressed,
+                ]}
                 onPress={() => navigation?.goBack()}
               >
                 <ArrowLeft size={24} color={colors.white} />
-              </TouchableOpacity>
+              </Pressable>
               <View>
-                <Text style={styles.headerTitle}>Central de Ajuda</Text>
-                <Text style={styles.headerSubTitle}>
-                  Como podemos te ajudar?
-                </Text>
+                <Text style={styles.heroTitle}>Central de Ajuda</Text>
+                <Text style={styles.heroSubtitle}>Como podemos te ajudar?</Text>
               </View>
             </View>
 
             <View style={styles.searchWrapper}>
-              <View style={styles.searchContainer}>
+              <View style={styles.searchBar}>
                 <Search size={20} color={colors.textSecondary} />
                 <TextInput
                   style={styles.searchInput}
@@ -202,16 +243,16 @@ export function HelpScreen({ navigation }: any) {
                   }}
                 />
                 {searchText ? (
-                  <TouchableOpacity onPress={() => setSearchText("")}>
+                  <Pressable onPress={() => setSearchText("")}>
                     <X size={18} color={colors.textSecondary} />
-                  </TouchableOpacity>
+                  </Pressable>
                 ) : null}
               </View>
             </View>
           </SafeAreaView>
         </View>
 
-        <View style={styles.bodyContent}>
+        <View style={styles.body}>
           {searchText || selectedCategoryCode ? (
             <View style={styles.resultsCard}>
               <View
@@ -229,10 +270,7 @@ export function HelpScreen({ navigation }: any) {
                     {selectedCategoryCode ? (
                       React.createElement(
                         getCategoryVisual(selectedCategoryCode, colors).icon,
-                        {
-                          size: 20,
-                          color: colors.white,
-                        },
+                        { size: 20, color: colors.white },
                       )
                     ) : (
                       <Search size={20} color={colors.white} />
@@ -241,7 +279,7 @@ export function HelpScreen({ navigation }: any) {
                   <View>
                     <Text style={styles.resultsHeaderTitle}>
                       {categories.find(
-                        (category) => category.code === selectedCategoryCode,
+                        (c) => c.code === selectedCategoryCode,
                       )?.label || "Resultados"}
                     </Text>
                     <Text style={styles.resultsHeaderSub}>
@@ -250,14 +288,14 @@ export function HelpScreen({ navigation }: any) {
                     </Text>
                   </View>
                 </View>
-                <TouchableOpacity
+                <Pressable
                   onPress={() => {
                     setSearchText("");
                     setSelectedCategoryCode(null);
                   }}
                 >
                   <X size={20} color={colors.white} />
-                </TouchableOpacity>
+                </Pressable>
               </View>
 
               <View style={styles.resultsList}>
@@ -272,9 +310,12 @@ export function HelpScreen({ navigation }: any) {
                 {!articlesQuery.isLoading &&
                   !articlesQuery.isError &&
                   articles.map((article) => (
-                    <TouchableOpacity
+                    <Pressable
                       key={article.id}
-                      style={styles.resultItem}
+                      style={({ pressed }) => [
+                        styles.resultItem,
+                        pressed && styles.pressed,
+                      ]}
                       onPress={() => setSelectedArticle(article)}
                     >
                       <View style={styles.resultItemContent}>
@@ -284,7 +325,7 @@ export function HelpScreen({ navigation }: any) {
                         <View style={styles.resultItemMeta}>
                           <View
                             style={[
-                              styles.levelBadge,
+                              styles.articleLevelBadge,
                               {
                                 backgroundColor:
                                   article.level === "Avançado"
@@ -295,7 +336,7 @@ export function HelpScreen({ navigation }: any) {
                           >
                             <Text
                               style={[
-                                styles.levelBadgeText,
+                                styles.articleLevelBadgeText,
                                 {
                                   color:
                                     article.level === "Avançado"
@@ -313,7 +354,7 @@ export function HelpScreen({ navigation }: any) {
                         </View>
                       </View>
                       <ChevronRight size={18} color={colors.border} />
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
 
                 {!articlesQuery.isLoading &&
@@ -350,11 +391,13 @@ export function HelpScreen({ navigation }: any) {
                       article.categoryCode,
                       colors,
                     );
-
                     return (
-                      <TouchableOpacity
+                      <Pressable
                         key={article.id}
-                        style={styles.articleItem}
+                        style={({ pressed }) => [
+                          styles.articleItem,
+                          pressed && styles.pressed,
+                        ]}
                         onPress={() => setSelectedArticle(article)}
                       >
                         <View
@@ -373,24 +416,26 @@ export function HelpScreen({ navigation }: any) {
                             {article.title}
                           </Text>
                           <Text style={styles.articleSub}>
-                            {article.categoryLabel} - {article.steps.length}{" "}
-                            passos
+                            {article.categoryLabel} · {article.steps.length} passos
                           </Text>
                         </View>
                         <ChevronRight size={18} color={colors.border} />
-                      </TouchableOpacity>
+                      </Pressable>
                     );
                   })}
               </View>
 
-              <Text style={styles.gridLabel}>Categorias</Text>
+              <Text style={styles.sectionLabel}>Categorias</Text>
               <View style={styles.grid}>
                 {categories.map((category) => {
                   const visual = getCategoryVisual(category.code, colors);
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       key={category.id}
-                      style={styles.gridItem}
+                      style={({ pressed }) => [
+                        styles.gridItem,
+                        pressed && styles.pressed,
+                      ]}
                       onPress={() => setSelectedCategoryCode(category.code)}
                     >
                       <View
@@ -405,7 +450,7 @@ export function HelpScreen({ navigation }: any) {
                         })}
                       </View>
                       <Text style={styles.gridText}>{category.label}</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 })}
               </View>
@@ -415,42 +460,46 @@ export function HelpScreen({ navigation }: any) {
                   Não encontrou o que precisava?
                 </Text>
                 <Text style={styles.contactSub}>
-                  Nossa equipe de suporte está sempre disponível para ajudar.
+                  Nossa equipe está sempre disponível para ajudar.
                 </Text>
 
                 <View style={styles.contactActions}>
-                  <TouchableOpacity
-                    style={styles.contactButton}
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.contactButton,
+                      pressed && styles.contactButtonPressed,
+                    ]}
                     onPress={() => navigation.navigate("ListChat")}
                   >
-                    <View style={styles.contactIconWrapper}>
+                    <View style={[styles.contactIconWrapper, { backgroundColor: colors.primarySoft }]}>
                       <MessageCircle size={20} color={colors.primaryLight} />
                     </View>
-
                     <View style={styles.contactTextContainer}>
-                      <Text style={styles.contactButtonText}>Chat ao vivo</Text>
+                      <Text style={styles.contactButtonText}>Chat de suporte</Text>
                       <Text style={styles.contactButtonSubText}>
-                        Abra uma conversa com suporte
+                        Abra uma conversa com o assistente
                       </Text>
                     </View>
-
                     <ChevronRight size={18} color={colors.border} />
-                  </TouchableOpacity>
+                  </Pressable>
 
-                  <TouchableOpacity style={styles.contactButton}>
-                    <View style={styles.contactIconWrapper}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.contactButton,
+                      pressed && styles.contactButtonPressed,
+                    ]}
+                  >
+                    <View style={[styles.contactIconWrapper, { backgroundColor: colors.successSoft }]}>
                       <Mail size={20} color={colors.success} />
                     </View>
-
                     <View style={styles.contactTextContainer}>
                       <Text style={styles.contactButtonText}>E-mail</Text>
                       <Text style={styles.contactButtonSubText}>
                         suporte@financeapp.com
                       </Text>
                     </View>
-
                     <ChevronRight size={18} color={colors.border} />
-                  </TouchableOpacity>
+                  </Pressable>
                 </View>
               </View>
             </>
@@ -473,19 +522,24 @@ const createStyles = (colors: AppColors) =>
     tipCopy: {
       flex: 1,
     },
-    screenScrollContent: {
-      paddingBottom: 40,
+    pressed: {
+      opacity: 0.75,
     },
-    headerBackground: {
+
+    // Hero header
+    screenScrollContent: {
+      paddingBottom: spacing.xl,
+    },
+    heroHeader: {
       backgroundColor: colors.primary,
-      paddingBottom: 40,
+      paddingBottom: spacing.xxl,
       borderBottomLeftRadius: radius.xl,
       borderBottomRightRadius: radius.xl,
     },
-    headerTop: {
+    heroTop: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 20,
+      paddingHorizontal: layout.pageHorizontal,
       marginTop: layout.pageHeaderTop,
       gap: spacing.md,
     },
@@ -493,26 +547,26 @@ const createStyles = (colors: AppColors) =>
       padding: spacing.sm,
       borderRadius: radius.pill,
     },
-    headerTitle: {
-      fontSize: 24,
-      fontWeight: "bold",
+    heroTitle: {
+      ...typography.h1,
       color: colors.white,
     },
-    headerSubTitle: {
-      fontSize: 14,
+    heroSubtitle: {
+      ...typography.body,
       color: "rgba(255,255,255,0.7)",
     },
     searchWrapper: {
-      paddingHorizontal: 20,
-      marginTop: 25,
+      paddingHorizontal: layout.pageHorizontal,
+      marginTop: spacing.xl,
     },
-    searchContainer: {
+    searchBar: {
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: colors.surface,
       height: 56,
       borderRadius: radius.lg,
       paddingHorizontal: spacing.lg,
+      gap: spacing.sm,
       elevation: 4,
       shadowColor: "#000",
       shadowOpacity: 0.1,
@@ -520,49 +574,44 @@ const createStyles = (colors: AppColors) =>
     },
     searchInput: {
       flex: 1,
-      marginLeft: 10,
-      fontSize: 16,
+      ...typography.body,
       color: colors.textPrimary,
     },
-    bodyContent: {
-      paddingHorizontal: 20,
-      marginTop: 20,
+
+    // Body
+    body: {
+      paddingHorizontal: layout.pageHorizontal,
+      marginTop: spacing.xl,
+      gap: spacing.xl,
     },
-    scrollContentPadding: {
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 40,
-    },
+
+    // Popular articles card
     card: {
       backgroundColor: colors.surface,
       borderRadius: radius.xl,
-      padding: 20,
-      marginBottom: 20,
-      elevation: 2,
-      shadowColor: colors.shadow,
-      shadowOpacity: 0.05,
-      shadowRadius: 10,
+      padding: spacing.xl,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     sectionTitleRow: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 15,
-      gap: 10,
+      marginBottom: spacing.md,
+      gap: spacing.sm,
     },
     iconAmber: {
       backgroundColor: colors.warningSoft,
-      padding: 6,
+      padding: spacing.sm,
       borderRadius: radius.sm,
     },
     cardTitle: {
-      fontSize: 17,
-      fontWeight: "bold",
+      ...typography.h2,
       color: colors.textPrimary,
     },
     articleItem: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: 14,
+      paddingVertical: spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: colors.mutedSurface,
     },
@@ -575,252 +624,112 @@ const createStyles = (colors: AppColors) =>
       marginRight: spacing.md,
     },
     articleItemText: {
-      fontSize: 15,
+      ...typography.body,
       fontWeight: "500",
       color: colors.textPrimary,
-      flex: 1,
     },
     articleSub: {
-      fontSize: 12,
+      ...typography.caption,
       color: colors.textSecondary,
       marginTop: 2,
     },
-    gridLabel: {
-      fontSize: 17,
-      fontWeight: "bold",
+
+    // Categories grid
+    sectionLabel: {
+      ...typography.h2,
       color: colors.textPrimary,
-      marginBottom: 15,
     },
     grid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      justifyContent: "space-between",
+      gap: spacing.sm,
+      marginTop: -spacing.sm,
     },
     gridItem: {
       backgroundColor: colors.surface,
-      width: (width - 55) / 2,
+      width: "48%",
       padding: spacing.md,
       borderRadius: radius.lg,
-      marginBottom: 15,
       alignItems: "center",
       flexDirection: "row",
       borderWidth: 1,
       borderColor: colors.border,
-      overflow: "hidden",
+      gap: spacing.sm,
     },
     gridIcon: {
       padding: spacing.sm,
       borderRadius: radius.md,
-      marginRight: spacing.sm,
     },
     gridText: {
-      fontSize: 14,
+      ...typography.body,
       fontWeight: "600",
       color: colors.textPrimary,
+      flex: 1,
     },
+
+    // Contact card
     contactCard: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.surface,
       borderRadius: radius.xl,
-      padding: 20,
-      marginTop: 10,
-      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.xl,
+      gap: spacing.sm,
     },
     contactTitle: {
-      color: colors.white,
-      fontSize: 18,
-      fontWeight: "bold",
-      marginBottom: 4,
+      ...typography.h2,
+      color: colors.textPrimary,
     },
     contactSub: {
-      color: "rgba(255,255,255,0.6)",
-      fontSize: 14,
-      marginBottom: 20,
+      ...typography.body,
+      color: colors.textSecondary,
     },
     contactActions: {
       gap: spacing.md,
+      marginTop: spacing.sm,
     },
     contactButton: {
-      backgroundColor: "rgba(255,255,255,0.1)",
+      backgroundColor: colors.background,
       height: 64,
       borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: spacing.lg,
+      gap: spacing.md,
+    },
+    contactButtonPressed: {
+      backgroundColor: colors.mutedSurface,
     },
     contactIconWrapper: {
       width: 40,
       height: 40,
       borderRadius: radius.md,
-      backgroundColor: "rgba(255,255,255,0.1)",
       alignItems: "center",
       justifyContent: "center",
-      marginRight: spacing.md,
     },
     contactTextContainer: {
       flex: 1,
-      justifyContent: "center",
     },
     contactButtonText: {
-      color: colors.white,
-      fontWeight: "bold",
-      fontSize: 15,
-    },
-    contactButtonSubText: {
-      color: "rgba(255,255,255,0.5)",
-      fontSize: 12,
-      marginTop: 2,
-    },
-    emptyText: {
-      textAlign: "center",
-      color: colors.textSecondary,
-      marginTop: 20,
-    },
-    detailHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      padding: spacing.lg,
-      backgroundColor: colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      gap: spacing.md,
-      paddingTop: 20,
-    },
-    backButtonDetail: {
-      padding: spacing.sm,
-      borderRadius: radius.lg,
-    },
-    detailHeaderTitle: {
-      flex: 1,
-      fontSize: 16,
-      fontWeight: "bold",
+      ...typography.body,
       color: colors.textPrimary,
-    },
-    badge: {
-      backgroundColor: colors.primaryLight,
-      paddingHorizontal: 10,
-      paddingVertical: spacing.xs,
-      borderRadius: radius.sm,
-    },
-    badgeText: {
-      fontSize: 11,
-      color: colors.white,
-      fontWeight: "normal",
-    },
-    detailCard: {
-      backgroundColor: colors.surface,
-      borderRadius: radius.xl,
-      overflow: "hidden",
-      elevation: 2,
-    },
-    stepHeader: {
-      backgroundColor: colors.primary,
-      padding: spacing.lg,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.sm,
-    },
-    stepHeaderText: {
-      color: colors.white,
-      fontWeight: "bold",
-      fontSize: 15,
-    },
-    stepContent: {
-      padding: 20,
-    },
-    stepItem: {
-      flexDirection: "row",
-      gap: 10,
-      marginBottom: 20,
-    },
-    stepNumber: {
-      width: 28,
-      height: 28,
-      borderRadius: radius.pill,
-      backgroundColor: colors.primary,
-      alignItems: "center",
-      justifyContent: "center",
-      marginTop: 2,
-    },
-    stepNumberText: {
-      color: colors.white,
-      fontSize: 13,
-      fontWeight: "bold",
-    },
-    stepText: {
-      flex: 1,
-      color: colors.textPrimary,
-      fontSize: 14,
-      lineHeight: 22,
-      marginTop: 4,
-    },
-    tipBox: {
-      backgroundColor: colors.warningSoft,
-      padding: spacing.lg,
-      borderRadius: radius.lg,
-      borderLeftWidth: 4,
-      borderLeftColor: colors.primaryLight,
-      flexDirection: "row",
-      gap: spacing.md,
-      marginTop: spacing.xl,
-    },
-    tipTitle: {
-      fontSize: 14,
-      fontWeight: "bold",
-      color: colors.textPrimary,
-      marginBottom: 2,
-    },
-    tipText: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      lineHeight: 20,
-    },
-    usefulCard: {
-      padding: 30,
-      alignItems: "center",
-    },
-    usefulText: {
-      color: colors.textSecondary,
-      fontWeight: "600",
-      marginBottom: spacing.lg,
-    },
-    usefulButtons: {
-      flexDirection: "row",
-      gap: spacing.md,
-    },
-    usefulBtnYes: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.sm,
-      paddingHorizontal: spacing.xl,
-      paddingVertical: spacing.md,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.success,
-    },
-    usefulBtnYesText: {
-      color: colors.success,
       fontWeight: "700",
     },
-    usefulBtnNo: {
-      paddingHorizontal: spacing.xl,
-      paddingVertical: spacing.md,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    usefulBtnNoText: {
+    contactButtonSubText: {
+      ...typography.caption,
       color: colors.textSecondary,
-      fontWeight: "600",
+      marginTop: 2,
     },
+
+    // Results
     resultsCard: {
       backgroundColor: colors.surface,
       borderRadius: radius.lg,
       overflow: "hidden",
-      marginBottom: 20,
-      elevation: 4,
-      shadowColor: "#000",
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     resultsHeader: {
       flexDirection: "row",
@@ -842,13 +751,12 @@ const createStyles = (colors: AppColors) =>
       justifyContent: "center",
     },
     resultsHeaderTitle: {
+      ...typography.h2,
       color: colors.white,
-      fontSize: 18,
-      fontWeight: "bold",
     },
     resultsHeaderSub: {
+      ...typography.caption,
       color: "rgba(255,255,255,0.8)",
-      fontSize: 13,
     },
     resultsList: {
       paddingVertical: spacing.sm,
@@ -856,7 +764,7 @@ const createStyles = (colors: AppColors) =>
     resultItem: {
       flexDirection: "row",
       alignItems: "center",
-      padding: 20,
+      padding: spacing.lg,
       borderBottomWidth: 1,
       borderBottomColor: colors.background,
     },
@@ -864,27 +772,202 @@ const createStyles = (colors: AppColors) =>
       flex: 1,
     },
     resultItemTitle: {
-      fontSize: 16,
+      ...typography.body,
       fontWeight: "600",
       color: colors.textPrimary,
-      marginBottom: 6,
+      marginBottom: spacing.xs,
     },
     resultItemMeta: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 10,
+      gap: spacing.sm,
+    },
+    articleLevelBadge: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+      borderRadius: radius.sm,
+    },
+    articleLevelBadgeText: {
+      ...typography.caption,
+      fontWeight: "700",
+    },
+    stepsText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+
+    // Empty
+    emptyText: {
+      ...typography.body,
+      textAlign: "center",
+      color: colors.textSecondary,
+      marginTop: spacing.xl,
+      marginBottom: spacing.lg,
+    },
+
+    // Article detail
+    detailHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: layout.pageHorizontal,
+      paddingTop: layout.pageHeaderTop,
+      paddingBottom: spacing.md,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      gap: spacing.md,
+    },
+    detailBackButton: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.pill,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    detailHeaderTitle: {
+      flex: 1,
+      ...typography.h3,
+      color: colors.textPrimary,
     },
     levelBadge: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs,
+      backgroundColor: colors.primarySoft,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
       borderRadius: radius.sm,
     },
     levelBadgeText: {
-      fontSize: 12,
-      fontWeight: "bold",
+      ...typography.caption,
+      color: colors.primaryLight,
+      fontWeight: "700",
     },
-    stepsText: {
-      fontSize: 13,
+    detailScrollContent: {
+      paddingHorizontal: layout.pageHorizontal,
+      paddingTop: spacing.xl,
+      paddingBottom: spacing.xxl,
+      gap: spacing.lg,
+    },
+    detailCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.xl,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    stepHeader: {
+      backgroundColor: colors.primary,
+      padding: spacing.lg,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+    },
+    stepHeaderText: {
+      ...typography.body,
+      color: colors.white,
+      fontWeight: "700",
+    },
+    stepContent: {
+      padding: spacing.xl,
+      gap: spacing.lg,
+    },
+    stepItem: {
+      flexDirection: "row",
+      gap: spacing.md,
+    },
+    stepNumber: {
+      width: 28,
+      height: 28,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 2,
+      flexShrink: 0,
+    },
+    stepNumberText: {
+      ...typography.caption,
+      color: colors.white,
+      fontWeight: "700",
+    },
+    stepText: {
+      flex: 1,
+      ...typography.body,
+      color: colors.textPrimary,
+      lineHeight: 22,
+    },
+    tipBox: {
+      backgroundColor: colors.warningSoft,
+      padding: spacing.lg,
+      borderRadius: radius.lg,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.primaryLight,
+      flexDirection: "row",
+      gap: spacing.md,
+    },
+    tipTitle: {
+      ...typography.body,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      marginBottom: 2,
+    },
+    tipText: {
+      ...typography.caption,
       color: colors.textSecondary,
+      lineHeight: 20,
+    },
+
+    // Feedback
+    usefulCard: {
+      padding: spacing.xl,
+      alignItems: "center",
+      gap: spacing.md,
+    },
+    usefulText: {
+      ...typography.body,
+      color: colors.textSecondary,
+      fontWeight: "600",
+    },
+    usefulButtons: {
+      flexDirection: "row",
+      gap: spacing.md,
+    },
+    usefulBtnYes: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.success,
+    },
+    usefulBtnYesText: {
+      ...typography.body,
+      color: colors.success,
+      fontWeight: "700",
+    },
+    usefulBtnNo: {
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    usefulBtnNoText: {
+      ...typography.body,
+      color: colors.textSecondary,
+      fontWeight: "600",
+    },
+    feedbackThanks: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+    },
+    feedbackThanksText: {
+      ...typography.body,
+      color: colors.success,
+      fontWeight: "700",
     },
   });
