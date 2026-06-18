@@ -7,8 +7,8 @@ import { GroupDetailsScreen } from '../features/groups/screens/GroupDetailsScree
 import { GroupsScreen } from '../features/groups/screens/GroupsScreen';
 import { AccountsScreen } from '../screens/AccountsScreen';
 import BudgetsScreen from '../screens/BudgetScreen';
-import CardsScreen from '../screens/CardsScreen';
 import { HelpScreen } from '../screens/HelpScreen';
+import MetasScreen from '../screens/MetasScreen';
 import ListChatScreen from '../screens/ListChatScreen';
 import ImportScreen from '../screens/ImportScreen';
 import IncomeTaxScreen from '../screens/IncomeTaxScreen';
@@ -77,10 +77,10 @@ export function AppStack({ currentUser }: AppStackProps) {
           </PremiumGate>
         )}
       </Stack.Screen>
-      <Stack.Screen name="Cards">
+      <Stack.Screen name="Goals">
         {(props) => (
-          <PremiumGate featureTitle="Cartoes de credito">
-            <CardsScreen {...(props as any)} />
+          <PremiumGate featureTitle="Metas financeiras">
+            <MetasScreen {...(props as any)} />
           </PremiumGate>
         )}
       </Stack.Screen>

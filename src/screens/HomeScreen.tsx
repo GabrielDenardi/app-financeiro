@@ -164,7 +164,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
         <View style={styles.kpiRow}>
           <Pressable
             style={styles.kpiCard}
-            onPress={() => navigation.navigate("Goals")}
+            onPress={() => navigation.getParent()?.navigate("Goals")}
           >
             <Target color={colors.primary} size={18} />
             <Text style={styles.kpiValue}>{summary?.goalsCount ?? 0}</Text>

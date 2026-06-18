@@ -1,9 +1,9 @@
 export type AppTabParamList = {
   Home: undefined;
   Transactions: undefined;
-  Goals: undefined;
+  Cards: undefined;
   Budget: undefined;
-  Settings: undefined;
+  More: undefined;
 };
 
 export type AppStackParamList = {
@@ -19,7 +19,7 @@ export type AppStackParamList = {
   Budgets: undefined;
   Reports: undefined;
   Accounts: undefined;
-  Cards: undefined;
+  Goals: undefined;
   RecurringTransactions: undefined;
   Groups: undefined;
   ListChat: undefined;

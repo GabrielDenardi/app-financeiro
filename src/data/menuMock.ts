@@ -1,39 +1,16 @@
 import {
-  ArrowLeftRight,
   Bell,
-  ChartSpline,
-  Crown,
-  CreditCard,
-  FileText,
   Globe,
   HelpCircle,
-  Landmark,
   MessageCircle,
   Moon,
-  PiggyBank,
-  Receipt,
   Shield,
   Smartphone,
-  Users,
 } from 'lucide-react-native';
 
 import type { MenuSections } from '../types/finance';
 
 export const menuMock: MenuSections[] = [
-  {
-    title: 'Finanças',
-    items: [
-      { icon: Landmark, label: 'Minhas Contas', page: 'Accounts' },
-      { icon: CreditCard, label: 'Cartões de Crédito', page: 'Cards' },
-      { icon: PiggyBank, label: 'Orçamentos', page: 'Budgets' },
-      { icon: Users, label: 'Grupos', page: 'Groups' },
-      { icon: ChartSpline, label: 'Relatórios', page: 'Reports' },
-      { icon: ArrowLeftRight, label: 'Transações Recorrentes', page: 'RecurringTransactions' },
-      { icon: FileText, label: 'Importar Dados', page: 'Import' },
-      { icon: Receipt, label: 'Imposto de Renda', page: 'IncomeTax' },
-      { icon: Crown, label: 'Planos', page: 'Plans' },
-    ],
-  },
   {
     title: 'Preferências',
     items: [
