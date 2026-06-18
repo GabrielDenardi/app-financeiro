@@ -14,7 +14,9 @@ import { Search, SlidersHorizontal, X } from 'lucide-react-native';
 
 import { TransactionListItem } from '../components/TransactionListItem';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
-import { useTransactionSections } from '../features/transactions/hooks/useTransactions';
+import { TransactionActionsSheet } from '../features/transactions/components/TransactionActionsSheet';
+import { useFinanceCategories, useTransactionSections } from '../features/transactions/hooks/useTransactions';
+import type { TransactionFeedItem } from '../features/transactions/types';
 import { formatCurrencyBRL } from '../utils/format';
 import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
@@ -30,8 +32,10 @@ export function TransactionsScreen({ navigation }: any) {
   const [activeMonth, setActiveMonth] = useState('Todos');
   const [activeMethod, setActiveMethod] = useState('Todos');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionFeedItem | null>(null);
 
   const monthIndex = activeMonth === 'Todos' ? null : MONTHS.indexOf(activeMonth) - 1;
+  const categoriesQuery = useFinanceCategories(currentUser?.id);
   const sectionsQuery = useTransactionSections(currentUser?.id, {
     search: searchText,
     type: activeType,
@@ -154,9 +158,9 @@ export function TransactionsScreen({ navigation }: any) {
         contentContainerStyle={styles.listContent}
         renderSectionHeader={({ section }) => <Text style={styles.sectionTitle}>{section.date}</Text>}
         renderItem={({ item, index, section }) => (
-          <View style={styles.transactionCard}>
-            <TransactionListItem item={item} showDivider={index < section.data.length - 1} />
-          </View>
+          <Pressable style={styles.transactionCard} onPress={() => setSelectedTransaction(item)}>
+            <TransactionListItem item={item} showDivider={index < section.data.length - 1} showOptions />
+          </Pressable>
         )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -167,6 +171,12 @@ export function TransactionsScreen({ navigation }: any) {
             )}
           </View>
         }
+      />
+      <TransactionActionsSheet
+        visible={selectedTransaction !== null}
+        transaction={selectedTransaction}
+        categories={categoriesQuery.data ?? []}
+        onClose={() => setSelectedTransaction(null)}
       />
     </SafeAreaView>
   );

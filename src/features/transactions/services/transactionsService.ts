@@ -8,6 +8,7 @@ import type {
   TransactionFeedItem,
   TransactionFilters,
   TransactionSection,
+  UpdateTransactionInput,
 } from '../types';
 
 type CategoryRow = {
@@ -303,6 +304,71 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
   }
 
   return data as string;
+}
+
+export async function updateTransaction(id: string, input: UpdateTransactionInput): Promise<void> {
+  const userId = await requireCurrentUserId();
+  const update: Record<string, unknown> = {};
+  if (input.title !== undefined) update.title = input.title.trim();
+  if (input.amount !== undefined) update.amount = Number(input.amount.toFixed(2));
+  if (input.type !== undefined) update.type = input.type;
+  if (input.paymentMethod !== undefined) update.payment_method = input.paymentMethod;
+  if (input.occurredAt !== undefined) {
+    update.occurred_at = input.occurredAt;
+    update.occurred_on = input.occurredAt.slice(0, 10);
+  }
+  if (input.notes !== undefined) update.notes = input.notes.trim();
+  if ('categoryId' in input) update.category_id = input.categoryId;
+
+  const { error } = await supabase
+    .from('personal_transactions')
+    .update(update)
+    .eq('id', id)
+    .eq('user_id', userId);
+
+  if (error) throw new Error('Não foi possível atualizar a transação.');
+}
+
+export async function deleteTransaction(id: string): Promise<void> {
+  const userId = await requireCurrentUserId();
+  const { error } = await supabase
+    .from('personal_transactions')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
+  if (error) throw new Error('Não foi possível excluir a transação.');
+}
+
+export async function deleteTransfer(transactionId: string): Promise<void> {
+  const userId = await requireCurrentUserId();
+  const { data, error } = await supabase
+    .from('account_transfers')
+    .select('from_transaction_id, to_transaction_id')
+    .or(`from_transaction_id.eq.${transactionId},to_transaction_id.eq.${transactionId}`)
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !data) throw new Error('Não foi possível encontrar a transferência.');
+
+  const transfer = data as { from_transaction_id: string; to_transaction_id: string };
+  const { error: delError } = await supabase
+    .from('personal_transactions')
+    .delete()
+    .in('id', [transfer.from_transaction_id, transfer.to_transaction_id])
+    .eq('user_id', userId);
+
+  if (delError) throw new Error('Não foi possível excluir a transferência.');
+}
+
+export async function reverseCardPayment(transactionId: string): Promise<void> {
+  const userId = await requireCurrentUserId();
+  const { error } = await supabase
+    .from('personal_transactions')
+    .delete()
+    .eq('id', transactionId)
+    .eq('user_id', userId)
+    .eq('source_type', 'card_payment');
+  if (error) throw new Error('Não foi possível desfazer o pagamento.');
 }
 
 export function summarizeTransactions(items: TransactionFeedItem[]) {

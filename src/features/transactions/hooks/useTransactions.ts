@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { financeQueryKeys } from '../../finance/queryKeys';
-import { createTransaction, listCategories, listTransactionFeed, listTransactionSections } from '../services/transactionsService';
-import type { CreateTransactionInput, TransactionFilters } from '../types';
+import { createTransaction, deleteTransaction, deleteTransfer, listCategories, listTransactionFeed, listTransactionSections, reverseCardPayment, updateTransaction } from '../services/transactionsService';
+import type { CreateTransactionInput, TransactionFilters, UpdateTransactionInput } from '../types';
 
 export function useFinanceCategories(userId?: string | null) {
   return useQuery({
@@ -40,6 +40,60 @@ export function useCreateTransactionMutation(userId?: string | null) {
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.accounts.all });
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.budgets.all });
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.reports.all });
+    },
+  });
+}
+
+export function useUpdateTransactionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateTransactionInput }) => updateTransaction(id, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.transactions.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.dashboard.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.accounts.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.budgets.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.reports.all });
+    },
+  });
+}
+
+export function useDeleteTransactionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteTransaction(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.transactions.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.dashboard.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.accounts.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.budgets.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.reports.all });
+    },
+  });
+}
+
+export function useDeleteTransferMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (transactionId: string) => deleteTransfer(transactionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.transactions.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.dashboard.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.accounts.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.reports.all });
+    },
+  });
+}
+
+export function useReverseCardPaymentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (transactionId: string) => reverseCardPayment(transactionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.transactions.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.dashboard.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.accounts.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.cards.all });
     },
   });
 }
