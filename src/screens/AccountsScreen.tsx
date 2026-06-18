@@ -14,8 +14,6 @@ import {
   ArrowDownRight,
   ArrowLeft,
   ArrowUpRight,
-  ChevronRight,
-  CreditCard,
   Eye,
   EyeOff,
   Landmark,
@@ -305,25 +303,6 @@ export function AccountsScreen({ navigation }: any) {
           </View>
         )}
 
-        <View style={styles.quickActions}>
-          <Pressable
-            style={styles.quickActionCard}
-            onPress={() => navigation.navigate("Cards")}
-          >
-            <View style={styles.quickActionContent}>
-              <View style={styles.quickActionIcon}>
-                <CreditCard size={20} color={colors.primary} />
-              </View>
-              <View>
-                <Text style={styles.quickActionTitle}>Cartões</Text>
-                <Text style={styles.quickActionSubtitle}>
-                  Gerenciar faturas
-                </Text>
-              </View>
-            </View>
-            <ChevronRight size={18} color={colors.primary} />
-          </Pressable>
-        </View>
       </ScrollView>
 
       <AddAccountModal
@@ -582,44 +561,6 @@ const createStyles = (colors: AppColors) =>
       ...typography.h2,
       color: colors.textPrimary,
       textAlign: "right",
-    },
-    quickActions: {
-      gap: spacing.sm,
-      marginTop: spacing.md,
-      flexDirection: "row",
-    },
-    quickActionCard: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      backgroundColor: colors.surface,
-      padding: spacing.sm,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    quickActionContent: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.sm,
-    },
-    quickActionIcon: {
-      width: 44,
-      height: 44,
-      backgroundColor: colors.primarySoft,
-      borderRadius: radius.md,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    quickActionTitle: {
-      ...typography.body,
-      color: colors.textPrimary,
-      fontWeight: "600",
-    },
-    quickActionSubtitle: {
-      ...typography.caption,
-      color: colors.textSecondary,
     },
     emptyCard: {
       backgroundColor: colors.surface,

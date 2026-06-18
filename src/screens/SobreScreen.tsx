@@ -1,19 +1,21 @@
 import React, { useMemo, useState } from "react";
 import {
   Linking,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
+import { FontAwesome5 } from "@expo/vector-icons";
 import {
-  Feather,
-  FontAwesome5,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
+  ArrowLeft,
+  CheckCircle2,
+  ExternalLink,
+  PiggyBank,
+} from "lucide-react-native";
 
 import { useAboutContent } from "../features/about/hooks/useAbout";
 import {
@@ -27,14 +29,10 @@ import {
 
 function iconNameFromKey(key: string): keyof typeof FontAwesome5.glyphMap {
   switch (key) {
-    case "instagram":
-      return "instagram";
-    case "twitter":
-      return "twitter";
-    case "github":
-      return "github";
-    default:
-      return "link";
+    case "instagram": return "instagram";
+    case "twitter":   return "twitter";
+    case "github":    return "github";
+    default:          return "link";
   }
 }
 
@@ -42,12 +40,13 @@ export default function SobreScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [rating, setRating] = useState(0);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const aboutQuery = useAboutContent();
   const about = aboutQuery.data;
 
   const openLink = (url: string) => {
-    Linking.openURL(url).catch((error) =>
-      console.error("Erro ao abrir link", error),
+    Linking.openURL(url).catch((err) =>
+      console.error("Erro ao abrir link", err),
     );
   };
 
@@ -60,28 +59,26 @@ export default function SobreScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
+          <Pressable
+            style={({ pressed }) => [
+              styles.backButton,
+              pressed && styles.pressed,
+            ]}
             onPress={() => navigation.goBack()}
           >
-            <Feather name="arrow-left" size={24} color={colors.white} />
-            <Text style={styles.backText}>Sobre o App</Text>
-          </TouchableOpacity>
+            <ArrowLeft size={24} color={colors.white} />
+          </Pressable>
 
           <View style={styles.logoContainer}>
-            <MaterialCommunityIcons
-              name="piggy-bank"
-              size={50}
-              color={colors.white}
-            />
+            <PiggyBank size={36} color={colors.white} />
           </View>
-          <Text style={styles.h1}>{about?.appName ?? "Finance Control"}</Text>
-          <Text style={styles.captionHeader}>
+          <Text style={styles.appName}>{about?.appName ?? "Finance Control"}</Text>
+          <Text style={styles.appVersion}>
             Versão {about?.version ?? "1.0.0"}
           </Text>
         </View>
 
-        <View style={styles.bodyWrapper}>
+        <View style={styles.body}>
           {aboutQuery.isLoading ? (
             <View style={styles.card}>
               <Text style={styles.bodyTextCenter}>Carregando conteúdo...</Text>
@@ -90,7 +87,7 @@ export default function SobreScreen({ navigation }: any) {
           {aboutQuery.isError ? (
             <View style={styles.card}>
               <Text style={styles.bodyTextCenter}>
-                Não foi possível carregar o conteúdo institucional.
+                Não foi possível carregar o conteúdo.
               </Text>
             </View>
           ) : null}
@@ -102,7 +99,7 @@ export default function SobreScreen({ navigation }: any) {
               </View>
 
               <View style={styles.card}>
-                <Text style={styles.h2}>Funcionalidades</Text>
+                <Text style={styles.sectionTitle}>Funcionalidades</Text>
                 {about.features.map((item) => (
                   <View key={item.id} style={styles.listItem}>
                     <View style={styles.bullet} />
@@ -111,50 +108,69 @@ export default function SobreScreen({ navigation }: any) {
                 ))}
               </View>
 
-              <View style={styles.starsContainer}>
-                {[1, 2, 3, 4, 5].map((item) => (
-                  <TouchableOpacity
-                    key={item}
-                    onPress={() => setRating(item)}
-                    activeOpacity={0.7}
-                  >
-                    <FontAwesome5
-                      name="star"
-                      size={32}
-                      color={item <= rating ? colors.warning : colors.border}
-                      solid={item <= rating}
-                      style={styles.star}
-                    />
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Avalie o app</Text>
+                {ratingSubmitted ? (
+                  <View style={styles.ratingThanks}>
+                    <CheckCircle2 size={20} color={colors.success} />
+                    <Text style={styles.ratingThanksText}>
+                      Obrigado pelo seu feedback!
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.starsRow}>
+                      {[1, 2, 3, 4, 5].map((item) => (
+                        <Pressable
+                          key={item}
+                          onPress={() => setRating(item)}
+                          style={({ pressed }) => pressed && styles.pressed}
+                        >
+                          <FontAwesome5
+                            name="star"
+                            size={32}
+                            color={item <= rating ? colors.warning : colors.border}
+                            solid={item <= rating}
+                            style={styles.star}
+                          />
+                        </Pressable>
+                      ))}
+                    </View>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.ratingButton,
+                        rating === 0 && styles.ratingButtonDisabled,
+                        pressed && rating > 0 && styles.pressed,
+                      ]}
+                      disabled={rating === 0}
+                      onPress={() => setRatingSubmitted(true)}
+                    >
+                      <Text style={styles.ratingButtonText}>
+                        {about.ratingTitle}
+                      </Text>
+                    </Pressable>
+                  </>
+                )}
               </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.buttonSuccess,
-                  { opacity: rating === 0 ? 0.5 : 1 },
-                ]}
-                disabled={rating === 0}
-                onPress={() => alert(`Obrigado pela nota ${rating}!`)}
-              >
-                <Text style={styles.buttonText}>{about.ratingTitle}</Text>
-              </TouchableOpacity>
-
               <View style={[styles.card, styles.centerCard]}>
-                <Text style={styles.h2}>Siga-nos</Text>
-                <View style={styles.socialIconsContainer}>
+                <Text style={styles.sectionTitle}>Siga-nos</Text>
+                <View style={styles.socialRow}>
                   {about.socialLinks.map((link) => (
-                    <TouchableOpacity
+                    <Pressable
                       key={link.id}
+                      style={({ pressed }) => [
+                        styles.socialButton,
+                        pressed && styles.pressed,
+                      ]}
                       onPress={() => openLink(link.url)}
                     >
                       <FontAwesome5
                         name={iconNameFromKey(link.key)}
-                        size={28}
+                        size={22}
                         color={colors.textPrimary}
-                        style={styles.socialIcon}
                       />
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
                 </View>
               </View>
@@ -162,17 +178,16 @@ export default function SobreScreen({ navigation }: any) {
               <View style={styles.card}>
                 {about.legalLinks.map((link, index) => (
                   <React.Fragment key={link.id}>
-                    <TouchableOpacity
-                      style={styles.legalLink}
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.legalLink,
+                        pressed && styles.pressed,
+                      ]}
                       onPress={() => openLink(link.url)}
                     >
                       <Text style={styles.legalText}>{link.label}</Text>
-                      <Feather
-                        name="external-link"
-                        size={16}
-                        color={colors.textSecondary}
-                      />
-                    </TouchableOpacity>
+                      <ExternalLink size={16} color={colors.textSecondary} />
+                    </Pressable>
                     {index < about.legalLinks.length - 1 ? (
                       <View style={styles.divider} />
                     ) : null}
@@ -200,67 +215,71 @@ const createStyles = (colors: AppColors) =>
     content: {
       paddingBottom: spacing.xxl,
     },
+    pressed: {
+      opacity: 0.75,
+    },
+
+    // Header
     header: {
       backgroundColor: colors.primary,
       paddingTop: layout.pageHeaderTop,
-      paddingBottom: spacing.xxl + spacing.sm,
+      paddingBottom: spacing.xxl + spacing.md,
       paddingHorizontal: layout.pageHorizontal,
       alignItems: "center",
     },
     backButton: {
-      flexDirection: "row",
-      alignItems: "center",
       alignSelf: "flex-start",
+      width: 40,
+      height: 40,
+      borderRadius: radius.pill,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(255,255,255,0.15)",
       marginBottom: spacing.xl,
-    },
-    backText: {
-      color: colors.white,
-      ...typography.h1,
-      marginLeft: spacing.sm,
     },
     logoContainer: {
       width: 80,
       height: 80,
-      backgroundColor: colors.success,
-      borderRadius: radius.lg,
+      backgroundColor: "rgba(255,255,255,0.15)",
+      borderRadius: radius.xl,
       justifyContent: "center",
       alignItems: "center",
       marginBottom: spacing.lg,
-      elevation: 8,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.2)",
     },
-    h1: {
+    appName: {
       ...typography.h1,
       color: colors.white,
       fontWeight: "700",
     },
-    h2: {
-      ...typography.h2,
-      color: colors.textPrimary,
-      marginBottom: spacing.md,
-    },
-    captionHeader: {
+    appVersion: {
       ...typography.body,
-      color: "rgba(255,255,255,0.72)",
+      color: "rgba(255,255,255,0.65)",
       marginTop: spacing.xs,
     },
-    bodyWrapper: {
+
+    // Body
+    body: {
       paddingHorizontal: layout.pageHorizontal,
-      marginTop: -30,
+      marginTop: -spacing.xl,
+      gap: spacing.md,
+      paddingBottom: spacing.xl,
     },
     card: {
       backgroundColor: colors.surface,
       padding: spacing.lg,
       borderRadius: radius.lg,
-      marginBottom: spacing.lg,
       borderWidth: 1,
       borderColor: colors.border,
-      shadowColor: colors.shadow,
-      shadowOpacity: 0.08,
-      shadowRadius: 10,
-      elevation: 4,
     },
     centerCard: {
       alignItems: "center",
+    },
+    sectionTitle: {
+      ...typography.h2,
+      color: colors.textPrimary,
+      marginBottom: spacing.md,
     },
     bodyText: {
       ...typography.body,
@@ -277,27 +296,77 @@ const createStyles = (colors: AppColors) =>
       flexDirection: "row",
       alignItems: "center",
       marginBottom: spacing.sm,
+      gap: spacing.md,
     },
     bullet: {
       width: 6,
       height: 6,
-      borderRadius: 3,
-      backgroundColor: colors.success,
-      marginRight: spacing.md,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+      flexShrink: 0,
     },
-    socialIconsContainer: {
+
+    // Rating
+    starsRow: {
       flexDirection: "row",
       justifyContent: "center",
-      marginTop: spacing.sm,
+      marginBottom: spacing.lg,
+      gap: spacing.sm,
     },
-    socialIcon: {
-      marginHorizontal: spacing.lg,
+    star: {
+      marginHorizontal: spacing.xs,
     },
+    ratingButton: {
+      backgroundColor: colors.primaryLight,
+      height: 48,
+      borderRadius: radius.md,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    ratingButtonDisabled: {
+      opacity: 0.4,
+    },
+    ratingButtonText: {
+      ...typography.body,
+      color: colors.white,
+      fontWeight: "700",
+    },
+    ratingThanks: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.sm,
+      paddingVertical: spacing.md,
+    },
+    ratingThanksText: {
+      ...typography.body,
+      color: colors.success,
+      fontWeight: "700",
+    },
+
+    // Social
+    socialRow: {
+      flexDirection: "row",
+      gap: spacing.md,
+      marginTop: spacing.xs,
+    },
+    socialButton: {
+      width: 48,
+      height: 48,
+      borderRadius: radius.md,
+      backgroundColor: colors.surfaceMuted,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+
+    // Legal
     legalLink: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingVertical: spacing.sm + 4,
+      paddingVertical: spacing.md,
     },
     legalText: {
       ...typography.body,
@@ -307,28 +376,5 @@ const createStyles = (colors: AppColors) =>
     divider: {
       height: 1,
       backgroundColor: colors.border,
-    },
-    starsContainer: {
-      flexDirection: "row",
-      marginTop: spacing.sm,
-      marginBottom: spacing.lg,
-      justifyContent: "center",
-    },
-    star: {
-      marginHorizontal: 6,
-    },
-    buttonSuccess: {
-      backgroundColor: colors.success,
-      width: "100%",
-      height: 48,
-      borderRadius: radius.md,
-      marginBottom: spacing.lg,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    buttonText: {
-      color: colors.white,
-      fontWeight: "700",
-      fontSize: 16,
     },
   });

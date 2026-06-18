@@ -58,3 +58,15 @@ export type PayCardInvoiceInput = {
   amount?: number | null;
   note?: string;
 };
+
+export type InvoiceCharge = {
+  chargeId: string;
+  title: string;
+  notes: string | null;
+  categoryLabel: string | null;
+  categoryColor: string | null;
+  installmentNumber: number;
+  totalInstallments: number;
+  amount: number;
+  status: string;
+};

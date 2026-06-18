@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { financeQueryKeys } from '../../finance/queryKeys';
-import { createCard, listCardInvoices, listCards, payCardInvoice, recordCardCharge } from '../services/cardsService';
+import { createCard, listCardInvoices, listCards, listInvoiceCharges, payCardInvoice, recordCardCharge, updateCard } from '../services/cardsService';
 import type { CreateCardInput, PayCardInvoiceInput, RecordCardChargeInput } from '../types';
 
 export function useCards(userId?: string | null) {
@@ -17,6 +17,25 @@ export function useCardInvoices(userId?: string | null, monthDate?: string | nul
     queryKey: financeQueryKeys.cards.invoices(userId, monthDate),
     queryFn: () => listCardInvoices(monthDate),
     enabled: Boolean(userId),
+  });
+}
+
+export function useInvoiceCharges(userId?: string | null, cardId?: string | null, invoiceMonth?: string | null) {
+  return useQuery({
+    queryKey: financeQueryKeys.cards.charges(cardId, invoiceMonth),
+    queryFn: () => listInvoiceCharges(cardId!, invoiceMonth!),
+    enabled: Boolean(userId) && Boolean(cardId) && Boolean(invoiceMonth),
+  });
+}
+
+export function useUpdateCardMutation(userId?: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<CreateCardInput> }) =>
+      updateCard(id, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.cards.all });
+    },
   });
 }
 

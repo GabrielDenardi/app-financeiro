@@ -24,6 +24,8 @@ export const financeQueryKeys = {
     list: (userId?: string | null) => ['finance', 'cards', 'list', userId] as const,
     invoices: (userId?: string | null, monthDate?: string | null) =>
       ['finance', 'cards', 'invoices', userId, monthDate] as const,
+    charges: (cardId?: string | null, invoiceMonth?: string | null) =>
+      ['finance', 'cards', 'charges', cardId, invoiceMonth] as const,
   },
   budgets: {
     all: ['finance', 'budgets'] as const,

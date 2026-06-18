@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Check, CreditCard } from "lucide-react-native";
@@ -34,6 +34,18 @@ type AddCardModalProps = {
   submitting?: boolean;
   onClose: () => void;
   onSubmit: (input: CreateCardInput) => Promise<void> | void;
+  initialValues?: {
+    name?: string;
+    institution?: string;
+    network?: string;
+    lastDigits?: string;
+    limitAmount?: number;
+    dueDay?: number;
+    closingDay?: number;
+    color?: string;
+  };
+  title?: string;
+  submitLabel?: string;
 };
 
 function parseCurrencyInput(value: string) {
@@ -53,6 +65,9 @@ export function AddCardModal({
   submitting = false,
   onClose,
   onSubmit,
+  initialValues,
+  title = "Novo Cartão",
+  submitLabel = "Criar Cartão",
 }: AddCardModalProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -64,6 +79,29 @@ export function AddCardModal({
   const [closingDay, setClosingDay] = useState("");
   const [dueDay, setDueDay] = useState("");
   const [cardColor, setCardColor] = useState(CARD_COLORS[0]);
+
+  useEffect(() => {
+    if (!visible) return;
+    if (initialValues) {
+      setName(initialValues.name ?? "");
+      setInstitution(initialValues.institution ?? "");
+      setNetwork(initialValues.network ?? "Visa");
+      setLimitAmount(initialValues.limitAmount ? initialValues.limitAmount.toFixed(2).replace(".", ",") : "");
+      setLastDigits(initialValues.lastDigits ?? "");
+      setClosingDay(initialValues.closingDay ? String(initialValues.closingDay) : "");
+      setDueDay(initialValues.dueDay ? String(initialValues.dueDay) : "");
+      setCardColor(initialValues.color ?? CARD_COLORS[0]);
+    } else {
+      setName("");
+      setInstitution("");
+      setNetwork("Visa");
+      setLimitAmount("");
+      setLastDigits("");
+      setClosingDay("");
+      setDueDay("");
+      setCardColor(CARD_COLORS[0]);
+    }
+  }, [visible]);
 
   const handleSubmit = async () => {
     await onSubmit({
@@ -82,13 +120,13 @@ export function AddCardModal({
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      title="Novo Cartão"
+      title={title}
       subtitle="Configure os detalhes do seu cartão"
       footer={(close) => (
         <>
           <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
           <Button
-            label="Criar Cartão"
+            label={submitLabel}
             fullWidth
             onPress={handleSubmit}
             disabled={!name.trim()}
