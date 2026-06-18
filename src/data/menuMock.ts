@@ -2,7 +2,6 @@ import {
   Bell,
   Globe,
   HelpCircle,
-  MessageCircle,
   Moon,
   Shield,
   Smartphone,
@@ -23,7 +22,6 @@ export const menuMock: MenuSections[] = [
     title: 'Suporte',
     items: [
       { icon: HelpCircle, label: 'Central de Ajuda', page: 'Help' },
-      { icon: MessageCircle, label: 'Chat de Suporte', page: 'ListChat' },
       { icon: Shield, label: 'Privacidade e Segurança', page: 'Privacy' },
       { icon: Smartphone, label: 'Sobre o App', page: 'About' },
     ],

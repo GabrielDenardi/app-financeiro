@@ -2,17 +2,24 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
-  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { ArrowLeft, Send } from 'lucide-react-native';
+
+import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import {
+  useMarkSupportConversationReadMutation,
+  useSendSupportMessageMutation,
+  useSupportMessages,
+} from '../features/support/hooks/useSupport';
 import {
   layout,
   radius,
@@ -21,14 +28,6 @@ import {
   type AppColors,
   useThemeColors,
 } from '../theme';
-import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../components/Card';
-import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
-import {
-  useMarkSupportConversationReadMutation,
-  useSendSupportMessageMutation,
-  useSupportMessages,
-} from '../features/support/hooks/useSupport';
 
 interface ChatRouteParams {
   chatId: string;
@@ -45,7 +44,6 @@ export default function ChatScreen() {
   const messagesQuery = useSupportMessages(user?.id, params.chatId);
   const markReadMutation = useMarkSupportConversationReadMutation(user?.id);
   const sendMessageMutation = useSendSupportMessageMutation(user?.id);
-  const [settingsMenu, setSettingsMenu] = useState(false);
   const [messageText, setMessageText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -53,53 +51,52 @@ export default function ChatScreen() {
     if (params.chatId) {
       markReadMutation.mutate(params.chatId);
     }
-  }, [markReadMutation, params.chatId]);
+  }, [params.chatId]);
 
   const handleSend = async () => {
-    if (!messageText.trim()) {
-      return;
-    }
-
+    const text = messageText.trim();
+    if (!text) return;
+    setMessageText('');
     await sendMessageMutation.mutateAsync({
       conversationId: params.chatId,
-      body: messageText,
+      body: text,
     });
-    setMessageText('');
   };
+
+  const messages = messagesQuery.data ?? [];
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1 }}
-      keyboardVerticalOffset={25}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 25}
     >
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <Pressable
             onPress={() => navigation.goBack()}
-            style={({ pressed }) => [
-              styles.backButton,
-              pressed && styles.pressed,
-            ]}
+            style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
-            <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+            <ArrowLeft size={20} color={colors.textPrimary} />
           </Pressable>
 
-          <View style={styles.headerCopy}>
-            <View style={styles.headerUser}>
-              <Ionicons name="people-outline" size={30} />
-              <Text style={styles.headerTitle}>{params.chatTitle}</Text>
-            </View>
+          <View style={styles.botAvatar}>
+            <Text style={styles.botAvatarText}>IA</Text>
+          </View>
 
-            <TouchableOpacity onPress={() => setSettingsMenu(!settingsMenu)}>
-              <Ionicons name="ellipsis-vertical-circle-outline" size={30} />
-            </TouchableOpacity>
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {params.chatTitle}
+            </Text>
+            <Text style={styles.headerSubtitle}>Assistente automático</Text>
           </View>
         </View>
 
         <ScrollView
-          style={styles.scrollSection}
           ref={scrollViewRef}
+          style={styles.messageList}
+          contentContainerStyle={styles.messageListContent}
+          showsVerticalScrollIndicator={false}
           onContentSizeChange={() =>
             scrollViewRef.current?.scrollToEnd({ animated: true })
           }
@@ -107,80 +104,112 @@ export default function ChatScreen() {
             scrollViewRef.current?.scrollToEnd({ animated: false })
           }
         >
-          {messagesQuery.isLoading ? <ActivityIndicator style={{ marginTop: 20 }} /> : null}
-          {(messagesQuery.data ?? []).map((item) => {
-            const isCurrentUser = item.senderUserId === user?.id || item.senderRole === 'user';
-            return (
-              <View
-                style={
-                  isCurrentUser
-                    ? styles.groupMessageRight
-                    : styles.groupMessageLeft
-                }
-                key={item.id}
-              >
-                <Ionicons
-                  name="person-outline"
-                  size={20}
-                  style={{ marginTop: 15 }}
-                />
-                <Card style={styles.cardMessage}>
-                  <Text style={styles.textMessage}>{item.body}</Text>
-                  <Text style={styles.timeMessage}>
-                    {new Date(item.createdAt).toLocaleTimeString('pt-BR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </Text>
-                </Card>
+          {messagesQuery.isLoading ? (
+            <ActivityIndicator
+              color={colors.primary}
+              style={{ marginTop: spacing.xl }}
+            />
+          ) : messages.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyAvatar}>
+                <Text style={styles.emptyAvatarText}>IA</Text>
               </View>
-            );
-          })}
+              <Text style={styles.emptyTitle}>Assistente Financeiro</Text>
+              <Text style={styles.emptyText}>
+                Envie uma mensagem para começar o atendimento.
+              </Text>
+            </View>
+          ) : (
+            messages.map((item, index) => {
+              const isUser =
+                item.senderUserId === user?.id || item.senderRole === 'user';
+              const prevItem = messages[index - 1];
+              const prevIsUser =
+                !prevItem ||
+                prevItem.senderUserId === user?.id ||
+                prevItem.senderRole === 'user';
+              const showBotAvatar = !isUser && prevIsUser;
+              const time = new Date(item.createdAt).toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit',
+              });
+
+              return (
+                <View
+                  key={item.id}
+                  style={[
+                    styles.messageRow,
+                    isUser ? styles.messageRowUser : styles.messageRowBot,
+                  ]}
+                >
+                  {!isUser && (
+                    <View
+                      style={[
+                        styles.botAvatar,
+                        !showBotAvatar && styles.avatarHidden,
+                      ]}
+                    >
+                      <Text style={styles.botAvatarText}>IA</Text>
+                    </View>
+                  )}
+
+                  <View
+                    style={[
+                      styles.bubble,
+                      isUser ? styles.bubbleUser : styles.bubbleBot,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.bubbleText,
+                        isUser && styles.bubbleTextUser,
+                      ]}
+                    >
+                      {item.body}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.bubbleTime,
+                        isUser && styles.bubbleTimeUser,
+                      ]}
+                    >
+                      {time}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
         </ScrollView>
 
-        {settingsMenu && (
-          <View style={styles.settingsModal}>
-            <Card>
-              <View style={styles.itemModal}>
-                <Ionicons name="information-circle-outline" size={15} />
-                <Text style={styles.textModal}>Info</Text>
-              </View>
-              <View style={styles.borderModal} />
-              <View style={styles.itemModal}>
-                <Ionicons name="warning-outline" size={15} />
-                <Text style={styles.textModal}>Denúncia</Text>
-              </View>
-            </Card>
-          </View>
-        )}
-
-        <View style={styles.actionsSection}>
-          <View style={styles.inputSection}>
+        <View style={styles.inputBar}>
+          <View style={styles.inputWrap}>
             <TextInput
               style={styles.textInput}
-              placeholder="Escreva sua mensagem."
-              multiline={true}
-              scrollEnabled={true}
+              placeholder="Mensagem..."
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              scrollEnabled
               value={messageText}
               onChangeText={setMessageText}
             />
-            <TouchableOpacity disabled>
-              <Ionicons name="attach-outline" size={25} color={colors.border} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSend}>
-              <View style={styles.sendInput}>
-                {sendMessageMutation.isPending ? (
-                  <ActivityIndicator color={colors.white} />
-                ) : (
-                  <Ionicons
-                    name="send-outline"
-                    size={25}
-                    style={{ color: colors.white }}
-                  />
-                )}
-              </View>
-            </TouchableOpacity>
           </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.sendButton,
+              (!messageText.trim() || sendMessageMutation.isPending) &&
+                styles.sendButtonDisabled,
+              pressed && styles.pressed,
+            ]}
+            onPress={handleSend}
+            disabled={!messageText.trim() || sendMessageMutation.isPending}
+          >
+            {sendMessageMutation.isPending ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <Send size={18} color={colors.white} />
+            )}
+          </Pressable>
         </View>
       </SafeAreaView>
     </KeyboardAvoidingView>
@@ -200,129 +229,167 @@ const createStyles = (colors: AppColors) =>
       paddingHorizontal: layout.pageHorizontal,
       paddingTop: layout.pageHeaderTop,
       paddingBottom: spacing.md,
+      backgroundColor: colors.surface,
       borderBottomWidth: 1,
-      borderColor: colors.border,
+      borderBottomColor: colors.border,
     },
     backButton: {
       width: 40,
       height: 40,
       borderRadius: radius.pill,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.background,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
       borderColor: colors.border,
     },
-    pressed: {
-      opacity: 0.85,
+    pressed: { opacity: 0.75 },
+    botAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
     },
-    headerCopy: {
+    botAvatarText: {
+      ...typography.caption,
+      color: colors.white,
+      fontWeight: '700',
+    },
+    avatarHidden: {
+      opacity: 0,
+    },
+    headerInfo: {
       flex: 1,
-      gap: spacing.xs,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
+      gap: 2,
     },
     headerTitle: {
-      ...typography.h1,
+      ...typography.h3,
       color: colors.textPrimary,
     },
-    headerUser: {
-      flexDirection: 'row',
+    headerSubtitle: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    messageList: {
+      flex: 1,
+    },
+    messageListContent: {
+      paddingHorizontal: layout.pageHorizontal,
+      paddingVertical: spacing.lg,
       gap: spacing.sm,
+    },
+    emptyState: {
+      alignItems: 'center',
+      paddingTop: spacing.xxl * 2,
+      gap: spacing.md,
+    },
+    emptyAvatar: {
+      width: 72,
+      height: 72,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
       justifyContent: 'center',
     },
-    scrollSection: {
-      marginBottom: 75,
+    emptyAvatarText: {
+      ...typography.h1,
+      color: colors.white,
+      fontWeight: '700',
     },
-    groupMessageLeft: {
-      flexDirection: 'row',
-      gap: 10,
-      padding: 10,
+    emptyTitle: {
+      ...typography.h2,
+      color: colors.textPrimary,
     },
-    groupMessageRight: {
-      flexDirection: 'row-reverse',
-      gap: 10,
-      padding: 10,
-    },
-    cardMessage: {
-      maxWidth: '80%',
-      minWidth: '50%',
-      minHeight: 30,
-      maxHeight: 300,
-    },
-    textMessage: {
+    emptyText: {
       ...typography.body,
-      marginBottom: 10,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      paddingHorizontal: spacing.xl,
     },
-    timeMessage: {
-      position: 'absolute',
-      right: 10,
-      bottom: 5,
-      ...typography.caption,
-      fontSize: 10,
-    },
-    actionsSection: {
+    messageRow: {
       flexDirection: 'row',
-      position: 'absolute',
-      bottom: 0,
-      width: '100%',
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.xs,
-      backgroundColor: colors.surface,
-      borderTopWidth: 1,
-      borderColor: colors.border,
+      alignItems: 'flex-end',
+      gap: spacing.sm,
     },
-    inputSection: {
-      flex: 1,
+    messageRowUser: {
+      flexDirection: 'row-reverse',
+    },
+    messageRowBot: {
       flexDirection: 'row',
-      alignItems: 'center',
+    },
+    bubble: {
+      maxWidth: '75%',
+      paddingHorizontal: spacing.md,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.sm,
+      borderRadius: radius.lg,
+      gap: spacing.xs,
+    },
+    bubbleUser: {
+      backgroundColor: colors.primaryLight,
+      borderBottomRightRadius: 4,
+    },
+    bubbleBot: {
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 25,
-      paddingHorizontal: 15,
-      gap: 10,
-      marginTop: spacing.sm,
-      marginBottom: spacing.xs,
+      borderBottomLeftRadius: 4,
+    },
+    bubbleText: {
+      ...typography.body,
+      color: colors.textPrimary,
+      lineHeight: 20,
+    },
+    bubbleTextUser: {
+      color: colors.white,
+    },
+    bubbleTime: {
+      ...typography.caption,
+      fontSize: 10,
+      color: colors.textSecondary,
+      alignSelf: 'flex-end',
+    },
+    bubbleTimeUser: {
+      color: 'rgba(255,255,255,0.65)',
+    },
+    inputBar: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: spacing.sm,
+      paddingHorizontal: layout.pageHorizontal,
+      paddingVertical: spacing.md,
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    inputWrap: {
+      flex: 1,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      minHeight: 44,
+      maxHeight: 120,
+      justifyContent: 'center',
     },
     textInput: {
-      flex: 1,
-      paddingVertical: 8,
-      fontSize: 16,
-      maxHeight: 120,
-    },
-    sendInput: {
-      backgroundColor: colors.primaryLight,
-      width: 45,
-      height: 45,
-      borderRadius: radius.pill,
-      justifyContent: 'center',
-      alignItems: 'center',
-      elevation: 2,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 2,
-    },
-    settingsModal: {
-      position: 'absolute',
-      right: 10,
-      top: 70,
-      minWidth: 120,
-    },
-    itemModal: {
-      flexDirection: 'row',
-      gap: 5,
-      alignItems: 'center',
-    },
-    borderModal: {
-      borderWidth: 0.6,
-      marginTop: 5,
-      marginBottom: 5,
-      borderColor: colors.border,
-    },
-    textModal: {
       ...typography.body,
-      fontWeight: '500',
+      color: colors.textPrimary,
+    },
+    sendButton: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.pill,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sendButtonDisabled: {
+      opacity: 0.4,
     },
   });
