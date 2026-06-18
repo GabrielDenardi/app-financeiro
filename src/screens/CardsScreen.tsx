@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -12,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Clock, Pencil, Plus, Receipt } from 'lucide-react-native';
+import { AlertTriangle, CheckCircle2, ChevronRight, Clock, Pencil, Plus, Receipt } from 'lucide-react-native';
 
 import { AddCardBillsModal } from '../components/AddCardBillsModal';
 import { AddCardModal } from '../components/AddCardModal';
@@ -210,44 +209,36 @@ export default function CardsScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* ── Header ── */}
-        <View style={styles.header}>
-          <LinearGradient
-            colors={[colors.primary, colors.primary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.headerGradient}
-          >
-            <SafeAreaView style={styles.safeArea}>
-              <View style={styles.headerContent}>
-                <View style={styles.headerTop}>
-                  <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <ChevronLeft color={colors.white} size={24} />
-                  </Pressable>
-                  <Text style={styles.headerTitle}>Meus Cartões</Text>
-                  <Pressable style={styles.addButton} onPress={() => setCardModalVisible(true)}>
-                    <Plus color={colors.white} size={20} />
-                    <Text style={styles.addButtonText}>Novo</Text>
-                  </Pressable>
-                </View>
-                <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Faturas em aberto</Text>
-                    <Text style={styles.statValue}>{formatCurrencyBRL(totalOpenAmount)}</Text>
-                  </View>
-                  <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>Alertas</Text>
-                    <Text style={[styles.statValue, styles.alertValue]}>{urgentAlerts.length}</Text>
-                  </View>
-                </View>
-              </View>
-            </SafeAreaView>
-          </LinearGradient>
+    <SafeAreaView style={styles.container}>
+      {/* ── Header ── */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Meus Cartões</Text>
+        <Button
+          label="Novo"
+          size="sm"
+          icon={<Plus size={16} color={colors.white} />}
+          onPress={() => setCardModalVisible(true)}
+        />
+      </View>
+
+      {/* ── Resumo fixo ── */}
+      <View style={styles.summaryCard}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Em aberto</Text>
+            <Text style={[styles.summaryValue, { color: totalOpenAmount > 0 ? colors.danger : colors.textPrimary }]}>
+              {formatCurrencyBRL(totalOpenAmount)}
+            </Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Alertas</Text>
+            <Text style={[styles.summaryValue, { color: urgentAlerts.length > 0 ? colors.warning : colors.textPrimary }]}>
+              {urgentAlerts.length === 0 ? 'Nenhum' : String(urgentAlerts.length)}
+            </Text>
+          </View>
         </View>
 
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* ── Main Content ── */}
         <View style={styles.mainContent}>
           {urgentAlerts.length > 0 && (
@@ -659,7 +650,7 @@ export default function CardsScreen({ navigation }: any) {
         onClose={() => setChargeModalVisible(false)}
         onSubmit={handleCreateCharge}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -672,82 +663,52 @@ const createStyles = (colors: AppColors) =>
     scrollContent: {
       paddingBottom: 40,
     },
-    safeArea: {
-      flex: 1,
-    },
     header: {
-      minHeight: 220,
-      width: '100%',
-      backgroundColor: 'transparent',
-    },
-    headerGradient: {
-      flex: 1,
-      paddingTop: Platform.OS === 'ios' ? 0 : spacing.md,
-      paddingBottom: spacing.xl + 10,
-      borderBottomLeftRadius: radius.lg * 1.5,
-      borderBottomRightRadius: radius.lg * 1.5,
-    },
-    headerContent: {
-      paddingHorizontal: layout.pageHorizontal,
-    },
-    headerTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginTop: layout.pageHeaderTop,
-      marginBottom: spacing.xl,
+      paddingHorizontal: layout.pageHorizontal,
+      paddingTop: layout.pageHeaderTop,
+      paddingBottom: spacing.md,
+      gap: spacing.md,
     },
-    headerTitle: {
+    title: {
       ...typography.h1,
-      color: colors.white,
-    },
-    backButton: {
-      padding: spacing.sm,
-      marginLeft: -spacing.sm,
-    },
-    addButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.xs,
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-    },
-    addButtonText: {
-      ...typography.caption,
-      color: colors.white,
-      fontWeight: '700',
-    },
-    statsRow: {
-      flexDirection: 'row',
-      backgroundColor: 'rgba(255,255,255,0.08)',
-      borderRadius: radius.lg,
-      padding: spacing.lg,
-    },
-    statItem: {
+      color: colors.textPrimary,
       flex: 1,
     },
-    statLabel: {
+    summaryCard: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      marginHorizontal: layout.pageHorizontal,
+      paddingVertical: spacing.lg,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: spacing.lg,
+    },
+    summaryItem: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    summaryLabel: {
       ...typography.caption,
-      color: 'rgba(255,255,255,0.8)',
+      color: colors.textSecondary,
+      marginBottom: 4,
     },
-    statValue: {
-      ...typography.h2,
-      color: colors.white,
-      marginTop: spacing.xs,
+    summaryValue: {
+      ...typography.body,
+      fontWeight: '700',
+      fontSize: 13,
     },
-    alertValue: {
-      color: '#FCD34D',
-    },
-    statDivider: {
+    summaryDivider: {
       width: 1,
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      marginHorizontal: spacing.md,
+      height: '60%' as any,
+      backgroundColor: colors.border,
+      alignSelf: 'center',
     },
     mainContent: {
       paddingHorizontal: layout.pageHorizontal,
-      marginTop: spacing.md,
       gap: spacing.md,
     },
     alertCard: {

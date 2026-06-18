@@ -18,6 +18,7 @@ import {
   Trash2,
 } from "lucide-react-native";
 import { Calendar, CalendarUtils } from "react-native-calendars";
+import { useNavigation } from "@react-navigation/native";
 
 import { PageHeader } from "../components/PageHeader";
 import { PageShell } from "../components/PageShell";
@@ -88,6 +89,7 @@ function monthlyNeed(current: number, target: number, due: string | null) {
 export default function MetasScreen() {
   const themeColors = useThemeColors();
   const s = useMemo(() => createStyles(themeColors), [themeColors]);
+  const navigation = useNavigation<any>();
   const user = useAuthenticatedUser();
   const goalsQuery = useGoals(user?.id);
   const accountsQuery = useAccounts(user?.id);
@@ -237,6 +239,7 @@ export default function MetasScreen() {
           title="Metas Financeiras"
           subtitle={`${activeCount} ativa(s)`}
           variant="primary"
+          onBackPress={() => navigation.goBack()}
           action={
             <Button
               label="Nova Meta"
