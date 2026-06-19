@@ -333,7 +333,7 @@ const createStyles = (colors: AppColors) =>
     },
     greeting: {
       ...typography.h1,
-      color: "rgba(255,255,255,0.65)",
+      color: colors.whiteAlpha65,
       fontWeight: "400",
     },
     greetingName: {
@@ -343,7 +343,7 @@ const createStyles = (colors: AppColors) =>
     },
     subtitle: {
       ...typography.caption,
-      color: "rgba(255,255,255,0.5)",
+      color: colors.whiteAlpha50,
       marginTop: spacing.xs,
       marginBottom: spacing.sm,
       textTransform: "capitalize",
@@ -352,9 +352,9 @@ const createStyles = (colors: AppColors) =>
       width: 40,
       height: 40,
       borderRadius: radius.pill,
-      backgroundColor: "rgba(255,255,255,0.15)",
+      backgroundColor: colors.whiteAlpha15,
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.2)",
+      borderColor: colors.whiteAlpha20,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -451,7 +451,7 @@ const createStyles = (colors: AppColors) =>
       ...typography.body,
       color: colors.textPrimary,
       fontWeight: "700",
-      marginTop: 2,
+      marginTop: spacing.xs,
     },
     emptyText: {
       ...typography.body,

@@ -14,7 +14,13 @@ import { BottomSheet } from '../../../components/BottomSheet';
 import { Button } from '../../../components/Button';
 import { FieldCard, FieldDivider, FieldRow } from '../../../components/FormField';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
-import { formatCurrencyBRL } from '../../../utils/format';
+import { formatCurrencyInput } from '../../finance/utils';
+import {
+  formatCurrencyBRL,
+  formatDateInput,
+  maskDateInput,
+  parseDateInput,
+} from '../../../utils/format';
 import {
   useDeleteTransactionMutation,
   useDeleteTransferMutation,
@@ -31,36 +37,6 @@ const PAYMENT_METHODS = [
   { label: 'Cartão de crédito', value: 'Cartao de credito' },
   { label: 'Boleto', value: 'Boleto' },
 ];
-
-function formatCentsToDisplay(cents: string): string {
-  const num = parseInt(cents || '0', 10);
-  return isNaN(num)
-    ? '0,00'
-    : (num / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function dateISOToDisplay(iso?: string | null): string {
-  if (!iso || iso.length < 10) return '';
-  const [y, m, d] = iso.slice(0, 10).split('-');
-  return `${d}/${m}/${y}`;
-}
-
-function displayToISO(display: string): string | null {
-  const parts = display.split('/');
-  if (parts.length !== 3 || parts[2].length !== 4) return null;
-  const iso = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-  return isNaN(Date.parse(iso)) ? null : iso;
-}
-
-function maskDate(text: string): string {
-  const digits = text.replace(/\D/g, '').slice(0, 8);
-  let result = '';
-  for (let i = 0; i < digits.length; i++) {
-    if (i === 2 || i === 4) result += '/';
-    result += digits[i];
-  }
-  return result;
-}
 
 function reversePaymentMethodLabel(label: string): string {
   return PAYMENT_METHODS.find((m) => m.label === label)?.value ?? label;
@@ -109,7 +85,7 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
     setEditType(transaction.type);
     setEditTitle(transaction.title);
     setAmountDigits(Math.round(transaction.amount * 100).toString());
-    setEditDateDisplay(dateISOToDisplay(transaction.dateISO ?? transaction.occurredOn));
+    setEditDateDisplay(formatDateInput(transaction.dateISO ?? transaction.occurredOn));
     setEditCategoryId(transaction.categoryId ?? null);
     setEditPaymentMethod(reversePaymentMethodLabel(transaction.paymentMethod));
     setEditNotes(transaction.notes ?? '');
@@ -134,7 +110,7 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
 
   function handleSave() {
     if (!transaction) return;
-    const isoDate = displayToISO(editDateDisplay);
+    const isoDate = parseDateInput(editDateDisplay);
     if (!editTitle.trim()) {
       Alert.alert('Atenção', 'O título é obrigatório.');
       return;
@@ -209,7 +185,7 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
           {transaction ? (
             <>
               <View style={styles.previewRow}>
-                <View style={[styles.colorDot, { backgroundColor: transaction.categoryColor ?? '#94A3B8' }]} />
+                <View style={[styles.colorDot, { backgroundColor: transaction.categoryColor ?? colors.textSecondary }]} />
                 <View style={styles.previewTexts}>
                   <Text style={styles.previewTitle} numberOfLines={1}>
                     {transaction.title}
@@ -403,7 +379,7 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
               prefix="R$"
               placeholder="0,00"
               keyboardType="numeric"
-              value={formatCentsToDisplay(amountDigits)}
+              value={formatCurrencyInput(amountDigits)}
               onChangeText={(text) => {
                 const digits = text.replace(/\D/g, '').replace(/^0+/, '');
                 setAmountDigits(digits || '0');
@@ -416,7 +392,7 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
               keyboardType="numeric"
               maxLength={10}
               value={editDateDisplay}
-              onChangeText={(text) => setEditDateDisplay(maskDate(text))}
+              onChangeText={(text) => setEditDateDisplay(maskDateInput(text))}
             />
           </FieldCard>
 
@@ -539,7 +515,7 @@ const createStyles = (colors: AppColors) =>
     previewCategory: {
       ...typography.caption,
       color: colors.textSecondary,
-      marginTop: 2,
+      marginTop: spacing.xs,
     },
     previewAmount: {
       ...typography.body,
@@ -643,7 +619,7 @@ const createStyles = (colors: AppColors) =>
       alignItems: 'center',
       gap: spacing.xs,
       paddingHorizontal: spacing.md,
-      paddingVertical: 6,
+      paddingVertical: spacing.sm,
       borderRadius: radius.pill,
       borderWidth: 1,
       borderColor: colors.border,

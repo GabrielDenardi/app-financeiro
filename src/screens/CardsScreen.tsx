@@ -30,8 +30,13 @@ import {
 } from '../features/cards/hooks/useCards';
 import type { CardInvoiceSummary, CreditCard } from '../features/cards/types';
 import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
+import { formatCurrencyInput, normalizeCurrencyInput } from '../features/finance/utils';
 import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
-import { formatCurrencyBRL } from '../utils/format';
+import {
+  formatCurrencyBRL,
+  formatMonthYearShort,
+  getRelativeDueDateInfo,
+} from '../utils/format';
 
 function darkenHex(hex: string, amount: number): string {
   const num = parseInt(hex.replace('#', ''), 16);
@@ -46,31 +51,11 @@ function getGradient(color: string): [string, string] {
   return [color, darkenHex(color, 40)];
 }
 
-const MONTH_NAMES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
-function formatInvoiceMonth(dateStr: string): string {
-  const parts = dateStr.split('-');
-  const month = parseInt(parts[1], 10);
-  return `${MONTH_NAMES[month - 1]}/${parts[0]}`;
-}
-
 function isInvoiceClosed(invoiceMonth: string, closingDay: number): boolean {
   const today = new Date();
   const parts = invoiceMonth.split('-').map(Number);
   const closingDate = new Date(parts[0], parts[1] - 1, closingDay);
   return today >= closingDate;
-}
-
-function getDueDateInfo(dueDate: string | null): { label: string; isOverdue: boolean } {
-  if (!dueDate) return { label: '', isOverdue: false };
-  const due = new Date(`${dueDate}T00:00:00`);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return { label: `Vencida há ${Math.abs(diffDays)} dia${Math.abs(diffDays) !== 1 ? 's' : ''}`, isOverdue: true };
-  if (diffDays === 0) return { label: 'Vence hoje', isOverdue: true };
-  if (diffDays === 1) return { label: 'Vence amanhã', isOverdue: false };
-  return { label: `Vence em ${diffDays} dias`, isOverdue: false };
 }
 
 export default function CardsScreen({ navigation }: any) {
@@ -196,8 +181,8 @@ export default function CardsScreen({ navigation }: any) {
     if (paymentMode === 'minimum') {
       amount = minimumPayment;
     } else if (paymentMode === 'custom') {
-      const parsed = parseFloat(customAmountText.replace(',', '.'));
-      if (isNaN(parsed) || parsed <= 0) {
+      const parsed = normalizeCurrencyInput(customAmountText);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
         Alert.alert('Valor inválido', 'Digite um valor maior que zero.');
         return;
       }
@@ -244,7 +229,7 @@ export default function CardsScreen({ navigation }: any) {
           {urgentAlerts.length > 0 && (
             <View style={styles.alertCard}>
               <View style={styles.alertIcon}>
-                <AlertTriangle color="#D97706" size={20} />
+                <AlertTriangle color={colors.warning} size={20} />
               </View>
               <View style={styles.alertTextContent}>
                 <Text style={styles.alertTitle}>
@@ -294,7 +279,7 @@ export default function CardsScreen({ navigation }: any) {
                       <View style={styles.cardHeaderRight}>
                         <Text style={styles.cardNetwork}>{card.network}</Text>
                         <Pressable onPress={() => setEditingCard(card)} style={styles.editCardBtn}>
-                          <Pencil size={14} color="rgba(255,255,255,0.8)" />
+                          <Pencil size={14} color={colors.whiteAlpha80} />
                         </Pressable>
                       </View>
                     </View>
@@ -315,7 +300,7 @@ export default function CardsScreen({ navigation }: any) {
                   {closedUnpaid.map((inv) => {
                     const invoiceKey = `${card.id}-${inv.invoiceMonth}`;
                     const isThisPaying = payingKey === invoiceKey;
-                    const dueDateInfo = getDueDateInfo(inv.dueDate);
+                    const dueDateInfo = getRelativeDueDateInfo(inv.dueDate);
                     return (
                       <View
                         key={inv.invoiceMonth}
@@ -331,7 +316,7 @@ export default function CardsScreen({ navigation }: any) {
                           <View style={styles.invoicePanelLeft}>
                             <View style={styles.invoicePanelBadgeRow}>
                               <Text style={styles.invoicePanelMonth}>
-                                {`Fatura de ${formatInvoiceMonth(inv.invoiceMonth)}`}
+                                {`Fatura de ${formatMonthYearShort(inv.invoiceMonth)}`}
                               </Text>
                               <View style={[styles.invoiceStateBadge, dueDateInfo.isOverdue ? styles.badgeOverdue : styles.badgeClosed]}>
                                 <Text style={[styles.invoiceStateBadgeText, dueDateInfo.isOverdue ? styles.badgeOverdueText : styles.badgeClosedText]}>
@@ -382,7 +367,7 @@ export default function CardsScreen({ navigation }: any) {
                         <View style={styles.invoicePanelLeft}>
                           <View style={styles.invoicePanelBadgeRow}>
                             <Text style={styles.invoicePanelMonth}>
-                              {`Fatura de ${formatInvoiceMonth(currentOpen.invoiceMonth)}`}
+                              {`Fatura de ${formatMonthYearShort(currentOpen.invoiceMonth)}`}
                             </Text>
                             <View style={[styles.invoiceStateBadge, styles.badgeOpen]}>
                               <Text style={[styles.invoiceStateBadgeText, styles.badgeOpenText]}>Em aberto</Text>
@@ -461,7 +446,7 @@ export default function CardsScreen({ navigation }: any) {
       <BottomSheet
         visible={paymentSheetVisible}
         onClose={() => { setPaymentSheetVisible(false); setPendingPayment(null); }}
-        title={pendingPayment ? `Pagar fatura de ${formatInvoiceMonth(pendingPayment.invoiceMonth)}` : 'Pagamento'}
+        title={pendingPayment ? `Pagar fatura de ${formatMonthYearShort(pendingPayment.invoiceMonth)}` : 'Pagamento'}
         footer={(close) => (
           <>
             <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
@@ -501,7 +486,7 @@ export default function CardsScreen({ navigation }: any) {
             <TextInput
               style={styles.customAmountInput}
               value={customAmountText}
-              onChangeText={setCustomAmountText}
+              onChangeText={(value) => setCustomAmountText(formatCurrencyInput(value))}
               keyboardType="decimal-pad"
               placeholder="0,00"
               placeholderTextColor={colors.textSecondary}
@@ -536,7 +521,7 @@ export default function CardsScreen({ navigation }: any) {
       <BottomSheet
         visible={selectedInvoice !== null}
         onClose={() => setSelectedInvoice(null)}
-        title={selectedInvoice ? `Lançamentos de ${formatInvoiceMonth(selectedInvoice.invoiceMonth)}` : ''}
+        title={selectedInvoice ? `Lançamentos de ${formatMonthYearShort(selectedInvoice.invoiceMonth)}` : ''}
       >
         <View style={styles.chargesContent}>
           {!chargesQuery.isLoading && (
@@ -585,7 +570,7 @@ export default function CardsScreen({ navigation }: any) {
               {historyInvoices.map((inv) => {
                 const isPaidInv = inv.openAmount <= 0;
                 const isClosedInv = historyCard ? isInvoiceClosed(inv.invoiceMonth, historyCard.closingDay) : false;
-                const dueDateInfoInv = getDueDateInfo(inv.dueDate);
+                const dueDateInfoInv = getRelativeDueDateInfo(inv.dueDate);
                 const stateLabel = isPaidInv ? 'Paga' : isClosedInv ? (dueDateInfoInv.isOverdue ? 'Vencida' : 'Fechada') : 'Em aberto';
                 const badgeStyle = isPaidInv ? styles.badgePaid : isClosedInv ? (dueDateInfoInv.isOverdue ? styles.badgeOverdue : styles.badgeClosed) : styles.badgeOpen;
                 const badgeTextStyle = isPaidInv ? styles.badgePaidText : isClosedInv ? (dueDateInfoInv.isOverdue ? styles.badgeOverdueText : styles.badgeClosedText) : styles.badgeOpenText;
@@ -600,7 +585,7 @@ export default function CardsScreen({ navigation }: any) {
                     }}
                   >
                     <View style={styles.historyItemLeft}>
-                      <Text style={styles.historyItemMonth}>{formatInvoiceMonth(inv.invoiceMonth)}</Text>
+                      <Text style={styles.historyItemMonth}>{formatMonthYearShort(inv.invoiceMonth)}</Text>
                       <View style={[styles.invoiceStateBadge, badgeStyle]}>
                         <Text style={[styles.invoiceStateBadgeText, badgeTextStyle]}>{stateLabel}</Text>
                       </View>
@@ -661,7 +646,7 @@ const createStyles = (colors: AppColors) =>
       backgroundColor: colors.background,
     },
     scrollContent: {
-      paddingBottom: 40,
+      paddingBottom: spacing.xxl + spacing.sm,
     },
     header: {
       flexDirection: 'row',
@@ -694,7 +679,7 @@ const createStyles = (colors: AppColors) =>
     summaryLabel: {
       ...typography.caption,
       color: colors.textSecondary,
-      marginBottom: 4,
+      marginBottom: spacing.xs,
     },
     summaryValue: {
       ...typography.body,
@@ -718,13 +703,13 @@ const createStyles = (colors: AppColors) =>
       borderRadius: radius.lg,
       padding: spacing.md,
       borderWidth: 1,
-      borderColor: '#FDBA74',
+      borderColor: colors.warning,
     },
     alertIcon: {
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: '#FDE68A',
+      backgroundColor: colors.warningSoft,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: spacing.md,
@@ -761,7 +746,7 @@ const createStyles = (colors: AppColors) =>
       width: 180,
       height: 180,
       borderRadius: 90,
-      backgroundColor: 'rgba(255,255,255,0.08)',
+      backgroundColor: colors.whiteAlpha08,
       top: -70,
       right: -35,
     },
@@ -770,7 +755,7 @@ const createStyles = (colors: AppColors) =>
       width: 140,
       height: 140,
       borderRadius: 70,
-      backgroundColor: 'rgba(255,255,255,0.08)',
+      backgroundColor: colors.whiteAlpha08,
       bottom: -45,
       left: -15,
     },
@@ -786,7 +771,7 @@ const createStyles = (colors: AppColors) =>
     },
     cardInst: {
       ...typography.caption,
-      color: 'rgba(255,255,255,0.8)',
+      color: colors.whiteAlpha80,
       fontWeight: '700',
     },
     cardName: {
@@ -803,7 +788,7 @@ const createStyles = (colors: AppColors) =>
       width: 28,
       height: 28,
       borderRadius: 14,
-      backgroundColor: 'rgba(255,255,255,0.15)',
+      backgroundColor: colors.whiteAlpha15,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -823,7 +808,7 @@ const createStyles = (colors: AppColors) =>
     },
     cardLabel: {
       ...typography.caption,
-      color: 'rgba(255,255,255,0.8)',
+      color: colors.whiteAlpha80,
       fontWeight: '700',
     },
     cardInfo: {
@@ -872,7 +857,7 @@ const createStyles = (colors: AppColors) =>
     },
     invoiceStateBadge: {
       paddingHorizontal: spacing.sm,
-      paddingVertical: 2,
+      paddingVertical: spacing.xs,
       borderRadius: radius.pill,
     },
     badgePaid: { backgroundColor: colors.successSoft },
@@ -1074,7 +1059,7 @@ const createStyles = (colors: AppColors) =>
     paymentModeSub: {
       ...typography.caption,
       color: colors.textSecondary,
-      marginTop: 2,
+      marginTop: spacing.xs,
       textAlign: 'center',
     },
     paymentModeSubActive: {
@@ -1162,7 +1147,7 @@ const createStyles = (colors: AppColors) =>
     },
     chargeContent: {
       flex: 1,
-      gap: 2,
+      gap: spacing.xs / 2,
     },
     chargeItemTitle: {
       ...typography.body,
@@ -1205,7 +1190,7 @@ const createStyles = (colors: AppColors) =>
     },
     historyItemRight: {
       alignItems: 'flex-end',
-      gap: 2,
+      gap: spacing.xs / 2,
     },
     historyItemTotal: {
       ...typography.body,

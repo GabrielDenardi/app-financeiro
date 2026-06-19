@@ -6,6 +6,7 @@ import type {
   AccountBalanceSnapshot,
   CreateTransferInput,
 } from "../features/accounts/types";
+import { formatCurrencyInput, normalizeCurrencyInput } from "../features/finance/utils";
 import { radius, spacing, typography, type AppColors, useThemeColors } from "../theme";
 import { BottomSheet } from "./BottomSheet";
 import { Button } from "./Button";
@@ -18,10 +19,6 @@ type TransferModalProps = {
   onClose: () => void;
   onSubmit: (input: CreateTransferInput) => Promise<void> | void;
 };
-
-function parseCurrencyInput(value: string) {
-  return Number(value.replace(/\./g, "").replace(",", ".") || 0);
-}
 
 export function TransferModal({
   visible,
@@ -67,7 +64,7 @@ export function TransferModal({
     await onSubmit({
       fromAccountId,
       toAccountId,
-      amount: parseCurrencyInput(amount),
+      amount: normalizeCurrencyInput(amount),
     });
   };
 
@@ -78,8 +75,8 @@ export function TransferModal({
 
   const saveDisabled =
     !amount.trim() ||
-    parseCurrencyInput(amount) <= 0 ||
-    !Number.isFinite(parseCurrencyInput(amount)) ||
+    normalizeCurrencyInput(amount) <= 0 ||
+    !Number.isFinite(normalizeCurrencyInput(amount)) ||
     !fromAccountId ||
     !toAccountId ||
     fromAccountId === toAccountId;
@@ -175,7 +172,7 @@ export function TransferModal({
             maxLength={10}
             style={styles.amountInput}
             value={amount}
-            onChangeText={setAmount}
+            onChangeText={(value) => setAmount(formatCurrencyInput(value))}
           />
         </View>
       </View>

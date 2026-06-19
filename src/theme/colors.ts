@@ -18,6 +18,12 @@ export type AppColors = {
   border: string;
   mutedSurface: string;
   white: string;
+  whiteAlpha80: string;
+  whiteAlpha65: string;
+  whiteAlpha50: string;
+  whiteAlpha20: string;
+  whiteAlpha15: string;
+  whiteAlpha08: string;
   shadow: string;
   overlay: string;
 };
@@ -40,6 +46,12 @@ export const lightColors: AppColors = {
   border: "#E2E8F0",
   mutedSurface: "#F1F5F9",
   white: "#FFFFFF",
+  whiteAlpha80: "rgba(255, 255, 255, 0.8)",
+  whiteAlpha65: "rgba(255, 255, 255, 0.65)",
+  whiteAlpha50: "rgba(255, 255, 255, 0.5)",
+  whiteAlpha20: "rgba(255, 255, 255, 0.2)",
+  whiteAlpha15: "rgba(255, 255, 255, 0.15)",
+  whiteAlpha08: "rgba(255, 255, 255, 0.08)",
   shadow: "#0F172A",
   overlay: "rgba(15, 23, 42, 0.5)",
 };
@@ -62,6 +74,12 @@ export const darkColors: AppColors = {
   border: "#1E293B",
   mutedSurface: "#162235",
   white: "#FFFFFF",
+  whiteAlpha80: "rgba(255, 255, 255, 0.8)",
+  whiteAlpha65: "rgba(255, 255, 255, 0.65)",
+  whiteAlpha50: "rgba(255, 255, 255, 0.5)",
+  whiteAlpha20: "rgba(255, 255, 255, 0.2)",
+  whiteAlpha15: "rgba(255, 255, 255, 0.15)",
+  whiteAlpha08: "rgba(255, 255, 255, 0.08)",
   shadow: "#000000",
   overlay: "rgba(2, 6, 23, 0.72)",
 };

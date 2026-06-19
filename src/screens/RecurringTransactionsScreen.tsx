@@ -41,6 +41,7 @@ import {
 } from '../features/recurring/hooks/useRecurring';
 import type { RecurringTransaction } from '../features/recurring/types';
 import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
+import { formatMonthDate } from '../features/finance/utils';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { formatCurrencyBRL } from '../utils/format';
 
@@ -55,17 +56,12 @@ function moneyValue(v: string) {
 }
 
 function currentMonthDate() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}-01`;
+  return formatMonthDate();
 }
 
 function isConfirmedThisMonth(lastExecutionMonth: string | null): boolean {
   if (!lastExecutionMonth) return false;
-  const now = new Date();
-  const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  return lastExecutionMonth.startsWith(prefix);
+  return lastExecutionMonth === currentMonthDate();
 }
 
 export default function RecurringTransactionsScreen() {

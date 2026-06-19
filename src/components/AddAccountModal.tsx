@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   Banknote,
@@ -13,6 +13,7 @@ import type {
   AccountType,
   CreateAccountInput,
 } from "../features/accounts/types";
+import { formatCurrencyInput, normalizeCurrencyInput } from "../features/finance/utils";
 import { spacing, typography, type AppColors, useThemeColors } from "../theme";
 import { BottomSheet } from "./BottomSheet";
 import { Button } from "./Button";
@@ -47,10 +48,6 @@ type AddAccountModalProps = {
   onSubmit: (input: CreateAccountInput) => Promise<void> | void;
 };
 
-function parseCurrencyInput(value: string) {
-  return Number(value.replace(/\./g, "").replace(",", ".") || 0);
-}
-
 export function AddAccountModal({
   visible,
   submitting = false,
@@ -67,12 +64,22 @@ export function AddAccountModal({
     colors.primaryLight,
   );
 
+  useEffect(() => {
+    if (!visible) {
+      setName("");
+      setInstitution("");
+      setOpeningBalance("");
+      setType("checking");
+      setSelectedColor(colors.primaryLight);
+    }
+  }, [colors.primaryLight, visible]);
+
   const handleSubmit = async () => {
     await onSubmit({
       name: name.trim(),
       institution: institution.trim(),
       type,
-      openingBalance: parseCurrencyInput(openingBalance),
+      openingBalance: normalizeCurrencyInput(openingBalance),
       color: selectedColor,
     });
   };
@@ -173,7 +180,7 @@ export function AddAccountModal({
           placeholder="0,00"
           keyboardType="decimal-pad"
           value={openingBalance}
-          onChangeText={setOpeningBalance}
+          onChangeText={(value) => setOpeningBalance(formatCurrencyInput(value))}
         />
       </FieldCard>
 

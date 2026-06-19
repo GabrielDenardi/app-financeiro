@@ -28,6 +28,7 @@ import { Chip } from "../components/Chip";
 import { FieldCard, FieldDivider, FieldRow } from "../components/FormField";
 import { useAccounts } from "../features/accounts/hooks/useAccounts";
 import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
+import { formatCurrencyInput, normalizeCurrencyInput } from "../features/finance/utils";
 import {
   useCreateGoalMutation,
   useDeleteGoalMutation,
@@ -45,7 +46,6 @@ import {
 import { formatCurrencyBRL } from "../utils/format";
 
 const TODAY = CalendarUtils.getCalendarDateString(new Date());
-const GOAL_COLORS = ["#10B981", "#3B82F6", "#8B5CF6", "#F43F5E", "#F59E0B"];
 const ICONS = [
   { id: "target", label: "Geral", Icon: Target },
   { id: "car", label: "Carro", Icon: Car },
@@ -54,17 +54,6 @@ const ICONS = [
   { id: "wallet", label: "Reserva", Icon: Landmark },
 ] as const;
 
-function moneyMask(v: string) {
-  const raw = v.replace(/\D/g, "");
-  if (!raw) return "";
-  return (Number(raw) / 100)
-    .toFixed(2)
-    .replace(".", ",")
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-}
-function moneyValue(v: string) {
-  return Number((v || "0").replace(/\./g, "").replace(",", "."));
-}
 function iconOf(id: string) {
   return ICONS.find((item) => item.id === id)?.Icon ?? Target;
 }
@@ -89,6 +78,16 @@ function monthlyNeed(current: number, target: number, due: string | null) {
 export default function MetasScreen() {
   const themeColors = useThemeColors();
   const s = useMemo(() => createStyles(themeColors), [themeColors]);
+  const goalColors = useMemo(
+    () => [
+      themeColors.success,
+      themeColors.primary,
+      themeColors.primaryLight,
+      themeColors.danger,
+      themeColors.warning,
+    ],
+    [themeColors],
+  );
   const navigation = useNavigation<any>();
   const user = useAuthenticatedUser();
   const goalsQuery = useGoals(user?.id);
@@ -107,7 +106,7 @@ export default function MetasScreen() {
   const [target, setTarget] = useState("");
   const [saved, setSaved] = useState("");
   const [due, setDue] = useState(TODAY);
-  const [color, setColor] = useState(GOAL_COLORS[0]);
+  const [color, setColor] = useState(themeColors.success);
   const [icon, setIcon] = useState<(typeof ICONS)[number]["id"]>("car");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -135,7 +134,7 @@ export default function MetasScreen() {
     setTarget("");
     setSaved("");
     setDue(TODAY);
-    setColor(GOAL_COLORS[0]);
+    setColor(goalColors[0]);
     setIcon("car");
   };
 
@@ -152,8 +151,8 @@ export default function MetasScreen() {
     try {
       await createGoal.mutateAsync({
         title: title.trim(),
-        targetAmount: moneyValue(target),
-        initialAmount: moneyValue(saved),
+        targetAmount: normalizeCurrencyInput(target),
+        initialAmount: normalizeCurrencyInput(saved),
         targetDate: due,
         color,
         icon,
@@ -191,7 +190,7 @@ export default function MetasScreen() {
     ]);
 
   const onContribute = async () => {
-    if (!goalId || !accountId || moneyValue(amount) <= 0) {
+    if (!goalId || !accountId || normalizeCurrencyInput(amount) <= 0) {
       Alert.alert("Atenção", "Selecione uma conta e informe um aporte válido.");
       return;
     }
@@ -199,7 +198,7 @@ export default function MetasScreen() {
       await contribute.mutateAsync({
         goalId,
         accountId,
-        amount: moneyValue(amount),
+        amount: normalizeCurrencyInput(amount),
         note,
       });
       setAddOpen(false);
@@ -425,7 +424,7 @@ export default function MetasScreen() {
             placeholder="0,00"
             keyboardType="numeric"
             value={target}
-            onChangeText={(v) => setTarget(moneyMask(v))}
+            onChangeText={(value) => setTarget(formatCurrencyInput(value))}
           />
           <FieldDivider />
           <FieldRow
@@ -434,7 +433,7 @@ export default function MetasScreen() {
             placeholder="0,00"
             keyboardType="numeric"
             value={saved}
-            onChangeText={(v) => setSaved(moneyMask(v))}
+            onChangeText={(value) => setSaved(formatCurrencyInput(value))}
           />
         </FieldCard>
 
@@ -479,7 +478,7 @@ export default function MetasScreen() {
 
         <Text style={s.label}>Cor</Text>
         <View style={s.colors}>
-          {GOAL_COLORS.map((item) => (
+          {goalColors.map((item) => (
             <Pressable
               key={item}
               style={[
@@ -537,7 +536,7 @@ export default function MetasScreen() {
             placeholder="0,00"
             keyboardType="numeric"
             value={amount}
-            onChangeText={(v) => setAmount(moneyMask(v))}
+            onChangeText={(value) => setAmount(formatCurrencyInput(value))}
             autoFocus
           />
           <FieldDivider />

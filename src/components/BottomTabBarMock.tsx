@@ -66,13 +66,13 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
               {route.name === 'Budget' ? (
                 <MaterialCommunityIcons
                   name={iconName}
-                  size={isFocused ? 20 : 22}
+                  size={isFocused ? 22 : 20}
                   color={isFocused ? colors.primary : colors.textSecondary}
                 />
               ) : (
                 <Ionicons
                   name={iconName}
-                  size={isFocused ? 20 : 22}
+                  size={isFocused ? 22 : 20}
                   color={isFocused ? colors.primary : colors.textSecondary}
                 />
               )}

@@ -22,7 +22,12 @@ import {
   useDeleteBudgetMutation,
   useUpsertBudgetMutation,
 } from "../features/budgets/hooks/useBudgets";
-import { formatMonthDate, monthLabel } from "../features/finance/utils";
+import {
+  formatCurrencyInput,
+  formatMonthDate,
+  monthLabel,
+  normalizeCurrencyInput,
+} from "../features/finance/utils";
 import { useFinanceCategories } from "../features/transactions/hooks/useTransactions";
 import {
   radius,
@@ -49,15 +54,6 @@ export default function BudgetsScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [limitAmount, setLimitAmount] = useState("");
-
-  function moneyMask(v: string) {
-    const raw = v.replace(/\D/g, "");
-    if (!raw) return "";
-    return (Number(raw) / 100)
-      .toFixed(2)
-      .replace(".", ",")
-      .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  }
 
   const expenseCategories = useMemo(
     () =>
@@ -106,9 +102,7 @@ export default function BudgetsScreen() {
       return;
     }
 
-    const parsedAmount = Number(
-      limitAmount.replace(/\./g, "").replace(",", ".") || 0,
-    );
+    const parsedAmount = normalizeCurrencyInput(limitAmount);
     if (parsedAmount <= 0) {
       Alert.alert("Erro", "Informe um valor maior que zero.");
       return;
@@ -303,7 +297,7 @@ export default function BudgetsScreen() {
             placeholder="0,00"
             keyboardType="decimal-pad"
             value={limitAmount}
-            onChangeText={(v) => setLimitAmount(moneyMask(v))}
+            onChangeText={(value) => setLimitAmount(formatCurrencyInput(value))}
           />
         </FieldCard>
 

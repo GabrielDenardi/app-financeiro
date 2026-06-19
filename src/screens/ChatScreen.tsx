@@ -28,6 +28,7 @@ import {
   type AppColors,
   useThemeColors,
 } from '../theme';
+import { formatTime } from '../utils/format';
 
 interface ChatRouteParams {
   chatId: string;
@@ -56,11 +57,11 @@ export default function ChatScreen() {
   const handleSend = async () => {
     const text = messageText.trim();
     if (!text) return;
-    setMessageText('');
     await sendMessageMutation.mutateAsync({
       conversationId: params.chatId,
       body: text,
     });
+    setMessageText('');
   };
 
   const messages = messagesQuery.data ?? [];
@@ -129,10 +130,7 @@ export default function ChatScreen() {
                 prevItem.senderUserId === user?.id ||
                 prevItem.senderRole === 'user';
               const showBotAvatar = !isUser && prevIsUser;
-              const time = new Date(item.createdAt).toLocaleTimeString('pt-BR', {
-                hour: '2-digit',
-                minute: '2-digit',
-              });
+              const time = formatTime(item.createdAt);
 
               return (
                 <View
@@ -263,7 +261,7 @@ const createStyles = (colors: AppColors) =>
     },
     headerInfo: {
       flex: 1,
-      gap: 2,
+      gap: spacing.xs / 2,
     },
     headerTitle: {
       ...typography.h3,
@@ -353,7 +351,7 @@ const createStyles = (colors: AppColors) =>
       alignSelf: 'flex-end',
     },
     bubbleTimeUser: {
-      color: 'rgba(255,255,255,0.65)',
+      color: colors.whiteAlpha65,
     },
     inputBar: {
       flexDirection: 'row',

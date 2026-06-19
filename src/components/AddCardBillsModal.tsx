@@ -15,6 +15,7 @@ import type {
   RecordCardChargeInput,
 } from "../features/cards/types";
 import type { FinanceCategory } from "../features/transactions/types";
+import { formatCurrencyInput, normalizeCurrencyInput } from "../features/finance/utils";
 import {
   radius,
   spacing,
@@ -50,20 +51,6 @@ type AddCardBillsModalProps = {
   onClose: () => void;
   onSubmit: (input: RecordCardChargeInput) => Promise<void> | void;
 };
-
-function formatCurrencyInput(value: string) {
-  const digits = value.replace(/\D/g, "");
-  const numeric = Number(digits || "0") / 100;
-
-  return numeric.toLocaleString("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-function parseCurrencyInput(value: string) {
-  return Number(value.replace(/\./g, "").replace(",", ".") || 0);
-}
 
 export function AddCardBillsModal({
   visible,
@@ -113,7 +100,7 @@ export function AddCardBillsModal({
 
   const installmentCount =
     installment === "A vista" ? 1 : Number(installment.replace("x", "")) || 1;
-  const numericAmount = parseCurrencyInput(amount);
+  const numericAmount = normalizeCurrencyInput(amount);
 
   const handleSave = async () => {
     await onSubmit({

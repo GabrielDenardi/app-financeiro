@@ -234,19 +234,19 @@ const createStyles = (colors: AppColors) =>
       borderRadius: radius.pill,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "rgba(255,255,255,0.15)",
+      backgroundColor: colors.whiteAlpha15,
       marginBottom: spacing.xl,
     },
     logoContainer: {
       width: 80,
       height: 80,
-      backgroundColor: "rgba(255,255,255,0.15)",
+      backgroundColor: colors.whiteAlpha15,
       borderRadius: radius.xl,
       justifyContent: "center",
       alignItems: "center",
       marginBottom: spacing.lg,
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.2)",
+      borderColor: colors.whiteAlpha20,
     },
     appName: {
       ...typography.h1,
@@ -255,7 +255,7 @@ const createStyles = (colors: AppColors) =>
     },
     appVersion: {
       ...typography.body,
-      color: "rgba(255,255,255,0.65)",
+      color: colors.whiteAlpha65,
       marginTop: spacing.xs,
     },
 

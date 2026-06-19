@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -100,13 +101,16 @@ export default function ListChatScreen() {
       setTitle('');
       setDescription('');
       navigation.navigate('Chat', { chatId: conversationId, chatTitle: title });
-    } catch {
-      // error handled by mutation
+    } catch (error) {
+      Alert.alert(
+        'Chat de suporte',
+        error instanceof Error ? error.message : 'Não foi possível iniciar a conversa.',
+      );
     }
   };
 
   return (
-    <PageShell>
+    <PageShell scroll={false}>
       <PageHeader
         title="Chat de Suporte"
         subtitle="Assistente automático 24h."
