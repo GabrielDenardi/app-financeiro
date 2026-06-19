@@ -1,26 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Modal,
-  PanResponder,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Check, CreditCard, X } from "lucide-react-native";
+import { Check, CreditCard } from "lucide-react-native";
 
 import type { CreateCardInput } from "../features/cards/types";
-import { spacing, typography, type AppColors, useThemeColors } from "../theme";
-
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { radius, spacing, typography, type AppColors, useThemeColors } from "../theme";
+import { BottomSheet } from "./BottomSheet";
+import { Button } from "./Button";
+import { Chip } from "./Chip";
+import { FieldCard, FieldDivider, FieldRow } from "./FormField";
 
 const POPULAR_BANKS = [
   { id: "nubank", name: "Nubank", color: "#8A05BE" },
@@ -46,6 +34,18 @@ type AddCardModalProps = {
   submitting?: boolean;
   onClose: () => void;
   onSubmit: (input: CreateCardInput) => Promise<void> | void;
+  initialValues?: {
+    name?: string;
+    institution?: string;
+    network?: string;
+    lastDigits?: string;
+    limitAmount?: number;
+    dueDay?: number;
+    closingDay?: number;
+    color?: string;
+  };
+  title?: string;
+  submitLabel?: string;
 };
 
 function parseCurrencyInput(value: string) {
@@ -65,6 +65,9 @@ export function AddCardModal({
   submitting = false,
   onClose,
   onSubmit,
+  initialValues,
+  title = "Novo Cartão",
+  submitLabel = "Criar Cartão",
 }: AddCardModalProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -77,87 +80,28 @@ export function AddCardModal({
   const [dueDay, setDueDay] = useState("");
   const [cardColor, setCardColor] = useState(CARD_COLORS[0]);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-
-  const resetForm = useCallback(() => {
-    setName("");
-    setInstitution("");
-    setNetwork("Visa");
-    setLimitAmount("");
-    setLastDigits("");
-    setClosingDay("");
-    setDueDay("");
-    setCardColor(CARD_COLORS[0]);
-    fadeAnim.setValue(0);
-    translateY.setValue(SCREEN_HEIGHT);
-  }, [fadeAnim, translateY]);
-
-  const animateIn = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 260,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 320,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fadeAnim, translateY]);
-
-  const requestClose = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: SCREEN_HEIGHT,
-        duration: 280,
-        useNativeDriver: true,
-      }),
-    ]).start(({ finished }) => {
-      if (finished) {
-        onClose();
-      }
-    });
-  }, [fadeAnim, onClose, translateY]);
-
   useEffect(() => {
-    if (visible) {
-      animateIn();
-      return;
+    if (!visible) return;
+    if (initialValues) {
+      setName(initialValues.name ?? "");
+      setInstitution(initialValues.institution ?? "");
+      setNetwork(initialValues.network ?? "Visa");
+      setLimitAmount(initialValues.limitAmount ? initialValues.limitAmount.toFixed(2).replace(".", ",") : "");
+      setLastDigits(initialValues.lastDigits ?? "");
+      setClosingDay(initialValues.closingDay ? String(initialValues.closingDay) : "");
+      setDueDay(initialValues.dueDay ? String(initialValues.dueDay) : "");
+      setCardColor(initialValues.color ?? CARD_COLORS[0]);
+    } else {
+      setName("");
+      setInstitution("");
+      setNetwork("Visa");
+      setLimitAmount("");
+      setLastDigits("");
+      setClosingDay("");
+      setDueDay("");
+      setCardColor(CARD_COLORS[0]);
     }
-
-    resetForm();
-  }, [animateIn, resetForm, visible]);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 5,
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          translateY.setValue(gestureState.dy);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 120) {
-          requestClose();
-          return;
-        }
-
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 180,
-          useNativeDriver: true,
-        }).start();
-      },
-    }),
-  ).current;
+  }, [visible]);
 
   const handleSubmit = async () => {
     await onSubmit({
@@ -173,348 +117,181 @@ export function AddCardModal({
   };
 
   return (
-    <Modal
+    <BottomSheet
       visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={requestClose}
-    >
-      <View style={styles.overlay}>
-        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-          <TouchableOpacity
-            style={styles.backdropTouch}
-            activeOpacity={1}
-            onPress={requestClose}
+      onClose={onClose}
+      title={title}
+      subtitle="Configure os detalhes do seu cartão"
+      footer={(close) => (
+        <>
+          <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+          <Button
+            label={submitLabel}
+            fullWidth
+            onPress={handleSubmit}
+            disabled={!name.trim()}
+            loading={submitting}
           />
-        </Animated.View>
-
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.keyboardWrap}
+        </>
+      )}
+    >
+      <View style={styles.previewContainer}>
+        <LinearGradient
+          colors={gradientForColor(cardColor)}
+          style={styles.cardPreview}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
-          <Animated.View
-            style={[styles.sheet, { transform: [{ translateY }] }]}
-          >
-            <View {...panResponder.panHandlers} style={styles.gestureCapture}>
-              <View style={styles.handle} />
-              <View style={styles.header}>
-                <View>
-                  <Text style={styles.title}>Novo Cartão</Text>
-                  <Text style={styles.subtitle}>
-                    Configure os detalhes do seu cartão
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={requestClose}
-                  style={styles.closeButton}
-                >
-                  <X size={18} color={colors.textPrimary} />
-                </TouchableOpacity>
-              </View>
+          <View style={styles.circleDecorationTop} />
+          <View style={styles.circleDecorationBottom} />
+
+          <View style={styles.cardHeaderPreview}>
+            <View>
+              <Text style={styles.cardPreviewInstLabel}>
+                {(institution || "INSTITUIÇÃO").toUpperCase()}
+              </Text>
+              <Text style={styles.cardPreviewNameText}>
+                {name || "Nome do Cartão"}
+              </Text>
             </View>
+            <Text style={styles.cardPreviewNetworkText}>{network}</Text>
+          </View>
 
-            <ScrollView
-              bounces={false}
-              contentContainerStyle={styles.content}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.previewContainer}>
-                <LinearGradient
-                  colors={gradientForColor(cardColor)}
-                  style={styles.cardPreview}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <View style={styles.circleDecorationTop} />
-                  <View style={styles.circleDecorationBottom} />
+          <Text style={styles.cardPreviewDigitsText}>
+            •••• •••• •••• {lastDigits || "****"}
+          </Text>
 
-                  <View style={styles.cardHeaderPreview}>
-                    <View>
-                      <Text style={styles.cardPreviewInstLabel}>
-                        {(institution || "INSTITUIÇÃO").toUpperCase()}
-                      </Text>
-                      <Text style={styles.cardPreviewNameText}>
-                        {name || "Nome do Cartão"}
-                      </Text>
-                    </View>
-                    <Text style={styles.cardPreviewNetworkText}>{network}</Text>
-                  </View>
-
-                  <Text style={styles.cardPreviewDigitsText}>
-                    •••• •••• •••• {lastDigits || "****"}
-                  </Text>
-
-                  <View style={styles.cardPreviewFooter}>
-                    <View>
-                      <Text style={styles.cardFooterLabel}>VENCIMENTO</Text>
-                      <Text style={styles.cardFooterValue}>
-                        DIA {dueDay || "--"}
-                      </Text>
-                    </View>
-                    <View style={styles.previewFooterRight}>
-                      <Text style={styles.cardFooterLabel}>LIMITE TOTAL</Text>
-                      <Text style={styles.cardFooterValue}>
-                        R$ {limitAmount || "0,00"}
-                      </Text>
-                    </View>
-                  </View>
-                </LinearGradient>
-              </View>
-
-              <Text style={styles.sectionLabel}>Cor do Cartão</Text>
-              <View style={styles.colorRow}>
-                {CARD_COLORS.map((color) => (
-                  <TouchableOpacity
-                    key={color}
-                    style={[styles.colorOption, { backgroundColor: color }]}
-                    onPress={() => setCardColor(color)}
-                  >
-                    {cardColor === color ? (
-                      <Check size={16} color={colors.white} />
-                    ) : null}
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text style={styles.sectionLabel}>Instituição</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}
-              >
-                {POPULAR_BANKS.map((bank) => (
-                  <TouchableOpacity
-                    key={bank.id}
-                    onPress={() => {
-                      setInstitution(bank.name);
-                      setCardColor(bank.color);
-                      setName((current) => current || bank.name);
-                    }}
-                    style={[
-                      styles.bankChip,
-                      institution === bank.name && {
-                        borderColor: bank.color,
-                        backgroundColor: `${bank.color}10`,
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[styles.bankDot, { backgroundColor: bank.color }]}
-                    />
-                    <Text style={styles.bankChipText}>{bank.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <Text style={styles.sectionLabel}>Bandeira</Text>
-              <View style={styles.networkRow}>
-                {NETWORKS.map((option) => (
-                  <TouchableOpacity
-                    key={option}
-                    onPress={() => setNetwork(option)}
-                    style={[
-                      styles.typeItem,
-                      network === option && styles.typeItemActive,
-                    ]}
-                  >
-                    <CreditCard
-                      size={16}
-                      color={
-                        network === option
-                          ? colors.primary
-                          : colors.textSecondary
-                      }
-                    />
-                    <Text
-                      style={[
-                        styles.typeLabel,
-                        network === option && styles.typeLabelActive,
-                      ]}
-                    >
-                      {option}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <View style={styles.inputCard}>
-                <View style={styles.inputRow}>
-                  <Text style={styles.inputLabel}>Nome do Cartão</Text>
-                  <TextInput
-                    placeholder="Ex: Nubank Black"
-                    placeholderTextColor={colors.textSecondary}
-                    style={styles.textInput}
-                    textAlign="right"
-                    value={name}
-                    onChangeText={setName}
-                  />
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.inputRow}>
-                  <Text style={styles.inputLabel}>Últimos 4 dígitos</Text>
-                  <TextInput
-                    placeholder="0000"
-                    keyboardType="number-pad"
-                    maxLength={4}
-                    placeholderTextColor={colors.textSecondary}
-                    style={styles.textInput}
-                    textAlign="right"
-                    value={lastDigits}
-                    onChangeText={setLastDigits}
-                  />
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.inputRow}>
-                  <Text style={styles.inputLabel}>Limite Total</Text>
-                  <TextInput
-                    placeholder="0,00"
-                    keyboardType="decimal-pad"
-                    placeholderTextColor={colors.textSecondary}
-                    style={styles.textInput}
-                    textAlign="right"
-                    value={limitAmount}
-                    onChangeText={setLimitAmount}
-                  />
-                </View>
-              </View>
-
-              <View style={[styles.inputCard, styles.secondInputCard]}>
-                <View style={styles.inputRow}>
-                  <Text style={styles.inputLabel}>Dia do Vencimento</Text>
-                  <TextInput
-                    placeholder="10"
-                    keyboardType="number-pad"
-                    maxLength={2}
-                    placeholderTextColor={colors.textSecondary}
-                    style={styles.textInput}
-                    textAlign="right"
-                    value={dueDay}
-                    onChangeText={setDueDay}
-                  />
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.inputRow}>
-                  <Text style={styles.inputLabel}>Dia do Fechamento</Text>
-                  <TextInput
-                    placeholder="03"
-                    keyboardType="number-pad"
-                    maxLength={2}
-                    placeholderTextColor={colors.textSecondary}
-                    style={styles.textInput}
-                    textAlign="right"
-                    value={closingDay}
-                    onChangeText={setClosingDay}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.bottomSpacer} />
-            </ScrollView>
-
-            <View style={styles.fixedFooter}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={requestClose}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  (!name.trim() || submitting) && styles.disabledButton,
-                ]}
-                onPress={handleSubmit}
-                disabled={!name.trim() || submitting}
-              >
-                {submitting ? (
-                  <ActivityIndicator color={colors.white} />
-                ) : (
-                  <Text style={styles.saveButtonText}>Criar Cartão</Text>
-                )}
-              </TouchableOpacity>
+          <View style={styles.cardPreviewFooter}>
+            <View>
+              <Text style={styles.cardFooterLabel}>VENCIMENTO</Text>
+              <Text style={styles.cardFooterValue}>DIA {dueDay || "--"}</Text>
             </View>
-          </Animated.View>
-        </KeyboardAvoidingView>
+            <View style={styles.previewFooterRight}>
+              <Text style={styles.cardFooterLabel}>LIMITE TOTAL</Text>
+              <Text style={styles.cardFooterValue}>R$ {limitAmount || "0,00"}</Text>
+            </View>
+          </View>
+        </LinearGradient>
       </View>
-    </Modal>
+
+      <Text style={styles.sectionLabel}>Cor do Cartão</Text>
+      <View style={styles.colorRow}>
+        {CARD_COLORS.map((color) => (
+          <TouchableOpacity
+            key={color}
+            style={[styles.colorOption, { backgroundColor: color }]}
+            onPress={() => setCardColor(color)}
+          >
+            {cardColor === color ? <Check size={16} color={colors.white} /> : null}
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.sectionLabel}>Instituição</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.horizontalScroll}
+        contentContainerStyle={styles.horizontalScrollContent}
+      >
+        {POPULAR_BANKS.map((bank) => (
+          <Chip
+            key={bank.id}
+            label={bank.name}
+            selected={institution === bank.name}
+            activeColor={bank.color}
+            dotColor={bank.color}
+            onPress={() => {
+              setInstitution(bank.name);
+              setCardColor(bank.color);
+              setName((current) => current || bank.name);
+            }}
+          />
+        ))}
+      </ScrollView>
+
+      <Text style={styles.sectionLabel}>Bandeira</Text>
+      <View style={styles.networkRow}>
+        {NETWORKS.map((option) => {
+          const selected = network === option;
+          return (
+            <Chip
+              key={option}
+              label={option}
+              selected={selected}
+              onPress={() => setNetwork(option)}
+              icon={
+                <CreditCard
+                  size={16}
+                  color={selected ? colors.primary : colors.textSecondary}
+                />
+              }
+            />
+          );
+        })}
+      </View>
+
+      <FieldCard>
+        <FieldRow
+          label="Nome do Cartão"
+          placeholder="Ex: Nubank Black"
+          value={name}
+          onChangeText={setName}
+        />
+        <FieldDivider />
+        <FieldRow
+          label="Últimos 4 dígitos"
+          placeholder="0000"
+          keyboardType="number-pad"
+          maxLength={4}
+          value={lastDigits}
+          onChangeText={setLastDigits}
+        />
+        <FieldDivider />
+        <FieldRow
+          label="Limite Total"
+          prefix="R$"
+          placeholder="0,00"
+          keyboardType="decimal-pad"
+          value={limitAmount}
+          onChangeText={setLimitAmount}
+        />
+      </FieldCard>
+
+      <FieldCard style={styles.secondInputCard}>
+        <FieldRow
+          label="Dia do Vencimento"
+          placeholder="10"
+          keyboardType="number-pad"
+          maxLength={2}
+          value={dueDay}
+          onChangeText={setDueDay}
+        />
+        <FieldDivider />
+        <FieldRow
+          label="Dia do Fechamento"
+          placeholder="03"
+          keyboardType="number-pad"
+          maxLength={2}
+          value={closingDay}
+          onChangeText={setClosingDay}
+        />
+      </FieldCard>
+
+      <View style={styles.bottomSpacer} />
+    </BottomSheet>
   );
 }
 
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
-    overlay: {
-      flex: 1,
-      justifyContent: "flex-end",
-    },
-    backdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: colors.overlay,
-    },
-    backdropTouch: {
-      flex: 1,
-    },
-    keyboardWrap: {
-      justifyContent: "flex-end",
-    },
-    sheet: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: 32,
-      borderTopRightRadius: 32,
-      maxHeight: SCREEN_HEIGHT * 0.9,
-      minHeight: 100,
-    },
-    gestureCapture: {
-      paddingTop: 12,
-      backgroundColor: colors.background,
-      borderTopLeftRadius: 32,
-      borderTopRightRadius: 32,
-      zIndex: 10,
-    },
-    handle: {
-      width: 40,
-      height: 4,
-      backgroundColor: colors.border,
-      borderRadius: 2,
-      alignSelf: "center",
-      marginBottom: 12,
-    },
-    header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: 24,
-      marginBottom: 20,
-    },
-    title: {
-      ...typography.h2,
-      color: colors.textPrimary,
-    },
-    subtitle: {
-      ...typography.caption,
-      color: colors.textSecondary,
-      marginTop: 2,
-    },
-    closeButton: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      backgroundColor: colors.surface,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    content: {
-      paddingHorizontal: 24,
-    },
     previewContainer: {
-      marginBottom: 24,
+      marginBottom: spacing.xl,
     },
     cardPreview: {
       height: 200,
-      borderRadius: 28,
-      padding: 20,
+      borderRadius: radius.xl,
+      padding: spacing.xl,
       overflow: "hidden",
       justifyContent: "space-between",
     },
@@ -522,7 +299,7 @@ const createStyles = (colors: AppColors) =>
       position: "absolute",
       width: 180,
       height: 180,
-      borderRadius: 90,
+      borderRadius: radius.pill,
       backgroundColor: "rgba(255,255,255,0.08)",
       top: -70,
       right: -35,
@@ -531,7 +308,7 @@ const createStyles = (colors: AppColors) =>
       position: "absolute",
       width: 140,
       height: 140,
-      borderRadius: 70,
+      borderRadius: radius.pill,
       backgroundColor: "rgba(255,255,255,0.08)",
       bottom: -50,
       left: -20,
@@ -581,12 +358,12 @@ const createStyles = (colors: AppColors) =>
       ...typography.body,
       color: colors.white,
       fontWeight: "700",
-      marginTop: 4,
+      marginTop: spacing.xs,
     },
     sectionLabel: {
       ...typography.caption,
       color: colors.textSecondary,
-      marginBottom: 12,
+      marginBottom: spacing.md,
       textTransform: "uppercase",
       fontWeight: "700",
       letterSpacing: 0.5,
@@ -594,145 +371,31 @@ const createStyles = (colors: AppColors) =>
     colorRow: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 12,
-      marginBottom: 24,
+      gap: spacing.md,
+      marginBottom: spacing.xl,
     },
     colorOption: {
       width: 36,
       height: 36,
-      borderRadius: 18,
+      borderRadius: radius.pill,
       alignItems: "center",
       justifyContent: "center",
     },
     horizontalScroll: {
-      marginHorizontal: -24,
-      paddingHorizontal: 24,
-      marginBottom: 24,
+      marginHorizontal: -spacing.xl,
+      marginBottom: spacing.xl,
     },
-    bankChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      paddingHorizontal: 16,
-      height: 44,
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      marginRight: 8,
-    },
-    bankDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-    },
-    bankChipText: {
-      ...typography.body,
-      color: colors.textPrimary,
-      fontWeight: "600",
+    horizontalScrollContent: {
+      paddingHorizontal: spacing.xl,
+      gap: spacing.sm,
     },
     networkRow: {
       flexDirection: "row",
-      gap: 8,
-      marginBottom: 24,
-    },
-    typeItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      paddingHorizontal: 16,
-      height: 44,
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    typeItemActive: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primarySoft,
-    },
-    typeLabel: {
-      ...typography.body,
-      color: colors.textSecondary,
-      fontWeight: "500",
-    },
-    typeLabelActive: {
-      color: colors.primary,
-      fontWeight: "700",
-    },
-    inputCard: {
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      overflow: "hidden",
+      gap: spacing.sm,
+      marginBottom: spacing.xl,
     },
     secondInputCard: {
-      marginTop: 16,
-    },
-    inputRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      minHeight: 56,
-      gap: spacing.md,
-      paddingHorizontal: 16,
-    },
-    inputLabel: {
-      ...typography.body,
-      color: colors.textPrimary,
-      fontWeight: "600",
-    },
-    textInput: {
-      ...typography.body,
-      color: colors.textSecondary,
-      flex: 1,
-    },
-    divider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginHorizontal: 16,
-    },
-    fixedFooter: {
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      backgroundColor: colors.background,
-      paddingHorizontal: 24,
-      paddingTop: 16,
-      paddingBottom: 28,
-      flexDirection: "row",
-      gap: spacing.md,
-    },
-    cancelButton: {
-      flex: 1,
-      minHeight: 52,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.surface,
-    },
-    cancelButtonText: {
-      ...typography.body,
-      color: colors.textPrimary,
-      fontWeight: "600",
-    },
-    saveButton: {
-      flex: 1,
-      minHeight: 52,
-      borderRadius: 14,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.primary,
-    },
-    disabledButton: {
-      opacity: 0.6,
-    },
-    saveButtonText: {
-      ...typography.body,
-      color: colors.white,
-      fontWeight: "700",
+      marginTop: spacing.lg,
     },
     bottomSpacer: {
       height: 140,

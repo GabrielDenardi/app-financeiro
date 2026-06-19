@@ -2,14 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import {
@@ -20,6 +17,10 @@ import {
   useAudioRecorderState,
 } from "expo-audio";
 
+import { BottomSheet } from "../../../components/BottomSheet";
+import { Button } from "../../../components/Button";
+import { Chip } from "../../../components/Chip";
+import { FieldCard, FieldDivider, FieldRow } from "../../../components/FormField";
 import {
   radius,
   spacing,
@@ -652,25 +653,20 @@ export function QuickAddTransactionSheet({
             <Text style={styles.modeText}>
               Grave um resumo curto e deixe a IA montar o rascunho.
             </Text>
-            <Pressable
-              style={[
-                styles.primaryButton,
-                styles.modeCardActionButton,
-                recorderState.isRecording && styles.recordingButton,
-              ]}
+            <Button
+              label={
+                recorderState.isRecording ? "Parar e analisar" : "Gravar áudio"
+              }
+              variant={recorderState.isRecording ? "danger" : "primary"}
+              fullWidth
+              disabled={isParsing}
+              style={styles.modeCardActionButton}
               onPress={
                 recorderState.isRecording
                   ? handleStopRecording
                   : handleStartRecording
               }
-              disabled={isParsing}
-            >
-              <Text style={styles.primaryButtonText}>
-                {recorderState.isRecording
-                  ? "Parar e analisar"
-                  : "Gravar áudio"}
-              </Text>
-            </Pressable>
+            />
           </View>
         ) : null}
 
@@ -680,27 +676,27 @@ export function QuickAddTransactionSheet({
             Use câmera, galeria ou PDF para ler uma NF ou notinha.
           </Text>
           <View style={styles.inlineActions}>
-            <Pressable
-              style={styles.secondaryButton}
+            <Button
+              label="Câmera"
+              variant="secondary"
+              size="sm"
+              disabled={isParsing}
               onPress={handlePickFromCamera}
+            />
+            <Button
+              label="Galeria"
+              variant="secondary"
+              size="sm"
               disabled={isParsing}
-            >
-              <Text style={styles.secondaryButtonText}>Câmera</Text>
-            </Pressable>
-            <Pressable
-              style={styles.secondaryButton}
               onPress={handlePickFromLibrary}
+            />
+            <Button
+              label="PDF"
+              variant="secondary"
+              size="sm"
               disabled={isParsing}
-            >
-              <Text style={styles.secondaryButtonText}>Galeria</Text>
-            </Pressable>
-            <Pressable
-              style={styles.secondaryButton}
               onPress={handlePickDocument}
-              disabled={isParsing}
-            >
-              <Text style={styles.secondaryButtonText}>PDF</Text>
-            </Pressable>
+            />
           </View>
         </View>
       </View>
@@ -715,259 +711,179 @@ export function QuickAddTransactionSheet({
   );
 
   const renderReviewStep = () => (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.reviewContent}
-    >
-      <View style={styles.contentBlock}>
-        <View style={styles.rowBetween}>
-          <View>
-            <Text style={styles.sheetTitle}>Revisar lançamento</Text>
-            <Text style={styles.sheetSubtitle}>
-              {captureMode === "manual"
-                ? "Confira os dados antes de salvar."
-                : "O rascunho foi preenchido automaticamente e pode ser ajustado."}
-            </Text>
-          </View>
-          <Pressable style={styles.backButton} onPress={() => setStep("mode")}>
-            <Text style={styles.backButtonText}>Voltar</Text>
-          </Pressable>
+    <View style={styles.contentBlock}>
+      <View style={styles.rowBetween}>
+        <View style={styles.rowBetweenCopy}>
+          <Text style={styles.sheetTitle}>Revisar lançamento</Text>
+          <Text style={styles.sheetSubtitle}>
+            {captureMode === "manual"
+              ? "Confira os dados antes de salvar."
+              : "O rascunho foi preenchido automaticamente e pode ser ajustado."}
+          </Text>
         </View>
+        <Button label="Voltar" variant="ghost" size="sm" onPress={() => setStep("mode")} />
+      </View>
 
-        <View style={styles.typeRow}>
-          {(["expense", "income"] as EntryType[]).map((entryType) => (
-            <Pressable
-              key={entryType}
-              onPress={() => handleTypeChange(entryType)}
-              style={[
-                styles.typeChip,
-                entryType === type &&
-                  (entryType === "expense"
-                    ? styles.typeChipExpense
-                    : styles.typeChipIncome),
-              ]}
-            >
-              <Text
-                style={[
-                  styles.typeChipText,
-                  entryType === type &&
-                    (entryType === "expense"
-                      ? styles.typeChipTextExpense
-                      : styles.typeChipTextIncome),
-                ]}
-              >
-                {entryType === "expense" ? "Despesa" : "Receita"}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+      <View style={styles.typeRow}>
+        {(["expense", "income"] as EntryType[]).map((entryType) => (
+          <Chip
+            key={entryType}
+            label={entryType === "expense" ? "Despesa" : "Receita"}
+            selected={entryType === type}
+            activeColor={
+              entryType === type
+                ? entryType === "expense"
+                  ? colors.danger
+                  : colors.success
+                : undefined
+            }
+            onPress={() => handleTypeChange(entryType)}
+            style={styles.typeChip}
+          />
+        ))}
+      </View>
 
-        <TextInput
-          placeholder="Descrição"
+      <FieldCard>
+        <FieldRow
+          label="Descrição"
+          placeholder="Ex.: Mercado, Salário..."
           value={title}
           onChangeText={setTitle}
-          style={styles.input}
-          placeholderTextColor={colors.textSecondary}
         />
-        <TextInput
+        <FieldDivider />
+        <FieldRow
+          label="Valor"
+          prefix="R$"
           placeholder="0,00"
           value={formatCentsToDisplay(amountDigits)}
           onChangeText={(text) =>
             setAmountDigits(text.replace(/\D/g, "").replace(/^0+/, ""))
           }
           keyboardType="numeric"
-          style={styles.input}
-          placeholderTextColor={colors.textSecondary}
         />
-        <TextInput
+        <FieldDivider />
+        <FieldRow
+          label="Data"
           placeholder="DD/MM/AAAA"
           value={occurredOnDisplay}
           onChangeText={handleOccurredOnChange}
-          style={styles.input}
-          placeholderTextColor={colors.textSecondary}
           keyboardType="numeric"
           maxLength={10}
         />
+      </FieldCard>
 
-        <Text style={styles.label}>Conta</Text>
-        <View style={styles.wrapRow}>
-          {accounts.map((account) => (
-            <Pressable
-              key={account.id}
-              onPress={() => setAccountId(account.id)}
-              style={[
-                styles.filterChip,
-                accountId === account.id && styles.filterChipActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  accountId === account.id && styles.filterChipTextActive,
-                ]}
-              >
-                {account.name}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+      <Text style={styles.label}>Conta</Text>
+      <View style={styles.wrapRow}>
+        {accounts.map((account) => (
+          <Chip
+            key={account.id}
+            label={account.name}
+            selected={accountId === account.id}
+            onPress={() => setAccountId(account.id)}
+          />
+        ))}
+      </View>
 
-        <Text style={styles.label}>Categoria</Text>
-        <View style={styles.wrapRow}>
-          {filteredCategories.map((category) => (
-            <Pressable
-              key={category.id}
-              onPress={() => setCategoryId(category.id)}
-              style={[
-                styles.filterChip,
-                categoryId === category.id && styles.filterChipActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  categoryId === category.id && styles.filterChipTextActive,
-                ]}
-              >
-                {category.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+      <Text style={styles.label}>Categoria</Text>
+      <View style={styles.wrapRow}>
+        {filteredCategories.map((category) => (
+          <Chip
+            key={category.id}
+            label={category.label}
+            selected={categoryId === category.id}
+            onPress={() => setCategoryId(category.id)}
+          />
+        ))}
+      </View>
 
-        <Text style={styles.label}>Método</Text>
-        <View style={styles.wrapRow}>
-          {PAYMENT_METHODS.map((method) => (
-            <Pressable
-              key={method}
-              onPress={() => setPaymentMethod(method)}
-              style={[
-                styles.filterChip,
-                paymentMethod === method && styles.filterChipActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  paymentMethod === method && styles.filterChipTextActive,
-                ]}
-              >
-                {formatPaymentMethodLabel(method)}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+      <Text style={styles.label}>Método</Text>
+      <View style={styles.wrapRow}>
+        {PAYMENT_METHODS.map((method) => (
+          <Chip
+            key={method}
+            label={formatPaymentMethodLabel(method)}
+            selected={paymentMethod === method}
+            onPress={() => setPaymentMethod(method)}
+          />
+        ))}
+      </View>
 
-        <TextInput
-          placeholder="Observações"
+      <FieldCard>
+        <FieldRow
+          label="Observações"
+          placeholder="Observações (opcional)"
           value={notes}
           onChangeText={setNotes}
-          style={[styles.input, styles.notesInput]}
-          placeholderTextColor={colors.textSecondary}
           multiline
+          inputStyle={{ minHeight: 72, textAlignVertical: "top" }}
         />
+      </FieldCard>
 
-        <View style={styles.recurringRow}>
-          <View style={styles.recurringCopy}>
-            <Text style={styles.recurringTitle}>Criar regra recorrente</Text>
-            <Text style={styles.recurringSubtitle}>
-              Usa a mesma conta, categoria e valor todo mês.
-            </Text>
-          </View>
-          <Switch value={recurring} onValueChange={setRecurring} />
+      <View style={styles.recurringRow}>
+        <View style={styles.recurringCopy}>
+          <Text style={styles.recurringTitle}>Criar regra recorrente</Text>
+          <Text style={styles.recurringSubtitle}>
+            Usa a mesma conta, categoria e valor todo mês.
+          </Text>
         </View>
-
-        {selectedFile ? (
-          <View style={styles.fileCard}>
-            <Text style={styles.fileTitle}>Arquivo selecionado</Text>
-            <Text style={styles.fileMeta}>{selectedFile.name}</Text>
-          </View>
-        ) : null}
-
-        {draftWarnings.length ? (
-          <View style={styles.warningCard}>
-            <Text style={styles.warningTitle}>Avisos da captura</Text>
-            {draftWarnings.map((warning) => (
-              <Text key={warning} style={styles.warningText}>
-                - {warning}
-              </Text>
-            ))}
-          </View>
-        ) : null}
-
-        {rawCaptureText ? (
-          <View style={styles.captureCard}>
-            <Text style={styles.captureTitle}>
-              {captureMode === "voice" ? "Transcrição" : "Texto lido"}
-            </Text>
-            <Text style={styles.captureText}>{rawCaptureText}</Text>
-          </View>
-        ) : null}
+        <Switch value={recurring} onValueChange={setRecurring} />
       </View>
-    </ScrollView>
+
+      {selectedFile ? (
+        <View style={styles.fileCard}>
+          <Text style={styles.fileTitle}>Arquivo selecionado</Text>
+          <Text style={styles.fileMeta}>{selectedFile.name}</Text>
+        </View>
+      ) : null}
+
+      {draftWarnings.length ? (
+        <View style={styles.warningCard}>
+          <Text style={styles.warningTitle}>Avisos da captura</Text>
+          {draftWarnings.map((warning) => (
+            <Text key={warning} style={styles.warningText}>
+              - {warning}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
+      {rawCaptureText ? (
+        <View style={styles.captureCard}>
+          <Text style={styles.captureTitle}>
+            {captureMode === "voice" ? "Transcrição" : "Texto lido"}
+          </Text>
+          <Text style={styles.captureText}>{rawCaptureText}</Text>
+        </View>
+      ) : null}
+    </View>
   );
 
   return (
-    <Modal
+    <BottomSheet
       visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={handleClose}
+      onClose={handleClose}
+      footer={(close) => (
+        <>
+          <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+          {step === "review" ? (
+            <Button
+              label="Salvar"
+              fullWidth
+              onPress={handleSave}
+              loading={createTransactionMutation.isPending}
+            />
+          ) : null}
+        </>
+      )}
     >
-      <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={handleClose} />
-        <View style={styles.sheet}>
-          {step === "mode" ? renderModeStep() : renderReviewStep()}
-
-          <View style={styles.actions}>
-            <Pressable style={styles.secondaryButton} onPress={handleClose}>
-              <Text style={styles.secondaryButtonText}>Cancelar</Text>
-            </Pressable>
-            {step === "review" ? (
-              <Pressable
-                style={[
-                  styles.primaryButton,
-                  createTransactionMutation.isPending && styles.disabledButton,
-                ]}
-                onPress={handleSave}
-                disabled={createTransactionMutation.isPending}
-              >
-                {createTransactionMutation.isPending ? (
-                  <ActivityIndicator color={colors.white} />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Salvar</Text>
-                )}
-              </Pressable>
-            ) : null}
-          </View>
-        </View>
-      </View>
-    </Modal>
+      {step === "mode" ? renderModeStep() : renderReviewStep()}
+    </BottomSheet>
   );
 }
 
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
-    overlay: {
-      flex: 1,
-      justifyContent: "flex-end",
-      backgroundColor: colors.overlay,
-    },
-    backdrop: {
-      flex: 1,
-    },
-    sheet: {
-      maxHeight: "92%",
-      backgroundColor: colors.background,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      padding: spacing.lg,
-      gap: spacing.md,
-    },
     contentBlock: {
-      gap: spacing.md,
-    },
-    reviewContent: {
       gap: spacing.md,
       paddingBottom: spacing.sm,
     },
@@ -976,6 +892,9 @@ const createStyles = (colors: AppColors) =>
       alignItems: "center",
       justifyContent: "space-between",
       gap: spacing.md,
+    },
+    rowBetweenCopy: {
+      flex: 1,
     },
     sheetTitle: {
       ...typography.h2,
@@ -1028,46 +947,7 @@ const createStyles = (colors: AppColors) =>
     },
     typeChip: {
       flex: 1,
-      minHeight: 44,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      alignItems: "center",
       justifyContent: "center",
-      backgroundColor: colors.surface,
-    },
-    typeChipExpense: {
-      backgroundColor: "rgba(220, 38, 38, 0.08)",
-      borderColor: "rgba(220, 38, 38, 0.24)",
-    },
-    typeChipIncome: {
-      backgroundColor: "rgba(22, 163, 74, 0.08)",
-      borderColor: "rgba(22, 163, 74, 0.24)",
-    },
-    typeChipText: {
-      ...typography.body,
-      color: colors.textPrimary,
-      fontWeight: "600",
-    },
-    typeChipTextExpense: {
-      color: colors.danger,
-    },
-    typeChipTextIncome: {
-      color: colors.success,
-    },
-    input: {
-      minHeight: 48,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-      paddingHorizontal: spacing.md,
-      color: colors.textPrimary,
-    },
-    notesInput: {
-      minHeight: 88,
-      paddingTop: spacing.md,
-      textAlignVertical: "top",
     },
     label: {
       ...typography.caption,
@@ -1078,26 +958,6 @@ const createStyles = (colors: AppColors) =>
       flexDirection: "row",
       flexWrap: "wrap",
       gap: spacing.sm,
-    },
-    filterChip: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.pill,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    filterChipActive: {
-      backgroundColor: colors.primarySoft,
-      borderColor: colors.primary,
-    },
-    filterChipText: {
-      ...typography.caption,
-      color: colors.textPrimary,
-      fontWeight: "600",
-    },
-    filterChipTextActive: {
-      color: colors.primary,
     },
     recurringRow: {
       flexDirection: "row",
@@ -1170,61 +1030,7 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
       lineHeight: 18,
     },
-    backButton: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.pill,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    backButtonText: {
-      ...typography.caption,
-      color: colors.textPrimary,
-      fontWeight: "700",
-    },
-    actions: {
-      flexDirection: "row",
-      gap: spacing.md,
-    },
-    secondaryButton: {
-      minHeight: 48,
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-      paddingHorizontal: spacing.md,
-    },
-    secondaryButtonText: {
-      ...typography.body,
-      color: colors.textPrimary,
-      fontWeight: "700",
-    },
-    primaryButton: {
-      minHeight: 48,
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: radius.md,
-      backgroundColor: colors.primaryLight,
-      paddingHorizontal: spacing.md,
-    },
     modeCardActionButton: {
-      flex: 0,
-      width: "100%",
       marginTop: spacing.xs,
-    },
-    primaryButtonText: {
-      ...typography.body,
-      color: colors.white,
-      fontWeight: "700",
-    },
-    recordingButton: {
-      backgroundColor: colors.danger,
-    },
-    disabledButton: {
-      opacity: 0.7,
     },
   });

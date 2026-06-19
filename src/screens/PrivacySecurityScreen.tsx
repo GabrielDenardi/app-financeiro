@@ -3,20 +3,21 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
-  Modal,
   Pressable,
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { Database, Download, Lock, ShieldCheck, Trash2, X } from 'lucide-react-native';
+import { Database, Download, Lock, ShieldCheck, Trash2 } from 'lucide-react-native';
 
 import { Card } from '../components/Card';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
+import { BottomSheet } from '../components/BottomSheet';
+import { Button } from '../components/Button';
+import { FieldCard, FieldDivider, FieldRow } from '../components/FormField';
 import { appEnv } from '../config/env';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
@@ -305,86 +306,80 @@ export function PrivacySecurityScreen({ navigation }: any) {
         description="Baixe uma copia completa dos seus dados financeiros — recurso do Plano Pro."
       />
 
-      <Modal visible={mfaOpen} transparent animationType="slide" onRequestClose={() => setMfaOpen(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <View style={styles.sheetHead}>
-              <Text style={styles.sheetTitle}>Confirmar MFA</Text>
-              <Pressable onPress={() => setMfaOpen(false)}>
-                <X size={22} color={colors.textPrimary} />
-              </Pressable>
+      <BottomSheet
+        visible={mfaOpen}
+        onClose={() => setMfaOpen(false)}
+        title="Confirmar MFA"
+        subtitle="Escaneie o QR code e insira o código de 6 dígitos"
+        footer={(close) => (
+          <>
+            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+            <Button
+              label="Verificar"
+              fullWidth
+              onPress={onVerifyMfa}
+              loading={verifyTotp.isPending}
+            />
+          </>
+        )}
+      >
+        {enrollment ? (
+          <>
+            <View style={styles.qr}>
+              <QRCode value={enrollment.uri} size={176} />
             </View>
-            {enrollment ? (
-              <>
-                <View style={styles.qr}>
-                  <QRCode value={enrollment.uri} size={176} />
-                </View>
-                <Text style={styles.small}>Chave secreta: {enrollment.secret}</Text>
-                <TextInput
-                  value={mfaCode}
-                  onChangeText={setMfaCode}
-                  keyboardType="number-pad"
-                  placeholder="Codigo de 6 digitos"
-                  placeholderTextColor={colors.textSecondary}
-                  style={styles.input}
-                />
-                <View style={styles.actions}>
-                  <Pressable style={styles.ghost} onPress={() => setMfaOpen(false)}>
-                    <Text style={styles.ghostText}>Cancelar</Text>
-                  </Pressable>
-                  <Pressable style={[styles.primary, verifyTotp.isPending && styles.dim]} onPress={onVerifyMfa} disabled={verifyTotp.isPending}>
-                    {verifyTotp.isPending ? (
-                      <ActivityIndicator color={colors.white} />
-                    ) : (
-                      <Text style={styles.primaryText}>Verificar</Text>
-                    )}
-                  </Pressable>
-                </View>
-              </>
-            ) : null}
-          </View>
-        </View>
-      </Modal>
+            <Text style={styles.small}>Chave secreta: {enrollment.secret}</Text>
+            <FieldCard>
+              <FieldRow
+                label="Código"
+                placeholder="6 dígitos"
+                keyboardType="number-pad"
+                value={mfaCode}
+                onChangeText={setMfaCode}
+                autoFocus
+              />
+            </FieldCard>
+          </>
+        ) : null}
+        <View style={styles.sheetSpacer} />
+      </BottomSheet>
 
-      <Modal visible={deleteOpen} transparent animationType="slide" onRequestClose={() => setDeleteOpen(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <View style={styles.sheetHead}>
-              <Text style={styles.sheetTitle}>Excluir conta</Text>
-              <Pressable onPress={() => setDeleteOpen(false)}>
-                <X size={22} color={colors.textPrimary} />
-              </Pressable>
-            </View>
-            <TextInput
-              value={reason}
-              onChangeText={setReason}
-              placeholder="Motivo"
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
+      <BottomSheet
+        visible={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title="Excluir conta"
+        subtitle="Esta ação é irreversível. Confirme com sua senha."
+        footer={(close) => (
+          <>
+            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+            <Button
+              label="Confirmar exclusão"
+              variant="danger"
+              fullWidth
+              onPress={onDelete}
+              loading={deleteAccount.isPending}
             />
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="Senha atual"
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-            />
-            <View style={styles.actions}>
-              <Pressable style={styles.ghost} onPress={() => setDeleteOpen(false)}>
-                <Text style={styles.ghostText}>Cancelar</Text>
-              </Pressable>
-              <Pressable style={[styles.deleteBtn, deleteAccount.isPending && styles.dim]} onPress={onDelete} disabled={deleteAccount.isPending}>
-                {deleteAccount.isPending ? (
-                  <ActivityIndicator color={colors.white} />
-                ) : (
-                  <Text style={styles.deleteText}>Confirmar</Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+          </>
+        )}
+      >
+        <FieldCard>
+          <FieldRow
+            label="Motivo"
+            placeholder="Opcional"
+            value={reason}
+            onChangeText={setReason}
+          />
+          <FieldDivider />
+          <FieldRow
+            label="Senha atual"
+            placeholder="••••••••"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+        </FieldCard>
+        <View style={styles.sheetSpacer} />
+      </BottomSheet>
     </PageShell>
   );
 }
@@ -502,7 +497,7 @@ const createStyles = (colors: AppColors) =>
       borderColor: colors.border,
       borderRadius: radius.md,
       paddingHorizontal: spacing.md,
-      paddingVertical: 13,
+      paddingVertical: spacing.md,
       marginTop: spacing.sm,
       backgroundColor: colors.surface,
     },
@@ -568,26 +563,8 @@ const createStyles = (colors: AppColors) =>
       fontWeight: '800',
       marginTop: spacing.xs,
     },
-    overlay: {
-      flex: 1,
-      backgroundColor: colors.overlay,
-      justifyContent: 'flex-end',
-    },
-    sheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      padding: spacing.lg,
-      gap: spacing.md,
-    },
-    sheetHead: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    sheetTitle: {
-      ...typography.h2,
-      color: colors.textPrimary,
+    sheetSpacer: {
+      height: spacing.lg,
     },
     qr: {
       alignItems: 'center',
@@ -602,63 +579,5 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 18,
-    },
-    input: {
-      minHeight: 48,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.md,
-      backgroundColor: colors.surfaceMuted,
-      color: colors.textPrimary,
-    },
-    actions: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      marginTop: spacing.xs,
-    },
-    ghost: {
-      flex: 1,
-      minHeight: 46,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surface,
-    },
-    ghostText: {
-      ...typography.body,
-      color: colors.textPrimary,
-      fontWeight: '700',
-    },
-    primary: {
-      flex: 1,
-      minHeight: 46,
-      borderRadius: radius.md,
-      backgroundColor: colors.primaryLight,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    primaryText: {
-      ...typography.body,
-      color: colors.white,
-      fontWeight: '800',
-    },
-    deleteBtn: {
-      flex: 1,
-      minHeight: 46,
-      borderRadius: radius.md,
-      backgroundColor: colors.danger,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    deleteText: {
-      ...typography.body,
-      color: colors.white,
-      fontWeight: '800',
-    },
-    dim: {
-      opacity: 0.7,
     },
   });

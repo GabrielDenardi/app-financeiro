@@ -2,27 +2,32 @@ import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
-import { Pencil, PiggyBank, Plus, Trash2, X } from "lucide-react-native";
+import { Pencil, PiggyBank, Plus, Trash2 } from "lucide-react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
 import { PageHeader } from "../components/PageHeader";
 import { PageShell } from "../components/PageShell";
+import { BottomSheet } from "../components/BottomSheet";
+import { Button } from "../components/Button";
+import { Chip } from "../components/Chip";
+import { FieldCard, FieldRow } from "../components/FormField";
 import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
 import {
   useBudgets,
   useDeleteBudgetMutation,
   useUpsertBudgetMutation,
 } from "../features/budgets/hooks/useBudgets";
-import { formatMonthDate, monthLabel } from "../features/finance/utils";
+import {
+  formatCurrencyInput,
+  formatMonthDate,
+  monthLabel,
+  normalizeCurrencyInput,
+} from "../features/finance/utils";
 import { useFinanceCategories } from "../features/transactions/hooks/useTransactions";
 import {
   radius,
@@ -47,19 +52,8 @@ export default function BudgetsScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
-    null,
-  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [limitAmount, setLimitAmount] = useState("");
-
-  function moneyMask(v: string) {
-    const raw = v.replace(/\D/g, "");
-    if (!raw) return "";
-    return (Number(raw) / 100)
-      .toFixed(2)
-      .replace(".", ",")
-      .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  }
 
   const expenseCategories = useMemo(
     () =>
@@ -108,9 +102,7 @@ export default function BudgetsScreen() {
       return;
     }
 
-    const parsedAmount = Number(
-      limitAmount.replace(/\./g, "").replace(",", ".") || 0,
-    );
+    const parsedAmount = normalizeCurrencyInput(limitAmount);
     if (parsedAmount <= 0) {
       Alert.alert("Erro", "Informe um valor maior que zero.");
       return;
@@ -156,13 +148,12 @@ export default function BudgetsScreen() {
           variant="primary"
           onBackPress={showBackButton ? () => navigation.goBack() : undefined}
           action={
-            <Pressable
-              style={styles.btnHeader}
+            <Button
+              label="Novo"
+              size="sm"
+              icon={<Plus size={16} color={colors.white} />}
               onPress={() => setModalVisible(true)}
-            >
-              <Plus size={16} color={colors.white} />
-              <Text style={styles.btnHeaderText}>Novo</Text>
-            </Pressable>
+            />
           }
         />
 
@@ -282,121 +273,55 @@ export default function BudgetsScreen() {
         </View>
       </PageShell>
 
-      <Modal
+      <BottomSheet
         visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={closeModal}
+        onClose={closeModal}
+        title={editingId ? "Editar Orçamento" : "Novo Orçamento"}
+        footer={(close) => (
+          <>
+            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+            <Button
+              label={editingId ? "Salvar" : "Criar"}
+              fullWidth
+              onPress={handleSave}
+              disabled={!selectedCategoryId}
+              loading={upsertBudgetMutation.isPending}
+            />
+          </>
+        )}
       >
-        <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={styles.modalWrap}
-          >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.h2}>
-                  {editingId ? "Editar Orçamento" : "Novo Orçamento"}
-                </Text>
-                <Pressable onPress={closeModal}>
-                  <X size={24} color={colors.textPrimary} />
-                </Pressable>
-              </View>
+        <FieldCard>
+          <FieldRow
+            label="Limite Mensal"
+            prefix="R$"
+            placeholder="0,00"
+            keyboardType="decimal-pad"
+            value={limitAmount}
+            onChangeText={(value) => setLimitAmount(formatCurrencyInput(value))}
+          />
+        </FieldCard>
 
-              <Text style={styles.inputLabel}>Limite Mensal</Text>
-              <TextInput
-                placeholder="R$ 0,00"
-                keyboardType="decimal-pad"
-                placeholderTextColor={colors.textSecondary}
-                style={styles.input}
-                value={limitAmount}
-                onChangeText={(v) => setLimitAmount(moneyMask(v))}
-              />
-
-              <Text style={styles.inputLabel}>Categoria</Text>
-              <View style={styles.chipsWrap}>
-                {expenseCategories.map((category) => (
-                  <Pressable
-                    key={category.id}
-                    onPress={() => setSelectedCategoryId(category.id)}
-                    style={[
-                      styles.categoryChip,
-                      selectedCategoryId === category.id && {
-                        borderColor: category.color,
-                        backgroundColor: `${category.color}12`,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.categoryChipText,
-                        selectedCategoryId === category.id && {
-                          color: category.color,
-                        },
-                      ]}
-                    >
-                      {category.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <View style={styles.modalActions}>
-                <Pressable
-                  style={[
-                    styles.btnBase,
-                    styles.btnCreate,
-                    (!selectedCategoryId || upsertBudgetMutation.isPending) &&
-                      styles.disabledButton,
-                  ]}
-                  onPress={handleSave}
-                  disabled={
-                    !selectedCategoryId || upsertBudgetMutation.isPending
-                  }
-                >
-                  {upsertBudgetMutation.isPending ? (
-                    <ActivityIndicator color={colors.white} />
-                  ) : (
-                    <Text style={styles.btnTextCreate}>
-                      {editingId ? "Salvar" : "Criar"}
-                    </Text>
-                  )}
-                </Pressable>
-                <Pressable
-                  style={[styles.btnBase, styles.btnCancel]}
-                  onPress={closeModal}
-                >
-                  <Text style={styles.btnTextCancel}>Cancelar</Text>
-                </Pressable>
-              </View>
-            </View>
-          </KeyboardAvoidingView>
+        <Text style={styles.inputLabel}>Categoria</Text>
+        <View style={styles.chipsWrap}>
+          {expenseCategories.map((category) => (
+            <Chip
+              key={category.id}
+              label={category.label}
+              selected={selectedCategoryId === category.id}
+              activeColor={category.color}
+              onPress={() => setSelectedCategoryId(category.id)}
+            />
+          ))}
         </View>
-      </Modal>
+
+        <View style={styles.bottomSpacer} />
+      </BottomSheet>
     </>
   );
 }
 
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    btnHeader: {
-      flexDirection: "row",
-      backgroundColor: colors.primaryLight,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.md,
-      alignItems: "center",
-      gap: spacing.sm,
-    },
-    btnHeaderText: {
-      ...typography.caption,
-      color: colors.white,
-      fontWeight: "700",
-    },
     summaryBox: {
       flexDirection: "row",
       backgroundColor: colors.surface,
@@ -444,7 +369,7 @@ const createStyles = (colors: AppColors) =>
     cardHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
-      gap: 12,
+      gap: spacing.md,
     },
     budgetInfo: {
       flex: 1,
@@ -452,31 +377,31 @@ const createStyles = (colors: AppColors) =>
     budgetTitleRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 10,
+      gap: spacing.sm,
     },
     categoryBadge: {
       width: 32,
       height: 32,
-      borderRadius: 16,
+      borderRadius: radius.pill,
       alignItems: "center",
       justifyContent: "center",
     },
     actionButtons: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
+      gap: spacing.sm,
     },
     iconButton: {
-      padding: 8,
+      padding: spacing.sm,
       backgroundColor: colors.surfaceMuted,
-      borderRadius: 8,
+      borderRadius: radius.sm,
     },
     progressBarBg: {
       height: 6,
       backgroundColor: colors.border,
-      borderRadius: 3,
+      borderRadius: radius.pill,
       overflow: "hidden",
-      marginVertical: 12,
+      marginVertical: spacing.md,
     },
     progressBarFill: {
       height: "100%",
@@ -503,91 +428,21 @@ const createStyles = (colors: AppColors) =>
       borderWidth: 1,
       borderColor: colors.border,
     },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: colors.overlay,
-      justifyContent: "flex-end",
-    },
-    modalWrap: {
-      flex: 1,
-      justifyContent: "flex-end",
-    },
-    modalContent: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      padding: spacing.xl,
-    },
-    modalHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginBottom: 24,
-      alignItems: "center",
-    },
     inputLabel: {
       ...typography.caption,
       fontWeight: "700",
       color: colors.textSecondary,
-      marginBottom: 8,
-    },
-    input: {
-      height: 48,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 12,
-      paddingHorizontal: spacing.md,
-      marginBottom: spacing.md,
-      color: colors.textPrimary,
-      backgroundColor: colors.surface,
+      marginTop: spacing.lg,
+      marginBottom: spacing.sm,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
     },
     chipsWrap: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: spacing.sm,
-      marginBottom: spacing.xl,
     },
-    categoryChip: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: radius.pill,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.background,
-    },
-    categoryChipText: {
-      ...typography.caption,
-      color: colors.textPrimary,
-      fontWeight: "600",
-    },
-    modalActions: {
-      flexDirection: "column",
-      gap: 12,
-    },
-    btnBase: {
-      width: "100%",
-      minHeight: 50,
-      borderRadius: 12,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    btnCreate: {
-      backgroundColor: colors.primary,
-    },
-    btnCancel: {
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    btnTextCreate: {
-      ...typography.body,
-      color: colors.white,
-      fontWeight: "700",
-    },
-    btnTextCancel: {
-      ...typography.body,
-      color: colors.textPrimary,
-      fontWeight: "700",
-    },
-    disabledButton: {
-      opacity: 0.6,
+    bottomSpacer: {
+      height: spacing.lg,
     },
   });

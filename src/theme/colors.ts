@@ -5,6 +5,7 @@ export type AppColors = {
   primaryLight: string;
   success: string;
   danger: string;
+  warning: string;
   primarySoft: string;
   successSoft: string;
   dangerSoft: string;
@@ -17,6 +18,12 @@ export type AppColors = {
   border: string;
   mutedSurface: string;
   white: string;
+  whiteAlpha80: string;
+  whiteAlpha65: string;
+  whiteAlpha50: string;
+  whiteAlpha20: string;
+  whiteAlpha15: string;
+  whiteAlpha08: string;
   shadow: string;
   overlay: string;
 };
@@ -26,6 +33,7 @@ export const lightColors: AppColors = {
   primaryLight: "#2563EB",
   success: "#16A34A",
   danger: "#DC2626",
+  warning: "#F59E0B",
   primarySoft: "#DBEAFE",
   successSoft: "#DCFCE7",
   dangerSoft: "#FEE2E2",
@@ -38,6 +46,12 @@ export const lightColors: AppColors = {
   border: "#E2E8F0",
   mutedSurface: "#F1F5F9",
   white: "#FFFFFF",
+  whiteAlpha80: "rgba(255, 255, 255, 0.8)",
+  whiteAlpha65: "rgba(255, 255, 255, 0.65)",
+  whiteAlpha50: "rgba(255, 255, 255, 0.5)",
+  whiteAlpha20: "rgba(255, 255, 255, 0.2)",
+  whiteAlpha15: "rgba(255, 255, 255, 0.15)",
+  whiteAlpha08: "rgba(255, 255, 255, 0.08)",
   shadow: "#0F172A",
   overlay: "rgba(15, 23, 42, 0.5)",
 };
@@ -47,6 +61,7 @@ export const darkColors: AppColors = {
   primaryLight: "#3376c2",
   success: "#16A34A",
   danger: "#DC2626",
+  warning: "#D97706",
   primarySoft: "#172554",
   successSoft: "#14532D",
   dangerSoft: "#7F1D1D",
@@ -59,6 +74,12 @@ export const darkColors: AppColors = {
   border: "#1E293B",
   mutedSurface: "#162235",
   white: "#FFFFFF",
+  whiteAlpha80: "rgba(255, 255, 255, 0.8)",
+  whiteAlpha65: "rgba(255, 255, 255, 0.65)",
+  whiteAlpha50: "rgba(255, 255, 255, 0.5)",
+  whiteAlpha20: "rgba(255, 255, 255, 0.2)",
+  whiteAlpha15: "rgba(255, 255, 255, 0.15)",
+  whiteAlpha08: "rgba(255, 255, 255, 0.08)",
   shadow: "#000000",
   overlay: "rgba(2, 6, 23, 0.72)",
 };

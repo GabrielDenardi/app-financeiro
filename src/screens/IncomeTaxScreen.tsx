@@ -262,7 +262,7 @@ const createStyles = (colors: AppColors) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: 12,
+      paddingVertical: spacing.md,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },

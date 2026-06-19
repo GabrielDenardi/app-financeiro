@@ -67,7 +67,7 @@ describe('profileService', () => {
     await expect(getProfile('user-1')).resolves.toEqual({
       id: 'user-1',
       email: 'henrique@teste.com',
-      subscriptionPlan: 'basic',
+      subscriptionPlan: 'free',
       trialStartedAt: null,
       trialEndsAt: null,
       fullName: 'Henrique Feijo',
@@ -120,7 +120,7 @@ describe('profileService', () => {
     ).resolves.toEqual({
       id: 'user-1',
       email: 'henrique@teste.com',
-      subscriptionPlan: 'basic',
+      subscriptionPlan: 'free',
       trialStartedAt: null,
       trialEndsAt: null,
       fullName: 'Henrique Feijo',

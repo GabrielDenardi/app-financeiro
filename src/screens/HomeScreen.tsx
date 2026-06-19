@@ -41,9 +41,9 @@ type HomeScreenProps = {
   currentUser: AuthenticatedUserSummary | null;
 };
 
-function getDisplayName(fullName?: string | null, email?: string | null) {
+function getFirstName(fullName?: string | null, email?: string | null) {
   if (fullName?.trim()) {
-    return fullName.trim();
+    return fullName.trim().split(" ")[0];
   }
 
   if (email?.includes("@")) {
@@ -51,6 +51,20 @@ function getDisplayName(fullName?: string | null, email?: string | null) {
   }
 
   return "Usuário";
+}
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Bom dia";
+  if (hour < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+function getCurrentMonthLabel() {
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
 }
 
 function formatVisibleCurrency(value: number, visible: boolean) {
@@ -77,10 +91,11 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
   const recentTransactions = dashboard?.recentTransactions ?? [];
   const weeklyFlow = dashboard?.weeklyFlow ?? [];
   const summary = dashboard?.summary;
-  const displayName = getDisplayName(
+  const firstName = getFirstName(
     profileQuery.data?.fullName ?? currentUser?.fullName,
     profileQuery.data?.email ?? currentUser?.email,
   );
+  const greeting = getGreeting();
   const primaryAccount =
     accounts.find((account) => account.isActive) ?? accounts[0] ?? null;
 
@@ -94,21 +109,25 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Olá, {displayName}</Text>
-          <Text style={styles.subtitle}>Seu resumo financeiro.</Text>
+          <Text style={styles.greeting}>
+            {greeting},{" "}
+            <Text style={styles.greetingName}>{firstName}</Text>
+          </Text>
+          <Text style={styles.subtitle}>{getCurrentMonthLabel()}</Text>
         </View>
         <Pressable
           style={styles.visibilityButton}
           onPress={() => setShowValues((current) => !current)}
         >
           {showValues ? (
-            <Eye color={colors.textPrimary} size={18} />
+            <Eye color={colors.white} size={18} />
           ) : (
-            <EyeOff color={colors.textPrimary} size={18} />
+            <EyeOff color={colors.white} size={18} />
           )}
         </Pressable>
       </View>
 
+      <View style={styles.scrollWrapper}>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -122,7 +141,6 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
             updatedAtLabel:
               summary?.updatedAtLabel ?? "Atualizado em tempo real",
           }}
-          variationLabel={summary?.monthLabel}
           hideAmounts={!showValues}
         />
 
@@ -146,7 +164,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
         <View style={styles.kpiRow}>
           <Pressable
             style={styles.kpiCard}
-            onPress={() => navigation.navigate("Goals")}
+            onPress={() => navigation.getParent()?.navigate("Goals")}
           >
             <Target color={colors.primary} size={18} />
             <Text style={styles.kpiValue}>{summary?.goalsCount ?? 0}</Text>
@@ -267,6 +285,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
           )}
         </Card>
       </ScrollView>
+      </View>
 
       <FloatingActionButton
         style={styles.fab}
@@ -290,7 +309,7 @@ const createStyles = (colors: AppColors) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.primary,
     },
     header: {
       flexDirection: "row",
@@ -298,6 +317,14 @@ const createStyles = (colors: AppColors) =>
       justifyContent: "space-between",
       paddingHorizontal: layout.pageHorizontal,
       paddingTop: layout.pageHeaderTop,
+      paddingBottom: spacing.xl,
+    },
+    scrollWrapper: {
+      flex: 1,
+      backgroundColor: colors.background,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
+      overflow: "hidden",
     },
     content: {
       padding: layout.pageHorizontal,
@@ -306,21 +333,28 @@ const createStyles = (colors: AppColors) =>
     },
     greeting: {
       ...typography.h1,
-      color: colors.textPrimary,
+      color: colors.whiteAlpha65,
+      fontWeight: "400",
+    },
+    greetingName: {
+      ...typography.h1,
+      color: colors.white,
+      fontWeight: "700",
     },
     subtitle: {
       ...typography.caption,
-      color: colors.textSecondary,
+      color: colors.whiteAlpha50,
       marginTop: spacing.xs,
       marginBottom: spacing.sm,
+      textTransform: "capitalize",
     },
     visibilityButton: {
       width: 40,
       height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.surface,
+      borderRadius: radius.pill,
+      backgroundColor: colors.whiteAlpha15,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: colors.whiteAlpha20,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -338,7 +372,7 @@ const createStyles = (colors: AppColors) =>
     kpiCard: {
       flex: 1,
       backgroundColor: colors.surface,
-      borderRadius: 24,
+      borderRadius: radius.xl,
       borderWidth: 1,
       borderColor: colors.border,
       paddingVertical: spacing.md,
@@ -417,7 +451,7 @@ const createStyles = (colors: AppColors) =>
       ...typography.body,
       color: colors.textPrimary,
       fontWeight: "700",
-      marginTop: 2,
+      marginTop: spacing.xs,
     },
     emptyText: {
       ...typography.body,

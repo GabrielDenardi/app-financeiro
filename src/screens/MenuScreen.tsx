@@ -1,13 +1,26 @@
 import React, { useMemo } from "react";
 import {
   Alert,
+  Pressable,
   Switch,
   Text,
   TouchableOpacity,
   View,
   StyleSheet,
 } from "react-native";
-import { ChevronRight, LogOut, User } from "lucide-react-native";
+import {
+  ArrowLeftRight,
+  ChartSpline,
+  ChevronRight,
+  Crown,
+  FileText,
+  Landmark,
+  LogOut,
+  Receipt,
+  Trophy,
+  User,
+  Users,
+} from "lucide-react-native";
 
 import { Card } from "../components/Card";
 import { PageHeader } from "../components/PageHeader";
@@ -34,7 +47,6 @@ type MenuScreenProps = {
 
 const IMPLEMENTED_ROUTES = new Set([
   "Accounts",
-  "Cards",
   "Goals",
   "Help",
   "Privacy",
@@ -43,12 +55,22 @@ const IMPLEMENTED_ROUTES = new Set([
   "IncomeTax",
   "Plans",
   "About",
-  "Budgets",
   "Reports",
   "Groups",
   "RecurringTransactions",
   "ListChat",
 ]);
+
+const FEATURE_GRID = [
+  { icon: Landmark, label: "Contas", page: "Accounts" },
+  { icon: Trophy, label: "Metas", page: "Goals" },
+  { icon: Users, label: "Grupos", page: "Groups" },
+  { icon: ChartSpline, label: "Relatórios", page: "Reports" },
+  { icon: ArrowLeftRight, label: "Recorrentes", page: "RecurringTransactions" },
+  { icon: FileText, label: "Importar", page: "Import" },
+  { icon: Receipt, label: "Imp. de Renda", page: "IncomeTax" },
+  { icon: Crown, label: "Planos", page: "Plans" },
+] as const;
 
 export function MenuScreen({ navigation, user }: MenuScreenProps) {
   const { colors, isDarkMode, setDarkMode } = useAppTheme();
@@ -99,9 +121,7 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
   };
 
   const handleNavigate = (page?: string) => {
-    if (!page) {
-      return;
-    }
+    if (!page) return;
 
     if (!IMPLEMENTED_ROUTES.has(page)) {
       Alert.alert("Em breve", "Essa tela ainda não está disponível.");
@@ -121,16 +141,15 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
       parentNavigation.navigate("EditProfile");
       return;
     }
-
     navigation?.navigate("EditProfile");
   };
 
   return (
     <PageShell withTabBarInset>
       <PageHeader
-        title="Configurações"
+        title="Mais"
         variant="primary"
-        subtitle="Ajuste preferências, perfil e segurança."
+        subtitle="Funcionalidades e configurações do app."
       />
 
       <Card style={styles.profileCard}>
@@ -148,6 +167,32 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
           <Text style={styles.editButtonText}>Editar</Text>
         </TouchableOpacity>
       </Card>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Funcionalidades</Text>
+        <View style={styles.featureGrid}>
+          {FEATURE_GRID.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Pressable
+                key={item.page}
+                style={({ pressed }) => [
+                  styles.featureTile,
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => handleNavigate(item.page)}
+              >
+                <View style={styles.featureIconWrap}>
+                  <Icon size={22} color={colors.primary} />
+                </View>
+                <Text style={styles.featureLabel} numberOfLines={2}>
+                  {item.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
 
       {sections.map((section) => (
         <View key={section.title} style={styles.section}>
@@ -219,7 +264,7 @@ const createStyles = (colors: AppColors) =>
     avatar: {
       width: 60,
       height: 60,
-      borderRadius: 30,
+      borderRadius: radius.pill,
       backgroundColor: colors.primary,
       alignItems: "center",
       justifyContent: "center",
@@ -264,6 +309,40 @@ const createStyles = (colors: AppColors) =>
       color: colors.textPrimary,
       fontWeight: "600",
       marginLeft: spacing.xs,
+    },
+    featureGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.sm,
+    },
+    featureTile: {
+      width: "22%",
+      flexGrow: 1,
+      alignItems: "center",
+      gap: spacing.sm,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.xs,
+    },
+    featureIconWrap: {
+      width: 48,
+      height: 48,
+      borderRadius: radius.md,
+      backgroundColor: colors.surfaceMuted,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    featureLabel: {
+      ...typography.caption,
+      color: colors.textPrimary,
+      fontWeight: "600",
+      textAlign: "center",
+    },
+    pressed: {
+      opacity: 0.7,
     },
     menuGroup: {
       overflow: "hidden",

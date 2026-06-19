@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Fuel, HeartPulse, HelpCircle, ShoppingBag, Utensils, Wallet, Zap } from 'lucide-react-native';
+import { Fuel, HeartPulse, HelpCircle, MoreVertical, ShoppingBag, Utensils, Wallet, Zap } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { RecentTransaction } from '../types/finance';
@@ -10,6 +10,7 @@ interface TransactionListItemProps {
   item: RecentTransaction;
   showDivider?: boolean;
   hideAmounts?: boolean;
+  showOptions?: boolean;
 }
 
 function getCategoryIcon(category: string, colors: AppColors) {
@@ -49,6 +50,7 @@ export function TransactionListItem({
   item,
   showDivider = false,
   hideAmounts = false,
+  showOptions = false,
 }: TransactionListItemProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -85,6 +87,11 @@ export function TransactionListItem({
             {item.category}
           </Text>
         </View>
+        {showOptions ? (
+          <View style={styles.optionsHint}>
+            <MoreVertical size={14} color={colors.border} />
+          </View>
+        ) : null}
       </View>
 
       {showDivider ? <View style={styles.divider} /> : null}
@@ -143,7 +150,11 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   amountContainer: {
     alignItems: 'flex-end',
     flexShrink: 0,
-    maxWidth: 120,
+    maxWidth: 110,
+  },
+  optionsHint: {
+    paddingLeft: spacing.sm,
+    justifyContent: 'center',
   },
   amount: {
     ...typography.body,

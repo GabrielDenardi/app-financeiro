@@ -369,7 +369,7 @@ const createStyles = (colors: AppColors) =>
     tabs: {
       flexDirection: 'row',
       borderRadius: radius.md,
-      padding: 4,
+      padding: spacing.xs,
       backgroundColor: colors.mutedSurface,
     },
     tab: {
@@ -531,8 +531,8 @@ const createStyles = (colors: AppColors) =>
     },
     sheet: {
       backgroundColor: colors.surface,
-      borderTopLeftRadius: 26,
-      borderTopRightRadius: 26,
+      borderTopLeftRadius: radius.xl,
+      borderTopRightRadius: radius.xl,
       padding: spacing.xl,
       maxHeight: '90%',
       gap: spacing.md,

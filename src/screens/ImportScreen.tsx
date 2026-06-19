@@ -347,7 +347,7 @@ const createStyles = (colors: AppColors) =>
       width: '100%',
       maxWidth: 340,
       backgroundColor: colors.surface,
-      borderRadius: 24,
+      borderRadius: radius.xl,
       padding: 28,
       alignItems: 'center',
       gap: spacing.sm,

@@ -73,9 +73,12 @@ function buildCategorySpending(items: DashboardData['recentTransactions']): Dash
 
 export async function getHomeDashboard(monthDate = formatMonthDate()): Promise<DashboardData> {
   const userId = await requireCurrentUserId();
-  const date = new Date(monthDate);
-  const from = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().slice(0, 10);
-  const to = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const [yearStr, monthStr] = monthDate.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr); // 1-indexed
+  const from = `${yearStr}-${monthStr}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const to = `${yearStr}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
 
   const [accountsOverview, transactionFeed, goalsData, membershipsData] = await Promise.all([
     getAccountsOverview(),

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { CheckCircle2, Lock } from 'lucide-react-native';
 
@@ -7,6 +7,8 @@ import { useAuthenticatedUser } from '../../auth/hooks/useAuthenticatedUser';
 import type { AppStackParamList } from '../../../navigation/types';
 import { formatCurrencyBRL } from '../../../utils/format';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
+import { BottomSheet } from '../../../components/BottomSheet';
+import { Button } from '../../../components/Button';
 import { SUBSCRIPTION_PLANS, TRIAL_DURATION_DAYS } from '../plans';
 import { useCurrentPlan, usePaywallStats, useStartTrialMutation } from '../hooks';
 
@@ -61,18 +63,22 @@ export function UpgradePaywallSheet({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.iconWrapper}>
-            <Lock size={26} color={colors.primary} />
-          </View>
-
-          <Text style={styles.title}>{featureTitle}</Text>
-          <Text style={styles.subtitle}>
-            {description ?? `${featureTitle} nao esta incluido no seu plano atual.`}
-          </Text>
-
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      headerAlign="center"
+      showClose={false}
+      headerIcon={
+        <View style={styles.iconWrapper}>
+          <Lock size={26} color={colors.primary} />
+        </View>
+      }
+      title={featureTitle}
+      subtitle={description ?? `${featureTitle} nao esta incluido no seu plano atual.`}
+      maxHeightRatio={0.85}
+    >
+      {(close) => (
+        <View style={styles.body}>
           {stats && stats.totalTransactions > 0 ? (
             <View style={styles.statsCard}>
               <Text style={styles.statsHighlight}>
@@ -98,84 +104,41 @@ export function UpgradePaywallSheet({
             ))}
           </View>
 
-          {currentPlan.trial.isEligible ? (
-            <Pressable
-              style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
-              onPress={handleStartTrial}
-              disabled={startTrial.isPending}
-            >
-              {startTrial.isPending ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.primaryButtonText}>
-                  Experimentar gratis por {TRIAL_DURATION_DAYS} dias
-                </Text>
-              )}
-            </Pressable>
-          ) : null}
+          <View style={styles.actions}>
+            {currentPlan.trial.isEligible ? (
+              <Button
+                label={`Experimentar gratis por ${TRIAL_DURATION_DAYS} dias`}
+                onPress={handleStartTrial}
+                loading={startTrial.isPending}
+              />
+            ) : null}
 
-          <Pressable
-            style={({ pressed }) => [
-              currentPlan.trial.isEligible ? styles.secondaryButton : styles.primaryButton,
-              pressed && styles.pressed,
-            ]}
-            onPress={handleSeePlans}
-          >
-            <Text
-              style={
-                currentPlan.trial.isEligible ? styles.secondaryButtonText : styles.primaryButtonText
-              }
-            >
-              Ver planos
-            </Text>
-          </Pressable>
+            <Button
+              label="Ver planos"
+              variant={currentPlan.trial.isEligible ? 'secondary' : 'primary'}
+              onPress={handleSeePlans}
+            />
 
-          <Pressable
-            style={({ pressed }) => [styles.dismissButton, pressed && styles.pressed]}
-            onPress={onClose}
-          >
-            <Text style={styles.dismissText}>Agora nao</Text>
-          </Pressable>
+            <Button label="Agora nao" variant="ghost" size="md" onPress={close} />
+          </View>
         </View>
-      </View>
-    </Modal>
+      )}
+    </BottomSheet>
   );
 }
 
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
-    overlay: {
-      flex: 1,
-      backgroundColor: colors.overlay,
-      justifyContent: 'flex-end',
-    },
-    sheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      padding: spacing.xl,
-      paddingBottom: spacing.xxl,
-      gap: spacing.md,
-      alignItems: 'center',
-    },
     iconWrapper: {
       width: 56,
       height: 56,
-      borderRadius: 28,
+      borderRadius: radius.pill,
       backgroundColor: colors.primarySoft,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    title: {
-      ...typography.h1,
-      color: colors.textPrimary,
-      textAlign: 'center',
-    },
-    subtitle: {
-      ...typography.body,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: 20,
+    body: {
+      gap: spacing.md,
     },
     statsCard: {
       width: '100%',
@@ -210,46 +173,8 @@ const createStyles = (colors: AppColors) =>
       flex: 1,
       lineHeight: 19,
     },
-    primaryButton: {
-      width: '100%',
-      minHeight: 48,
-      borderRadius: radius.md,
-      backgroundColor: colors.primaryLight,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    primaryButtonText: {
-      ...typography.body,
-      color: colors.white,
-      fontWeight: '800',
-    },
-    secondaryButton: {
-      width: '100%',
-      minHeight: 48,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    secondaryButtonText: {
-      ...typography.body,
-      color: colors.textPrimary,
-      fontWeight: '800',
-    },
-    dismissButton: {
-      minHeight: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: spacing.lg,
-    },
-    dismissText: {
-      ...typography.body,
-      color: colors.textSecondary,
-      fontWeight: '700',
-    },
-    pressed: {
-      opacity: 0.85,
+    actions: {
+      gap: spacing.md,
+      marginTop: spacing.sm,
     },
   });

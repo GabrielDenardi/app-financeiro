@@ -1,7 +1,7 @@
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { formatMonthDate, toNumber } from '../../finance/utils';
-import type { CardInvoiceSummary, CreateCardInput, CreditCard, PayCardInvoiceInput, RecordCardChargeInput } from '../types';
+import type { CardInvoiceSummary, CreateCardInput, CreditCard, InvoiceCharge, PayCardInvoiceInput, RecordCardChargeInput } from '../types';
 
 type CreditCardRow = {
   id: string;
@@ -175,6 +175,52 @@ export async function recordCardCharge(input: RecordCardChargeInput): Promise<st
   }
 
   return data as string;
+}
+
+export async function listInvoiceCharges(cardId: string, invoiceMonth: string): Promise<InvoiceCharge[]> {
+  const userId = await requireCurrentUserId();
+  const { data, error } = await supabase
+    .from('v_card_installment_feed')
+    .select('charge_id, title, notes, category_label, category_color, installment_number, total_installments, amount, status')
+    .eq('user_id', userId)
+    .eq('card_id', cardId)
+    .eq('invoice_month', invoiceMonth)
+    .order('charge_id');
+
+  if (error) throw new Error('Não foi possível carregar os lançamentos.');
+
+  return ((data as any[]) ?? []).map((row) => ({
+    chargeId: row.charge_id as string,
+    title: row.title as string,
+    notes: (row.notes as string | null) ?? null,
+    categoryLabel: (row.category_label as string | null) ?? null,
+    categoryColor: (row.category_color as string | null) ?? null,
+    installmentNumber: row.installment_number as number,
+    totalInstallments: row.total_installments as number,
+    amount: toNumber(row.amount),
+    status: row.status as string,
+  }));
+}
+
+export async function updateCard(id: string, input: Partial<CreateCardInput>): Promise<void> {
+  const userId = await requireCurrentUserId();
+  const update: Record<string, unknown> = {};
+  if (input.name !== undefined) update.name = input.name.trim();
+  if (input.institution !== undefined) update.institution = input.institution.trim();
+  if (input.network !== undefined) update.network = input.network;
+  if (input.lastDigits !== undefined) update.last_digits = input.lastDigits;
+  if (input.limitAmount !== undefined) update.limit_amount = Number(input.limitAmount.toFixed(2));
+  if (input.dueDay !== undefined) update.due_day = input.dueDay;
+  if (input.closingDay !== undefined) update.closing_day = input.closingDay;
+  if (input.color !== undefined) update.color = input.color;
+
+  const { error } = await supabase
+    .from('credit_cards')
+    .update(update)
+    .eq('id', id)
+    .eq('user_id', userId);
+
+  if (error) throw new Error(error.message);
 }
 
 export async function payCardInvoice(input: PayCardInvoiceInput): Promise<string> {

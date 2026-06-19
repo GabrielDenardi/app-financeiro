@@ -11,6 +11,7 @@ import {
 import type {
   ConfirmRecurringTransactionInput,
   CreateRecurringTransactionInput,
+  RecurringTransaction,
   UpdateRecurringTransactionInput,
 } from '../types';
 
@@ -41,9 +42,34 @@ export function useCreateRecurringTransactionMutation(userId?: string | null) {
 
 export function useUpdateRecurringTransactionMutation(userId?: string | null) {
   const queryClient = useQueryClient();
+  const listKey = financeQueryKeys.recurring.list(userId);
 
   return useMutation({
     mutationFn: (input: UpdateRecurringTransactionInput) => updateRecurringTransaction(input),
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: listKey });
+      const previous = queryClient.getQueryData<RecurringTransaction[]>(listKey);
+      queryClient.setQueryData<RecurringTransaction[]>(listKey, (old) =>
+        old?.map((item) =>
+          item.id === input.id
+            ? {
+                ...item,
+                ...(typeof input.isActive === 'boolean' && { isActive: input.isActive }),
+                ...(typeof input.isVariable === 'boolean' && { isVariable: input.isVariable }),
+                ...(typeof input.amount === 'number' && { amount: input.amount }),
+                ...(typeof input.title === 'string' && { title: input.title }),
+                ...(typeof input.dayOfMonth === 'number' && { dayOfMonth: input.dayOfMonth }),
+              }
+            : item,
+        ) ?? [],
+      );
+      return { previous };
+    },
+    onError: (_err, _input, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(listKey, context.previous);
+      }
+    },
     onSuccess: () => invalidateRecurringQueries(queryClient),
   });
 }

@@ -65,6 +65,16 @@ export type TransactionFilters = {
   to?: string | null;
 };
 
+export type UpdateTransactionInput = {
+  categoryId?: string | null;
+  title?: string;
+  amount?: number;
+  type?: EntryType;
+  paymentMethod?: string;
+  occurredAt?: string;
+  notes?: string;
+};
+
 export type CreateTransactionInput = {
   accountId: string;
   categoryId: string | null;

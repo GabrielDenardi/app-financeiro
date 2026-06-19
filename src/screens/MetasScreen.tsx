@@ -2,12 +2,9 @@ import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import {
@@ -19,14 +16,19 @@ import {
   Plus,
   Target,
   Trash2,
-  X,
 } from "lucide-react-native";
 import { Calendar, CalendarUtils } from "react-native-calendars";
+import { useNavigation } from "@react-navigation/native";
 
 import { PageHeader } from "../components/PageHeader";
 import { PageShell } from "../components/PageShell";
+import { BottomSheet } from "../components/BottomSheet";
+import { Button } from "../components/Button";
+import { Chip } from "../components/Chip";
+import { FieldCard, FieldDivider, FieldRow } from "../components/FormField";
 import { useAccounts } from "../features/accounts/hooks/useAccounts";
 import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
+import { formatCurrencyInput, normalizeCurrencyInput } from "../features/finance/utils";
 import {
   useCreateGoalMutation,
   useDeleteGoalMutation,
@@ -44,7 +46,6 @@ import {
 import { formatCurrencyBRL } from "../utils/format";
 
 const TODAY = CalendarUtils.getCalendarDateString(new Date());
-const COLORS = ["#10B981", "#3B82F6", "#8B5CF6", "#F43F5E", "#F59E0B"];
 const ICONS = [
   { id: "target", label: "Geral", Icon: Target },
   { id: "car", label: "Carro", Icon: Car },
@@ -53,17 +54,6 @@ const ICONS = [
   { id: "wallet", label: "Reserva", Icon: Landmark },
 ] as const;
 
-function moneyMask(v: string) {
-  const raw = v.replace(/\D/g, "");
-  if (!raw) return "";
-  return (Number(raw) / 100)
-    .toFixed(2)
-    .replace(".", ",")
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-}
-function moneyValue(v: string) {
-  return Number((v || "0").replace(/\./g, "").replace(",", "."));
-}
 function iconOf(id: string) {
   return ICONS.find((item) => item.id === id)?.Icon ?? Target;
 }
@@ -88,6 +78,17 @@ function monthlyNeed(current: number, target: number, due: string | null) {
 export default function MetasScreen() {
   const themeColors = useThemeColors();
   const s = useMemo(() => createStyles(themeColors), [themeColors]);
+  const goalColors = useMemo(
+    () => [
+      themeColors.success,
+      themeColors.primary,
+      themeColors.primaryLight,
+      themeColors.danger,
+      themeColors.warning,
+    ],
+    [themeColors],
+  );
+  const navigation = useNavigation<any>();
   const user = useAuthenticatedUser();
   const goalsQuery = useGoals(user?.id);
   const accountsQuery = useAccounts(user?.id);
@@ -105,7 +106,7 @@ export default function MetasScreen() {
   const [target, setTarget] = useState("");
   const [saved, setSaved] = useState("");
   const [due, setDue] = useState(TODAY);
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState(themeColors.success);
   const [icon, setIcon] = useState<(typeof ICONS)[number]["id"]>("car");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -133,7 +134,7 @@ export default function MetasScreen() {
     setTarget("");
     setSaved("");
     setDue(TODAY);
-    setColor(COLORS[0]);
+    setColor(goalColors[0]);
     setIcon("car");
   };
 
@@ -150,14 +151,13 @@ export default function MetasScreen() {
     try {
       await createGoal.mutateAsync({
         title: title.trim(),
-        targetAmount: moneyValue(target),
-        initialAmount: moneyValue(saved),
+        targetAmount: normalizeCurrencyInput(target),
+        initialAmount: normalizeCurrencyInput(saved),
         targetDate: due,
         color,
         icon,
       });
-      setCreateOpen(false);
-      resetCreate();
+      closeModal();
     } catch (error) {
       Alert.alert(
         "Erro",
@@ -190,7 +190,7 @@ export default function MetasScreen() {
     ]);
 
   const onContribute = async () => {
-    if (!goalId || !accountId || moneyValue(amount) <= 0) {
+    if (!goalId || !accountId || normalizeCurrencyInput(amount) <= 0) {
       Alert.alert("Atenção", "Selecione uma conta e informe um aporte válido.");
       return;
     }
@@ -198,7 +198,7 @@ export default function MetasScreen() {
       await contribute.mutateAsync({
         goalId,
         accountId,
-        amount: moneyValue(amount),
+        amount: normalizeCurrencyInput(amount),
         note,
       });
       setAddOpen(false);
@@ -238,17 +238,17 @@ export default function MetasScreen() {
           title="Metas Financeiras"
           subtitle={`${activeCount} ativa(s)`}
           variant="primary"
+          onBackPress={() => navigation.goBack()}
           action={
-            <Pressable
-              style={s.darkBtn}
+            <Button
+              label="Nova Meta"
+              size="sm"
+              icon={<Plus size={16} color={themeColors.white} />}
               onPress={() => {
                 resetCreate();
                 setCreateOpen(true);
               }}
-            >
-              <Plus size={16} color={themeColors.white} />
-              <Text style={s.darkBtnText}>Nova Meta</Text>
-            </Pressable>
+            />
           }
         />
 
@@ -392,300 +392,221 @@ export default function MetasScreen() {
         })}
       </PageShell>
 
-      <Modal
+      {/* Criar Nova Meta */}
+      <BottomSheet
         visible={createOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setCreateOpen(false)}
-      >
-        <View style={s.overlay}>
-          <View style={s.sheet}>
-            <View style={s.sheetHead}>
-              <Text style={s.sheetTitle}>Nova Meta</Text>
-              <Pressable onPress={() => setCreateOpen(false)}>
-                <X size={22} color={themeColors.textPrimary} />
-              </Pressable>
-            </View>
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={s.sheetContent}
-            >
-              <Text style={s.label}>Nome</Text>
-              <TextInput
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Ex: Reserva de emergência"
-                placeholderTextColor={themeColors.textSecondary}
-                style={s.input}
-              />
-              <Text style={s.label}>Valor alvo</Text>
-              <View style={s.moneyRow}>
-                <Text style={s.prefix}>R$</Text>
-                <TextInput
-                  value={target}
-                  onChangeText={(v) => setTarget(moneyMask(v))}
-                  keyboardType="numeric"
-                  placeholder="0,00"
-                  placeholderTextColor={themeColors.textSecondary}
-                  style={s.moneyInput}
-                />
-              </View>
-              <Text style={s.label}>Já guardado</Text>
-              <View style={s.moneyRow}>
-                <Text style={s.prefix}>R$</Text>
-                <TextInput
-                  value={saved}
-                  onChangeText={(v) => setSaved(moneyMask(v))}
-                  keyboardType="numeric"
-                  placeholder="0,00"
-                  placeholderTextColor={themeColors.textSecondary}
-                  style={s.moneyInput}
-                />
-              </View>
-              <Text style={s.label}>Prazo</Text>
-              <View style={s.calendar}>
-                <Calendar
-                  current={due}
-                  minDate={TODAY}
-                  markedDates={{
-                    [due]: {
-                      selected: true,
-                      selectedColor: themeColors.primaryLight,
-                    },
-                  }}
-                  onDayPress={(day) => setDue(day.dateString)}
-                  style={{ backgroundColor: themeColors.surface }}
-                  theme={{
-                    backgroundColor: themeColors.surface,
-                    calendarBackground: themeColors.surface,
-                    dayTextColor: themeColors.textPrimary,
-                    monthTextColor: themeColors.textPrimary,
-                    textDisabledColor: themeColors.textSecondary,
-                    todayTextColor: themeColors.primaryLight,
-                    selectedDayBackgroundColor: themeColors.primaryLight,
-                    selectedDayTextColor: themeColors.white,
-                    arrowColor: themeColors.primaryLight,
-                  }}
-                />
-              </View>
-              <Text style={s.label}>Ícone</Text>
-              <View style={s.wrap}>
-                {ICONS.map((item) => (
-                  <Pressable
-                    key={item.id}
-                    style={[s.pill, icon === item.id && s.pillOn]}
-                    onPress={() => setIcon(item.id)}
-                  >
-                    <Text
-                      style={[s.pillText, icon === item.id && s.pillTextOn]}
-                    >
-                      {item.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-              <Text style={s.label}>Cor</Text>
-              <View style={s.colors}>
-                {COLORS.map((item) => (
-                  <Pressable
-                    key={item}
-                    style={[
-                      s.color,
-                      { backgroundColor: item },
-                      color === item && s.colorOn,
-                    ]}
-                    onPress={() => setColor(item)}
-                  />
-                ))}
-              </View>
-              <Pressable
-                style={[s.primary, createGoal.isPending && s.dim]}
-                onPress={onCreate}
-                disabled={createGoal.isPending}
-              >
-                {createGoal.isPending ? (
-                  <ActivityIndicator color={themeColors.white} />
-                ) : (
-                  <Text style={s.primaryText}>Criar Meta</Text>
-                )}
-              </Pressable>
-              <Pressable style={s.ghost} onPress={() => closeModal()}>
-                <Text style={[s.ghostText, { textAlign: "center" }]}>
-                  Cancelar
-                </Text>
-              </Pressable>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={addOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setAddOpen(false)}
-      >
-        <View style={s.overlay}>
-          <View style={s.sheet}>
-            <View style={s.sheetHead}>
-              <Text style={s.sheetTitle}>Adicionar Valor</Text>
-              <Pressable onPress={() => setAddOpen(false)}>
-                <X size={22} color={themeColors.textPrimary} />
-              </Pressable>
-            </View>
-            <Text style={s.modalSub}>
-              Adicionando a{" "}
-              <Text style={s.softStrong}>{selectedGoal?.title ?? "Meta"}</Text>
-            </Text>
-            <Text style={s.label}>Conta</Text>
-            <View style={s.wrap}>
-              {accounts.length ? (
-                accounts.map((item) => (
-                  <Pressable
-                    key={item.id}
-                    style={[s.pill, accountId === item.id && s.pillOn]}
-                    onPress={() => setAccountId(item.id)}
-                  >
-                    <Text
-                      style={[
-                        s.pillText,
-                        accountId === item.id && s.pillTextOn,
-                      ]}
-                    >
-                      {item.name}
-                    </Text>
-                  </Pressable>
-                ))
-              ) : (
-                <Text style={s.modalSub}>Crie uma conta antes de aportar.</Text>
-              )}
-            </View>
-            <Text style={s.label}>Valor</Text>
-            <View style={s.moneyRow}>
-              <Text style={s.prefix}>R$</Text>
-              <TextInput
-                value={amount}
-                onChangeText={(v) => setAmount(moneyMask(v))}
-                keyboardType="numeric"
-                placeholder="0,00"
-                placeholderTextColor={themeColors.textSecondary}
-                style={s.moneyInput}
-                autoFocus
-              />
-            </View>
-            <TextInput
-              value={note}
-              onChangeText={setNote}
-              placeholder="Observação"
-              placeholderTextColor={themeColors.textSecondary}
-              style={s.input}
+        onClose={() => setCreateOpen(false)}
+        title="Nova Meta"
+        maxHeightRatio={0.92}
+        footer={(close) => (
+          <>
+            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+            <Button
+              label="Criar Meta"
+              fullWidth
+              onPress={onCreate}
+              loading={createGoal.isPending}
             />
-            <View style={s.actions}>
-              <Pressable
-                style={[
-                  s.green,
-                  (contribute.isPending || !accounts.length) && s.dim,
-                ]}
-                onPress={onContribute}
-                disabled={contribute.isPending || !accounts.length}
-              >
-                {contribute.isPending ? (
-                  <ActivityIndicator color={themeColors.white} />
-                ) : (
-                  <Text style={s.greenText}>Adicionar</Text>
-                )}
-              </Pressable>
-              <Pressable style={s.ghost} onPress={() => setAddOpen(false)}>
-                <Text style={s.ghostText}>Cancelar</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={deadlineOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setDeadlineOpen(false)}
+          </>
+        )}
       >
-        <View style={s.overlay}>
-          <View style={s.sheet}>
-            <View style={s.sheetHead}>
-              <Text style={s.sheetTitle}>Editar Prazo</Text>
-              <Pressable onPress={() => setDeadlineOpen(false)}>
-                <X size={22} color={themeColors.textPrimary} />
-              </Pressable>
-            </View>
-            <Text style={s.modalSub}>
-              Nova data para{" "}
-              <Text style={s.softStrong}>{selectedGoal?.title ?? "Meta"}</Text>
-            </Text>
-            <View style={s.calendar}>
-              <Calendar
-                current={tempDue}
-                minDate={TODAY}
-                markedDates={{
-                  [tempDue]: {
-                    selected: true,
-                    selectedColor: themeColors.primaryLight,
-                  },
-                }}
-                onDayPress={(day) => setTempDue(day.dateString)}
-                theme={{
-                  backgroundColor: themeColors.surface,
-                  calendarBackground: themeColors.surface,
-                  dayTextColor: themeColors.textPrimary,
-                  monthTextColor: themeColors.textPrimary,
-                  textDisabledColor: themeColors.textSecondary,
-                  todayTextColor: themeColors.primaryLight,
-                  selectedDayBackgroundColor: themeColors.primaryLight,
-                  selectedDayTextColor: themeColors.white,
-                  arrowColor: themeColors.primaryLight,
-                }}
+        <FieldCard>
+          <FieldRow
+            label="Nome"
+            placeholder="Ex: Reserva de emergência"
+            value={title}
+            onChangeText={setTitle}
+          />
+          <FieldDivider />
+          <FieldRow
+            label="Valor alvo"
+            prefix="R$"
+            placeholder="0,00"
+            keyboardType="numeric"
+            value={target}
+            onChangeText={(value) => setTarget(formatCurrencyInput(value))}
+          />
+          <FieldDivider />
+          <FieldRow
+            label="Já guardado"
+            prefix="R$"
+            placeholder="0,00"
+            keyboardType="numeric"
+            value={saved}
+            onChangeText={(value) => setSaved(formatCurrencyInput(value))}
+          />
+        </FieldCard>
+
+        <Text style={s.label}>Prazo</Text>
+        <View style={s.calendar}>
+          <Calendar
+            current={due}
+            minDate={TODAY}
+            markedDates={{
+              [due]: {
+                selected: true,
+                selectedColor: themeColors.primaryLight,
+              },
+            }}
+            onDayPress={(day) => setDue(day.dateString)}
+            style={{ backgroundColor: themeColors.surface }}
+            theme={{
+              backgroundColor: themeColors.surface,
+              calendarBackground: themeColors.surface,
+              dayTextColor: themeColors.textPrimary,
+              monthTextColor: themeColors.textPrimary,
+              textDisabledColor: themeColors.textSecondary,
+              todayTextColor: themeColors.primaryLight,
+              selectedDayBackgroundColor: themeColors.primaryLight,
+              selectedDayTextColor: themeColors.white,
+              arrowColor: themeColors.primaryLight,
+            }}
+          />
+        </View>
+
+        <Text style={s.label}>Ícone</Text>
+        <View style={s.wrap}>
+          {ICONS.map((item) => (
+            <Chip
+              key={item.id}
+              label={item.label}
+              selected={icon === item.id}
+              onPress={() => setIcon(item.id)}
+            />
+          ))}
+        </View>
+
+        <Text style={s.label}>Cor</Text>
+        <View style={s.colors}>
+          {goalColors.map((item) => (
+            <Pressable
+              key={item}
+              style={[
+                s.colorCircle,
+                { backgroundColor: item },
+                color === item && s.colorOn,
+              ]}
+              onPress={() => setColor(item)}
+            />
+          ))}
+        </View>
+
+        <View style={s.bottomSpacer} />
+      </BottomSheet>
+
+      {/* Adicionar Valor */}
+      <BottomSheet
+        visible={addOpen}
+        onClose={() => setAddOpen(false)}
+        title="Adicionar Valor"
+        subtitle={`Adicionando a ${selectedGoal?.title ?? "Meta"}`}
+        footer={(close) => (
+          <>
+            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+            <Button
+              label="Adicionar"
+              fullWidth
+              onPress={onContribute}
+              disabled={!accounts.length}
+              loading={contribute.isPending}
+            />
+          </>
+        )}
+      >
+        <Text style={s.label}>Conta</Text>
+        <View style={s.wrap}>
+          {accounts.length ? (
+            accounts.map((item) => (
+              <Chip
+                key={item.id}
+                label={item.name}
+                selected={accountId === item.id}
+                onPress={() => setAccountId(item.id)}
               />
-            </View>
-            <Pressable
-              style={[s.primary, updateGoal.isPending && s.dim]}
-              onPress={() => onUpdateDeadline(tempDue)}
-              disabled={updateGoal.isPending}
-            >
-              {updateGoal.isPending ? (
-                <ActivityIndicator color={themeColors.white} />
-              ) : (
-                <Text style={s.primaryText}>Salvar Novo Prazo</Text>
-              )}
-            </Pressable>
-            <Pressable
-              style={s.ghostWide}
+            ))
+          ) : (
+            <Text style={s.msg}>Crie uma conta antes de aportar.</Text>
+          )}
+        </View>
+
+        <FieldCard>
+          <FieldRow
+            label="Valor"
+            prefix="R$"
+            placeholder="0,00"
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={(value) => setAmount(formatCurrencyInput(value))}
+            autoFocus
+          />
+          <FieldDivider />
+          <FieldRow
+            label="Observação"
+            placeholder="Opcional"
+            value={note}
+            onChangeText={setNote}
+          />
+        </FieldCard>
+
+        <View style={s.bottomSpacer} />
+      </BottomSheet>
+
+      {/* Editar Prazo */}
+      <BottomSheet
+        visible={deadlineOpen}
+        onClose={() => setDeadlineOpen(false)}
+        title="Editar Prazo"
+        subtitle={`Nova data para ${selectedGoal?.title ?? "Meta"}`}
+        footer={() => (
+          <>
+            <Button
+              label="Limpar prazo"
+              variant="secondary"
+              fullWidth
               onPress={() => onUpdateDeadline(null)}
               disabled={updateGoal.isPending}
-            >
-              <Text style={s.ghostText}>Limpar prazo</Text>
-            </Pressable>
-          </View>
+            />
+            <Button
+              label="Salvar Prazo"
+              fullWidth
+              onPress={() => onUpdateDeadline(tempDue)}
+              loading={updateGoal.isPending}
+            />
+          </>
+        )}
+      >
+        <View style={s.calendar}>
+          <Calendar
+            current={tempDue}
+            minDate={TODAY}
+            markedDates={{
+              [tempDue]: {
+                selected: true,
+                selectedColor: themeColors.primaryLight,
+              },
+            }}
+            onDayPress={(day) => setTempDue(day.dateString)}
+            theme={{
+              backgroundColor: themeColors.surface,
+              calendarBackground: themeColors.surface,
+              dayTextColor: themeColors.textPrimary,
+              monthTextColor: themeColors.textPrimary,
+              textDisabledColor: themeColors.textSecondary,
+              todayTextColor: themeColors.primaryLight,
+              selectedDayBackgroundColor: themeColors.primaryLight,
+              selectedDayTextColor: themeColors.white,
+              arrowColor: themeColors.primaryLight,
+            }}
+          />
         </View>
-      </Modal>
+        <View style={s.bottomSpacer} />
+      </BottomSheet>
     </>
   );
 }
 
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
-    darkBtn: {
-      backgroundColor: colors.primaryLight,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.xs,
-    },
-    darkBtnText: {
-      ...typography.caption,
-      color: colors.white,
-      fontWeight: "700",
-    },
     tabs: {
       flexDirection: "row",
       marginBottom: spacing.xs,
@@ -814,65 +735,14 @@ const createStyles = (colors: AppColors) =>
       color: colors.white,
       fontWeight: "700",
     },
-    overlay: {
-      flex: 1,
-      backgroundColor: colors.overlay,
-      justifyContent: "flex-end",
-    },
-    sheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      padding: spacing.lg,
-      maxHeight: "90%",
-      gap: spacing.md,
-    },
-    sheetContent: {
-      gap: spacing.md,
-      paddingBottom: spacing.sm,
-    },
-    sheetHead: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-    },
-    sheetTitle: {
-      ...typography.h2,
-      fontWeight: "800",
-      color: colors.textPrimary,
-    },
     label: {
       ...typography.caption,
-      fontWeight: "600",
+      fontWeight: "700",
       color: colors.textSecondary,
-    },
-    input: {
-      minHeight: 48,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radius.md,
-      paddingHorizontal: spacing.md,
-      color: colors.textPrimary,
-    },
-    moneyRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      minHeight: 48,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radius.md,
-    },
-    prefix: {
-      ...typography.body,
-      marginLeft: spacing.md,
-      color: colors.textSecondary,
-    },
-    moneyInput: {
-      ...typography.body,
-      flex: 1,
-      minHeight: 48,
-      paddingHorizontal: spacing.md,
-      color: colors.textPrimary,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginTop: spacing.lg,
+      marginBottom: spacing.sm,
     },
     calendar: {
       borderRadius: radius.lg,
@@ -885,102 +755,18 @@ const createStyles = (colors: AppColors) =>
       flexWrap: "wrap",
       gap: spacing.sm,
     },
-    pill: {
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderRadius: radius.pill,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    pillOn: {
-      backgroundColor: colors.primarySoft,
-      borderColor: colors.primary,
-    },
-    pillText: {
-      ...typography.caption,
-      fontWeight: "700",
-      color: colors.textSecondary,
-    },
-    pillTextOn: { color: colors.primary },
     colors: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: spacing.md,
     },
-    color: { width: 36, height: 36, borderRadius: 18 },
+    colorCircle: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.pill,
+    },
     colorOn: { borderWidth: 3, borderColor: colors.textPrimary },
-    primary: {
-      backgroundColor: colors.primary,
-      borderRadius: radius.md,
-      minHeight: 48,
-      alignItems: "center",
-      justifyContent: "center",
+    bottomSpacer: {
+      height: spacing.lg,
     },
-    primaryText: {
-      ...typography.body,
-      color: colors.white,
-      fontWeight: "800",
-    },
-    center: {
-      flex: 1,
-      backgroundColor: colors.overlay,
-      justifyContent: "center",
-      padding: 24,
-    },
-    modal: {
-      backgroundColor: colors.surface,
-      borderRadius: 18,
-      padding: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    modalTitle: {
-      fontSize: 18,
-      fontWeight: "800",
-      color: colors.textPrimary,
-      flex: 1,
-      marginBottom: 0,
-    },
-    modalSub: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      marginBottom: 10,
-      marginTop: 0,
-    },
-    actions: {
-      flexDirection: "column",
-      justifyContent: "flex-end",
-      gap: 10,
-      marginTop: 16,
-    },
-    ghost: {
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 10,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-    },
-    ghostWide: {
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 14,
-      paddingVertical: 14,
-      alignItems: "center",
-    },
-    ghostText: {
-      color: colors.textPrimary,
-      fontWeight: "700",
-      textAlign: "center",
-    },
-    green: {
-      backgroundColor: colors.primary,
-      borderRadius: 10,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      minWidth: 104,
-      alignItems: "center",
-    },
-    greenText: { color: colors.white, fontWeight: "700" },
-    dim: { opacity: 0.7 },
   });

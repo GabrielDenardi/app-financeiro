@@ -32,25 +32,25 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
           iconName = isFocused
             ? 'swap-horizontal'
             : 'swap-horizontal-outline';
-        } else if (route.name === 'Goals') {
-          iconName = isFocused ? 'trophy' : 'trophy-outline';
+        } else if (route.name === 'Cards') {
+          iconName = isFocused ? 'card' : 'card-outline';
         } else if (route.name === 'Budget') {
           // Nomes exclusivos do MaterialCommunityIcons
           iconName = isFocused ? 'piggy-bank' : 'piggy-bank-outline';
-        } else if (route.name === 'Settings') {
-          iconName = isFocused ? 'settings' : 'settings-outline';
+        } else if (route.name === 'More') {
+          iconName = isFocused ? 'grid' : 'grid-outline';
         }
 
         const tabLabel =
           route.name === 'Transactions'
             ? 'Transações'
-            : route.name === 'Goals'
-              ? 'Metas'
-            : route.name === 'Settings'
-              ? 'Configurações'
-              : route.name === 'Budget'
-                ? 'Orçamentos'
-                : route.name;
+            : route.name === 'Cards'
+              ? 'Cartões'
+              : route.name === 'More'
+                ? 'Mais'
+                : route.name === 'Budget'
+                  ? 'Orçamento'
+                  : route.name;
 
         return (
           <Pressable
@@ -66,13 +66,13 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
               {route.name === 'Budget' ? (
                 <MaterialCommunityIcons
                   name={iconName}
-                  size={isFocused ? 20 : 22}
+                  size={isFocused ? 22 : 20}
                   color={isFocused ? colors.primary : colors.textSecondary}
                 />
               ) : (
                 <Ionicons
                   name={iconName}
-                  size={isFocused ? 19 : 20}
+                  size={isFocused ? 22 : 20}
                   color={isFocused ? colors.primary : colors.textSecondary}
                 />
               )}
