@@ -11,7 +11,7 @@ jest.mock('react-native', () => ({
   },
 }));
 
-jest.mock('xlsx', () => ({
+jest.mock('@e965/xlsx', () => ({
   read: jest.fn(),
   utils: {
     sheet_to_json: jest.fn(),

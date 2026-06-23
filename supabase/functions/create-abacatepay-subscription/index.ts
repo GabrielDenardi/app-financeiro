@@ -1,5 +1,4 @@
 /// <reference path="../deno-globals.d.ts" />
-/// <reference path="../deno-npm-modules.d.ts" />
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 

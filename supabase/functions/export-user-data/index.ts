@@ -1,5 +1,4 @@
 /// <reference path="../deno-globals.d.ts" />
-/// <reference path="../deno-npm-modules.d.ts" />
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -44,18 +43,31 @@ Deno.serve(async (request) => {
       });
     }
 
+    const { error: entitlementError } = await userClient.rpc('assert_entitlement', {
+      p_feature: 'data_import_export',
+    });
+    if (entitlementError) {
+      return new Response(JSON.stringify({ error: 'Exportacao indisponivel no plano atual.' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const payload = await request.json();
     requestId = payload.requestId;
     userId = authData.user.id;
 
-    const { error: requestError } = await adminClient
+    const { data: requestRow, error: requestError } = await adminClient
       .from('data_export_requests')
       .update({ status: 'processing' })
       .eq('id', requestId)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle();
 
-    if (requestError) {
-      throw requestError;
+    if (requestError || !requestRow) {
+      throw requestError ?? new Error('Solicitacao de exportacao invalida.');
     }
 
     const tableNames = [

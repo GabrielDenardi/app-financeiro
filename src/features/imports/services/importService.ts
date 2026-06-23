@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
-import * as XLSX from 'xlsx';
+import * as XLSX from '@e965/xlsx';
 
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
@@ -27,7 +27,24 @@ type PickedAsset = {
   uri: string;
   name: string;
   mimeType?: string | null;
+  size?: number | null;
 };
+
+const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_IMPORT_ROWS = 5_000;
+
+function assertImportSize(size: number) {
+  if (!Number.isSafeInteger(size) || size < 1 || size > MAX_IMPORT_FILE_BYTES) {
+    throw new Error('O arquivo de importacao deve ter no maximo 5 MB.');
+  }
+}
+
+function assertImportRowCount(rows: Record<string, unknown>[]) {
+  if (rows.length > MAX_IMPORT_ROWS) {
+    throw new Error(`O arquivo pode conter no maximo ${MAX_IMPORT_ROWS} linhas.`);
+  }
+  return rows;
+}
 
 type ParsedRow = {
   title: string;
@@ -192,30 +209,37 @@ function buildFingerprint(row: ParsedRow) {
 }
 
 async function readAssetRows(asset: PickedAsset): Promise<Record<string, unknown>[]> {
+  if (typeof asset.size === 'number') assertImportSize(asset.size);
+
   if (Platform.OS === 'web') {
     const fileBuffer = await fetch(asset.uri).then((response) => response.arrayBuffer());
-    const workbook = XLSX.read(fileBuffer, { type: 'array', cellDates: true });
+    assertImportSize(fileBuffer.byteLength);
+    const workbook = XLSX.read(fileBuffer, { type: 'array', cellDates: true, sheetRows: MAX_IMPORT_ROWS + 1 });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    return XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+    return assertImportRowCount(XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' }));
   }
 
   const lowerName = asset.name.toLowerCase();
 
   if (lowerName.endsWith('.csv')) {
     const csvContent = await FileSystem.readAsStringAsync(asset.uri);
+    assertImportSize(new TextEncoder().encode(csvContent).byteLength);
 
-    const workbook = XLSX.read(csvContent, { type: 'string', cellDates: true });
+    const workbook = XLSX.read(csvContent, { type: 'string', cellDates: true, sheetRows: MAX_IMPORT_ROWS + 1 });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    return XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+    return assertImportRowCount(XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' }));
   }
 
   const base64Content = await FileSystem.readAsStringAsync(asset.uri, {
     encoding: FileSystem.EncodingType.Base64,
   });
+  if (base64Content.length > Math.ceil(MAX_IMPORT_FILE_BYTES / 3) * 4) {
+    throw new Error('O arquivo de importacao deve ter no maximo 5 MB.');
+  }
 
-  const workbook = XLSX.read(base64Content, { type: 'base64', cellDates: true });
+  const workbook = XLSX.read(base64Content, { type: 'base64', cellDates: true, sheetRows: MAX_IMPORT_ROWS + 1 });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  return XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+  return assertImportRowCount(XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' }));
 }
 
 function normalizeRawRow(rawRow: Record<string, unknown>): Record<string, unknown> {

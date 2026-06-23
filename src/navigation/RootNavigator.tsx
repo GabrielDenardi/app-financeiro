@@ -4,6 +4,7 @@ import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
 
 import { AuthCallbackResult } from '../features/auth/components/AuthCallbackResult';
+import { MfaChallengeScreen } from '../features/auth/components/MfaChallengeScreen';
 import { AuthFlowProvider } from '../features/auth/context/AuthFlowContext';
 import { PasswordRecoveryScreen } from '../features/auth/screens/AuthScreens';
 import { isValidPlanId } from '../features/plans/plans';
@@ -44,6 +45,7 @@ type CallbackNotice = {
  */
 type AppUnlockState = 'locked' | 'checking' | 'unlocked';
 type PlanGateState = 'checking' | 'ready';
+type MfaGateState = 'checking' | 'required' | 'verified';
 
 function isRecoveryUrl(url: string): boolean {
   return /(?:[?#&]|^)type=recovery(?:[&#]|$)/i.test(url);
@@ -82,6 +84,7 @@ export function RootNavigator() {
   const [sessionState, setSessionState] = useState<AuthSessionState>('loading');
   const [callbackNotice, setCallbackNotice] = useState<CallbackNotice | null>(null);
   const [planGateState, setPlanGateState] = useState<PlanGateState>('checking');
+  const [mfaGateState, setMfaGateState] = useState<MfaGateState>('checking');
   const [isPasswordRecoveryFlow, setIsPasswordRecoveryFlow] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthenticatedUserSummary | null>(null);
 
@@ -204,14 +207,38 @@ export function RootNavigator() {
     };
     const syncSessionState = async (): Promise<void> => {
       const { data } = await supabase.auth.getSession();
-      const hadValidPlan = data.session ? await loadCurrentUser(data.session) : false;
+      if (!data.session) {
+        if (isMounted) {
+          setMfaGateState('checking');
+          setSessionState('unauthenticated');
+        }
+        await loadCurrentUser(null);
+        return;
+      }
+
+      const { data: assurance, error: assuranceError } =
+        await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      const requiresChallenge =
+        Boolean(assuranceError) ||
+        (assurance?.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2');
+      if (requiresChallenge) {
+        if (isMounted) {
+          setMfaGateState('required');
+          setCurrentUser(null);
+          setPlanGateState('checking');
+          setAppUnlockState('locked');
+          setSessionState('authenticated');
+        }
+        return;
+      }
+
+      if (isMounted) setMfaGateState('verified');
+      const hadValidPlan = await loadCurrentUser(data.session);
       await maybeRegisterLogin(data.session);
       if (hadValidPlan) {
         await performBiometricCheck(data.session);
       }
-      if (isMounted) {
-        setSessionState(data.session ? 'authenticated' : 'unauthenticated');
-      }
+      if (isMounted) setSessionState('authenticated');
     };
 
     const handleIncomingUrl = async (url: string): Promise<void> => {
@@ -282,36 +309,15 @@ export function RootNavigator() {
         setIsPasswordRecoveryFlow(true);
         setCallbackNotice(null);
       }
-      const planCheckPromise = loadCurrentUser(session).catch(() => {
-        if (isMounted) {
-          setCurrentUser(null);
-          setPlanGateState(session ? 'ready' : 'checking');
-        }
-        return Boolean(session);
-      });
-      if (_event === 'SIGNED_IN') {
-        maybeRegisterLogin(session).catch(() => undefined);
-      }
       if (!session) {
         lastLoggedUserIdRef.current = null;
         setAppUnlockState('locked');
       }
-
-      const nextSessionState = session ? 'authenticated' : 'unauthenticated';
-
-      if (session && (_event === 'SIGNED_IN' || _event === 'USER_UPDATED')) {
-        planCheckPromise
-          .then((hadValidPlan) => (hadValidPlan ? performBiometricCheck(session) : undefined))
-          .catch(() => undefined)
-          .finally(() => {
-            if (isMounted) {
-              setSessionState(nextSessionState);
-            }
-          });
-        return;
-      }
-
-      setSessionState(nextSessionState);
+      setTimeout(() => {
+        syncSessionState().catch(() => {
+          if (isMounted) setSessionState('unauthenticated');
+        });
+      }, 0);
     });
 
     /**
@@ -395,6 +401,28 @@ export function RootNavigator() {
 
   // Authenticated but potentially locked
   if (sessionState === 'authenticated') {
+    if (mfaGateState === 'checking') {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primaryLight} />
+        </View>
+      );
+    }
+
+    if (mfaGateState === 'required') {
+      return (
+        <MfaChallengeScreen
+          onVerified={() => {
+            setSessionState('loading');
+            supabase.auth.refreshSession().catch(() => supabase.auth.signOut());
+          }}
+          onSignOut={async () => {
+            await supabase.auth.signOut();
+          }}
+        />
+      );
+    }
+
     if (planGateState === 'checking') {
       return (
         <View style={styles.loadingContainer}>

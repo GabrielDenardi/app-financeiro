@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
+import { MAX_ATTACHMENT_BYTES, validateAttachmentFile } from '../../../security/attachmentLimits';
 import { getPlanEntitlements, getUpgradeMessage, normalizePlanId } from '../../plans/plans';
 import type { ProfilePlanRow } from '../../plans/types';
 import type { CapturedTransactionDraft, TransactionAttachment, TransactionAttachmentKind } from '../types';
@@ -211,13 +212,17 @@ export async function uploadTransactionAttachment({
   captureMetadata?: Record<string, unknown>;
 }): Promise<TransactionAttachment> {
   const userId = await requireCurrentUserId();
-  const storagePath = `${userId}/${Date.now()}-${sanitizeFileName(file.name)}`;
-  const fileBytes = await readFileAsBytes(file.uri);
+  const validatedFile = validateAttachmentFile(file);
+  const storagePath = `${userId}/${Date.now()}-${sanitizeFileName(validatedFile.name)}`;
+  const fileBytes = await readFileAsBytes(validatedFile.uri);
+  if (fileBytes.byteLength !== validatedFile.size || fileBytes.byteLength > MAX_ATTACHMENT_BYTES) {
+    throw new Error('O tamanho real do arquivo nao corresponde aos metadados informados.');
+  }
 
   const { error: uploadError } = await supabase.storage
     .from(RECEIPT_BUCKET)
     .upload(storagePath, fileBytes, {
-      contentType: file.mimeType,
+      contentType: validatedFile.mimeType,
       upsert: false,
     });
 
@@ -234,9 +239,9 @@ export async function uploadTransactionAttachment({
       source_type: sourceType,
       storage_bucket: RECEIPT_BUCKET,
       storage_path: storagePath,
-      file_name: file.name,
-      mime_type: file.mimeType,
-      file_size: file.size,
+      file_name: validatedFile.name,
+      mime_type: validatedFile.mimeType,
+      file_size: validatedFile.size,
       capture_metadata: captureMetadata ?? {},
     })
     .select(

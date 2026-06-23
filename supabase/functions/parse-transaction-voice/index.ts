@@ -3,10 +3,18 @@
 import {
   callOpenAIJson,
   corsHeaders,
+  enforceEdgeSecurity,
   normalizeDraft,
   requireAuthenticatedUser,
   transcribeAudio,
 } from '../_shared/transactionParsing.ts';
+import {
+  assertJsonRequestSize,
+  PayloadValidationError,
+  validateBase64Payload,
+  VOICE_MAX_BYTES,
+  VOICE_MIME_TYPES,
+} from '../_shared/securityControls.ts';
 
 const VOICE_SCHEMA = {
   type: 'object',
@@ -48,19 +56,23 @@ Deno.serve(async (request) => {
   }
 
   try {
-    await requireAuthenticatedUser(request);
+    const authContext = await requireAuthenticatedUser(request);
+    assertJsonRequestSize(request.headers.get('content-length'), VOICE_MAX_BYTES);
 
     const payload = await request.json();
-    const base64Data = String(payload.base64Data ?? '');
-    const fileName = String(payload.fileName ?? 'gravacao.webm');
-    const mimeType = String(payload.mimeType ?? 'audio/webm');
-
-    if (!base64Data) {
-      return new Response(JSON.stringify({ error: 'Audio nao enviado para transcricao.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const validated = validateBase64Payload({
+      base64Data: String(payload.base64Data ?? ''),
+      fileName: String(payload.fileName ?? 'gravacao.webm'),
+      mimeType: String(payload.mimeType ?? 'audio/webm'),
+      allowedMimeTypes: VOICE_MIME_TYPES,
+      maxDecodedBytes: VOICE_MAX_BYTES,
+    });
+    const { base64Data, fileName, mimeType } = validated;
+    await enforceEdgeSecurity(authContext, {
+      entitlement: 'voice_capture',
+      quota: 'voice',
+      units: validated.decodedBytes,
+    });
 
     const transcript = await transcribeAudio({ base64Data, fileName, mimeType });
 
@@ -94,6 +106,13 @@ Deno.serve(async (request) => {
   } catch (error) {
     if (error instanceof Response) {
       return error;
+    }
+
+    if (error instanceof PayloadValidationError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: error.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const message = error instanceof Error ? error.message : 'Falha ao processar a voz.';
