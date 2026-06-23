@@ -11,6 +11,13 @@ const corsHeaders = {
 
 type PlanId = 'basic' | 'intermediate' | 'pro';
 
+type CheckoutReservation = {
+  session_id: string;
+  external_id: string;
+  checkout_url: string | null;
+  should_create: boolean;
+};
+
 const plans: Record<PlanId, { externalId: string; name: string; price: number; description: string }> = {
   basic: {
     externalId: 'app-financeiro-basic-monthly',
@@ -124,84 +131,159 @@ Deno.serve(async (request) => {
       });
     }
 
-    const { data: profile, error: profileError } = await adminClient
-      .from('profiles')
-      .select('id, email, cpf, full_name, phone, cep, abacatepay_customer_id')
-      .eq('id', authData.user.id)
-      .single();
+    const { data: reservationRows, error: reservationError } = await userClient.rpc(
+      'reserve_billing_checkout',
+      { p_plan_id: payload.planId },
+    );
 
-    if (profileError || !profile) {
-      throw profileError ?? new Error('Perfil nao encontrado.');
-    }
+    if (reservationError) {
+      const reservationMessage = String(reservationError.message ?? 'Nao foi possivel reservar o checkout.');
+      const status = reservationMessage.includes('Limite de checkouts')
+        ? 429
+        : reservationMessage.includes('assinatura ativa') ||
+            reservationMessage.includes('Checkout') ||
+            reservationMessage.includes('checkout')
+          ? 409
+          : 500;
 
-    const productId = await ensureProduct(payload.planId);
-    let customerId = profile.abacatepay_customer_id as string | null;
-
-    if (!customerId) {
-      const customer = await abacateRequest<{ id: string }>('/customers/create', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: profile.email,
-          taxId: profile.cpf,
-          name: profile.full_name,
-          cellphone: profile.phone,
-          zipCode: profile.cep,
-          metadata: {
-            userId: profile.id,
-          },
-        }),
+      return new Response(JSON.stringify({ error: reservationMessage }), {
+        status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-      customerId = customer.id;
     }
 
-    const externalId = `sub_${profile.id}_${payload.planId}_${Date.now()}`;
-    const checkout = await abacateRequest<{ id: string; url: string; status: string; externalId: string }>('/subscriptions/create', {
-      method: 'POST',
-      body: JSON.stringify({
-        items: [{ id: productId, quantity: 1 }],
-        customerId,
-        externalId,
-        methods: ['CARD'],
-        returnUrl: 'appfinanceiro://billing/return',
-        completionUrl: 'appfinanceiro://billing/complete',
-        metadata: {
-          userId: profile.id,
-          planId: payload.planId,
+    const reservation = (Array.isArray(reservationRows) ? reservationRows[0] : reservationRows) as
+      | CheckoutReservation
+      | null;
+
+    if (!reservation) {
+      throw new Error('Reserva de checkout nao retornada.');
+    }
+
+    if (!reservation.should_create && reservation.checkout_url) {
+      return new Response(JSON.stringify({ checkoutUrl: reservation.checkout_url }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let subscriptionAttempted = false;
+
+    try {
+      const { data: profile, error: profileError } = await adminClient
+        .from('profiles')
+        .select('id, email, cpf, full_name, phone, cep, abacatepay_customer_id')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        throw profileError ?? new Error('Perfil nao encontrado.');
+      }
+
+      const productId = await ensureProduct(payload.planId);
+      let customerId = profile.abacatepay_customer_id as string | null;
+
+      if (!customerId) {
+        const customer = await abacateRequest<{ id: string }>('/customers/create', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: profile.email,
+            taxId: profile.cpf,
+            name: profile.full_name,
+            cellphone: profile.phone,
+            zipCode: profile.cep,
+            metadata: {
+              userId: profile.id,
+            },
+          }),
+        });
+        customerId = customer.id;
+
+        const { error: customerUpdateError } = await adminClient
+          .from('profiles')
+          .update({ abacatepay_customer_id: customerId })
+          .eq('id', profile.id)
+          .is('abacatepay_customer_id', null);
+
+        if (customerUpdateError) {
+          throw customerUpdateError;
+        }
+      }
+
+      subscriptionAttempted = true;
+      const checkout = await abacateRequest<{ id: string; url: string; status: string; externalId: string }>(
+        '/subscriptions/create',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            items: [{ id: productId, quantity: 1 }],
+            customerId,
+            externalId: reservation.external_id,
+            methods: ['CARD'],
+            returnUrl: 'appfinanceiro://billing/return',
+            completionUrl: 'appfinanceiro://billing/complete',
+            metadata: {
+              userId: profile.id,
+              planId: payload.planId,
+            },
+          }),
         },
-      }),
-    });
+      );
 
-    const { error: sessionError } = await adminClient.from('billing_checkout_sessions').insert({
-      user_id: profile.id,
-      plan_id: payload.planId,
-      external_id: externalId,
-      abacatepay_customer_id: customerId,
-      abacatepay_checkout_id: checkout.id,
-      checkout_url: checkout.url,
-      status: 'pending',
-      raw_response: checkout,
-    });
+      const { data: finalizedSession, error: sessionError } = await adminClient
+        .from('billing_checkout_sessions')
+        .update({
+          abacatepay_customer_id: customerId,
+          abacatepay_checkout_id: checkout.id,
+          checkout_url: checkout.url,
+          status: 'pending',
+          raw_response: checkout,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', reservation.session_id)
+        .eq('user_id', profile.id)
+        .eq('external_id', reservation.external_id)
+        .eq('status', 'provisioning')
+        .select('id')
+        .maybeSingle();
 
-    if (sessionError) {
-      throw sessionError;
+      if (sessionError || !finalizedSession) {
+        throw sessionError ?? new Error('Reserva de checkout nao pode ser finalizada.');
+      }
+
+      const { error: updateError } = await adminClient
+        .from('profiles')
+        .update({
+          abacatepay_customer_id: customerId,
+          subscription_updated_at: new Date().toISOString(),
+        })
+        .eq('id', profile.id)
+        .eq('subscription_status', 'pending');
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      return new Response(JSON.stringify({ checkoutUrl: checkout.url }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      if (!subscriptionAttempted) {
+        await adminClient
+          .from('billing_checkout_sessions')
+          .update({ status: 'failed', updated_at: new Date().toISOString() })
+          .eq('id', reservation.session_id)
+          .eq('user_id', authData.user.id)
+          .eq('status', 'provisioning');
+
+        await adminClient
+          .from('profiles')
+          .update({ subscription_status: 'inactive', subscription_updated_at: new Date().toISOString() })
+          .eq('id', authData.user.id)
+          .eq('subscription_status', 'pending');
+      }
+
+      throw error;
     }
-
-    const { error: updateError } = await adminClient
-      .from('profiles')
-      .update({
-        abacatepay_customer_id: customerId,
-        subscription_status: 'pending',
-        subscription_updated_at: new Date().toISOString(),
-      })
-      .eq('id', profile.id);
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    return new Response(JSON.stringify({ checkoutUrl: checkout.url }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Nao foi possivel iniciar a assinatura.';
     return new Response(JSON.stringify({ error: message }), {

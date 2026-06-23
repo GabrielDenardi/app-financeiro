@@ -237,4 +237,150 @@ begin
 end;
 $$;
 
+-- A checkout reservation must be provider-idempotent, serialized per user, and
+-- reusable only after the provisioning transition completes.
+reset role;
+select set_config('request.jwt.claims', '{}', true);
+update public.profiles
+set subscription_status = 'inactive', subscription_plan = 'free'
+where id = '11111111-1111-4111-8111-111111111111';
+delete from public.billing_checkout_sessions
+where user_id = '11111111-1111-4111-8111-111111111111';
+delete from private.security_rate_limits
+where subject_key = '11111111-1111-4111-8111-111111111111'
+  and feature = 'billing_checkout';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","aal":"aal2"}',
+  true
+);
+
+do $$
+declare
+  reservation record;
+begin
+  select * into reservation from public.reserve_billing_checkout('basic');
+
+  if not reservation.should_create then
+    raise exception 'SEC-BILL-CHECKOUT-QUOTA-033 failed to create the first reservation';
+  end if;
+  if reservation.external_id <> 'sub_' || replace(reservation.session_id::text, '-', '') then
+    raise exception 'SEC-BILL-CHECKOUT-QUOTA-033 did not use a stable idempotency key';
+  end if;
+
+  perform set_config('test.billing_session_id', reservation.session_id::text, true);
+
+  begin
+    perform public.reserve_billing_checkout('basic');
+    raise exception 'SEC-BILL-CHECKOUT-QUOTA-033 allowed concurrent provider creation';
+  exception
+    when others then
+      if sqlerrm not like '%Checkout em preparacao%' then raise; end if;
+  end;
+end;
+$$;
+
+reset role;
+select set_config('request.jwt.claims', '{}', true);
+do $$
+begin
+  begin
+    update public.billing_checkout_sessions
+    set status = 'active'
+    where id = current_setting('test.billing_session_id')::uuid;
+    raise exception 'SEC-BILL-CHECKOUT-QUOTA-033 allowed an invalid state transition';
+  exception when insufficient_privilege then null;
+  end;
+
+  update public.billing_checkout_sessions
+  set status = 'pending', checkout_url = 'https://checkout.example.test/reuse'
+  where id = current_setting('test.billing_session_id')::uuid;
+end;
+$$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","aal":"aal2"}',
+  true
+);
+do $$
+declare
+  reservation record;
+begin
+  select * into reservation from public.reserve_billing_checkout('basic');
+  if reservation.should_create or reservation.checkout_url <> 'https://checkout.example.test/reuse' then
+    raise exception 'SEC-BILL-CHECKOUT-QUOTA-033 failed to reuse a pending checkout';
+  end if;
+end;
+$$;
+
+reset role;
+select set_config('request.jwt.claims', '{}', true);
+update public.billing_checkout_sessions
+set status = 'failed'
+where id = current_setting('test.billing_session_id')::uuid;
+update public.profiles
+set subscription_status = 'inactive'
+where id = '11111111-1111-4111-8111-111111111111';
+insert into private.security_rate_limits (
+  subject_key, feature, window_started_at, request_count, unit_count
+)
+values (
+  '11111111-1111-4111-8111-111111111111',
+  'billing_checkout',
+  date_trunc('hour', now()),
+  5,
+  5
+)
+on conflict (subject_key, feature, window_started_at) do update
+set request_count = 5, unit_count = 5;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","aal":"aal2"}',
+  true
+);
+do $$
+begin
+  begin
+    perform public.reserve_billing_checkout('basic');
+    raise exception 'SEC-BILL-CHECKOUT-QUOTA-033 allowed an over-quota checkout';
+  exception
+    when others then
+      if sqlerrm not like '%Limite de checkouts%' then raise; end if;
+  end;
+end;
+$$;
+
+reset role;
+select set_config('request.jwt.claims', '{}', true);
+delete from private.security_rate_limits
+where subject_key = '11111111-1111-4111-8111-111111111111'
+  and feature = 'billing_checkout';
+update public.profiles
+set subscription_status = 'active', subscription_plan = 'basic'
+where id = '11111111-1111-4111-8111-111111111111';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","aal":"aal2"}',
+  true
+);
+do $$
+begin
+  begin
+    perform public.reserve_billing_checkout('pro');
+    raise exception 'SEC-BILL-CHECKOUT-QUOTA-033 allowed checkout with an active subscription';
+  exception
+    when others then
+      if sqlerrm not like '%assinatura ativa%' then raise; end if;
+  end;
+end;
+$$;
+
 rollback;
