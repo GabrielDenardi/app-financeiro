@@ -9,8 +9,8 @@ import {
   transcribeAudio,
 } from '../_shared/transactionParsing.ts';
 import {
-  assertJsonRequestSize,
   PayloadValidationError,
+  readBoundedJsonRequest,
   validateBase64Payload,
   VOICE_MAX_BYTES,
   VOICE_MIME_TYPES,
@@ -57,9 +57,7 @@ Deno.serve(async (request) => {
 
   try {
     const authContext = await requireAuthenticatedUser(request);
-    assertJsonRequestSize(request.headers.get('content-length'), VOICE_MAX_BYTES);
-
-    const payload = await request.json();
+    const payload = await readBoundedJsonRequest(request, VOICE_MAX_BYTES);
     const validated = validateBase64Payload({
       base64Data: String(payload.base64Data ?? ''),
       fileName: String(payload.fileName ?? 'gravacao.webm'),

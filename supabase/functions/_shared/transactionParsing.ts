@@ -36,7 +36,13 @@ export async function enforceEdgeSecurity(
       p_feature: entitlement,
     });
     if (error) {
-      throw new Response(JSON.stringify({ error: 'Recurso indisponivel no plano atual.' }), {
+      const isMfaRequired =
+        error.code === '42501' &&
+        /verificacao em duas etapas|mfa|aal2/i.test(error.message ?? '');
+      const message = isMfaRequired
+        ? 'Verificacao em duas etapas obrigatoria.'
+        : 'Recurso indisponivel no plano atual.';
+      throw new Response(JSON.stringify({ error: message }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

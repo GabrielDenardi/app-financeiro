@@ -9,10 +9,10 @@ import {
   requireAuthenticatedUser,
 } from '../_shared/transactionParsing.ts';
 import {
-  assertJsonRequestSize,
   OCR_MAX_BYTES,
   OCR_MIME_TYPES,
   PayloadValidationError,
+  readBoundedJsonRequest,
   validateBase64Payload,
 } from '../_shared/securityControls.ts';
 
@@ -57,9 +57,7 @@ Deno.serve(async (request) => {
 
   try {
     const authContext = await requireAuthenticatedUser(request);
-    assertJsonRequestSize(request.headers.get('content-length'), OCR_MAX_BYTES);
-
-    const payload = await request.json();
+    const payload = await readBoundedJsonRequest(request, OCR_MAX_BYTES);
     const validated = validateBase64Payload({
       base64Data: String(payload.base64Data ?? ''),
       fileName: String(payload.fileName ?? 'documento'),

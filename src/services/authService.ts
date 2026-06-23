@@ -49,6 +49,36 @@ function mapAuthError(errorMessage: string): AuthServiceError {
   return new AuthServiceError('unknown', errorMessage);
 }
 
+async function getFunctionErrorDetails(error: unknown): Promise<{ message: string; status?: number }> {
+  const candidate = error && typeof error === 'object'
+    ? (error as {
+        message?: unknown;
+        context?: {
+          status?: unknown;
+          json?: () => Promise<unknown>;
+        };
+      })
+    : null;
+  const fallbackMessage =
+    typeof candidate?.message === 'string' ? candidate.message : 'Falha ao acessar o serviço de autenticação.';
+  const status = typeof candidate?.context?.status === 'number' ? candidate.context.status : undefined;
+
+  if (typeof candidate?.context?.json === 'function') {
+    try {
+      const body = await candidate.context.json();
+      const responseMessage =
+        body && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
+          ? (body as { error: string }).error
+          : null;
+      if (responseMessage) return { message: responseMessage, status };
+    } catch {
+      // Keep the SDK error as a safe fallback when the response body is unavailable.
+    }
+  }
+
+  return { message: fallbackMessage, status };
+}
+
 function mapRecoveryError(errorMessage: string): AuthServiceError {
   const text = errorMessage.toLowerCase();
 
@@ -86,6 +116,10 @@ export async function signInWithCpf(cpfDigits: string, password: string): Promis
   });
 
   if (error) {
+    const details = await getFunctionErrorDetails(error);
+    if (details.status === 429) {
+      throw new AuthServiceError('unknown', 'Muitas tentativas. Tente novamente mais tarde.');
+    }
     throw mapAuthError('Invalid login credentials');
   }
 
@@ -168,7 +202,11 @@ export async function requestPasswordResetByCpf(cpfDigits: string): Promise<Pass
   });
 
   if (error) {
-    throw mapRecoveryError(error.message);
+    const details = await getFunctionErrorDetails(error);
+    if (details.status === 429) {
+      throw new AuthServiceError('unknown', 'Muitas tentativas. Tente novamente mais tarde.');
+    }
+    throw mapRecoveryError(details.message);
   }
 
   return 'password_reset';

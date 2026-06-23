@@ -215,7 +215,10 @@ export async function uploadTransactionAttachment({
   const validatedFile = validateAttachmentFile(file);
   const storagePath = `${userId}/${Date.now()}-${sanitizeFileName(validatedFile.name)}`;
   const fileBytes = await readFileAsBytes(validatedFile.uri);
-  if (fileBytes.byteLength !== validatedFile.size || fileBytes.byteLength > MAX_ATTACHMENT_BYTES) {
+  if (fileBytes.byteLength > MAX_ATTACHMENT_BYTES) {
+    throw new Error('O arquivo excede o limite máximo de 10 MB.');
+  }
+  if (fileBytes.byteLength !== validatedFile.size) {
     throw new Error('O tamanho real do arquivo nao corresponde aos metadados informados.');
   }
 

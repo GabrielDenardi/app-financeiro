@@ -609,6 +609,8 @@ begin
 end;
 $$;
 
+-- BREAKING CHANGE: rotate every existing group share code to the new 16-character
+-- hexadecimal format. Previously distributed invite/join codes stop working here.
 update public.groups set share_code = public.generate_group_share_code();
 alter table public.groups
   add constraint groups_share_code_format check (share_code ~ '^[A-F0-9]{16}$');

@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
 
@@ -45,7 +45,7 @@ type CallbackNotice = {
  */
 type AppUnlockState = 'locked' | 'checking' | 'unlocked';
 type PlanGateState = 'checking' | 'ready';
-type MfaGateState = 'checking' | 'required' | 'verified';
+type MfaGateState = 'checking' | 'required' | 'verified' | 'error';
 
 function isRecoveryUrl(url: string): boolean {
   return /(?:[?#&]|^)type=recovery(?:[&#]|$)/i.test(url);
@@ -85,6 +85,7 @@ export function RootNavigator() {
   const [callbackNotice, setCallbackNotice] = useState<CallbackNotice | null>(null);
   const [planGateState, setPlanGateState] = useState<PlanGateState>('checking');
   const [mfaGateState, setMfaGateState] = useState<MfaGateState>('checking');
+  const [sessionSyncAttempt, setSessionSyncAttempt] = useState(0);
   const [isPasswordRecoveryFlow, setIsPasswordRecoveryFlow] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthenticatedUserSummary | null>(null);
 
@@ -218,9 +219,18 @@ export function RootNavigator() {
 
       const { data: assurance, error: assuranceError } =
         await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assuranceError) {
+        if (isMounted) {
+          setMfaGateState('error');
+          setCurrentUser(null);
+          setPlanGateState('checking');
+          setAppUnlockState('locked');
+          setSessionState('authenticated');
+        }
+        return;
+      }
       const requiresChallenge =
-        Boolean(assuranceError) ||
-        (assurance?.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2');
+        assurance?.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2';
       if (requiresChallenge) {
         if (isMounted) {
           setMfaGateState('required');
@@ -370,7 +380,7 @@ export function RootNavigator() {
       data.subscription.unsubscribe();
       appStateSubscription.remove();
     };
-  }, []);
+  }, [sessionSyncAttempt]);
 
   // Loading state during bootstrap
   if (sessionState === 'loading') {
@@ -420,6 +430,29 @@ export function RootNavigator() {
             await supabase.auth.signOut();
           }}
         />
+      );
+    }
+
+    if (mfaGateState === 'error') {
+      return (
+        <View style={styles.mfaErrorContainer}>
+          <Text style={styles.mfaErrorTitle}>Não foi possível verificar a autenticação</Text>
+          <Text style={styles.mfaErrorMessage}>
+            Confira sua conexão e tente novamente. Seus dados continuam protegidos.
+          </Text>
+          <Pressable
+            style={styles.mfaRetryButton}
+            onPress={() => {
+              setMfaGateState('checking');
+              setSessionSyncAttempt((attempt) => attempt + 1);
+            }}
+          >
+            <Text style={styles.mfaRetryText}>Tentar novamente</Text>
+          </Pressable>
+          <Pressable style={styles.mfaSignOutButton} onPress={() => supabase.auth.signOut()}>
+            <Text style={styles.mfaSignOutText}>Sair da conta</Text>
+          </Pressable>
+        </View>
       );
     }
 
@@ -474,6 +507,50 @@ const createStyles = (colors: AppColors) =>
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.background,
+    },
+    mfaErrorContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 14,
+      padding: 24,
+      backgroundColor: colors.background,
+    },
+    mfaErrorTitle: {
+      color: colors.textPrimary,
+      fontSize: 22,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    mfaErrorMessage: {
+      maxWidth: 420,
+      color: colors.textSecondary,
+      fontSize: 15,
+      lineHeight: 22,
+      textAlign: 'center',
+    },
+    mfaRetryButton: {
+      minHeight: 48,
+      minWidth: 220,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+    },
+    mfaRetryText: {
+      color: colors.white,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    mfaSignOutButton: {
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    mfaSignOutText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
     },
   });
 

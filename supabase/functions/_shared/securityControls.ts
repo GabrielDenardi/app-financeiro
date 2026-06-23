@@ -36,6 +36,49 @@ export function assertJsonRequestSize(contentLength: string | null, maxDecodedBy
   }
 }
 
+export async function readBoundedJsonRequest(
+  request: Request,
+  maxDecodedBytes: number,
+): Promise<Record<string, unknown>> {
+  assertJsonRequestSize(request.headers.get('content-length'), maxDecodedBytes);
+  const reader = request.body?.getReader();
+  if (!reader) {
+    throw new PayloadValidationError('Corpo da requisicao obrigatorio.');
+  }
+
+  const maxRequestBytes = maxEncodedLength(maxDecodedBytes) + JSON_OVERHEAD_BYTES;
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    if (totalBytes > maxRequestBytes) {
+      await reader.cancel();
+      throw new PayloadValidationError('Payload excede o limite permitido.', 413);
+    }
+    chunks.push(value);
+  }
+
+  const bodyBytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bodyBytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    const parsed = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bodyBytes));
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('JSON root must be an object');
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    throw new PayloadValidationError('JSON invalido.');
+  }
+}
+
 export function validateBase64Payload({
   base64Data,
   mimeType,

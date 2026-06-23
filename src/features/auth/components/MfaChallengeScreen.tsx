@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 
 import { supabase } from '../../../lib/supabase';
 import { useThemeColors } from '../../../theme';
+import { getMfaErrorMessage } from '../utils/mfaErrors';
 
 type Props = {
   onVerified: () => void;
@@ -17,7 +18,7 @@ export function MfaChallengeScreen({ onVerified, onSignOut }: Props) {
 
   const verify = async () => {
     if (!/^\d{6}$/.test(code)) {
-      setError('Digite o codigo de 6 digitos do seu autenticador.');
+      setError('Digite o código de 6 dígitos do seu autenticador.');
       return;
     }
 
@@ -27,7 +28,7 @@ export function MfaChallengeScreen({ onVerified, onSignOut }: Props) {
       const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
       if (factorsError) throw factorsError;
       const factor = factors.totp.find((item) => item.status === 'verified');
-      if (!factor) throw new Error('Nenhum fator TOTP verificado foi encontrado.');
+      if (!factor) throw new Error('MFA factor not found');
 
       const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
         factorId: factor.id,
@@ -36,7 +37,7 @@ export function MfaChallengeScreen({ onVerified, onSignOut }: Props) {
       if (verifyError) throw verifyError;
       onVerified();
     } catch (verificationError) {
-      setError(verificationError instanceof Error ? verificationError.message : 'Codigo invalido.');
+      setError(getMfaErrorMessage(verificationError));
     } finally {
       setLoading(false);
     }
@@ -45,9 +46,9 @@ export function MfaChallengeScreen({ onVerified, onSignOut }: Props) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.card, { backgroundColor: colors.surface }]}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Verificacao em duas etapas</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Verificação em duas etapas</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Abra seu aplicativo autenticador e informe o codigo atual.
+          Abra seu aplicativo autenticador e informe o código atual.
         </Text>
         <TextInput
           value={code}
@@ -65,7 +66,11 @@ export function MfaChallengeScreen({ onVerified, onSignOut }: Props) {
         />
         {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
         <Pressable style={[styles.primary, { backgroundColor: colors.primary }]} onPress={verify} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Verificar</Text>}
+          {loading ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <Text style={[styles.primaryText, { color: colors.white }]}>Verificar</Text>
+          )}
         </Pressable>
         <Pressable style={styles.secondary} onPress={onSignOut} disabled={loading}>
           <Text style={[styles.secondaryText, { color: colors.textSecondary }]}>Sair da conta</Text>
@@ -83,7 +88,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 24, letterSpacing: 8, textAlign: 'center' },
   error: { fontSize: 13 },
   primary: { minHeight: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  primaryText: { fontSize: 16, fontWeight: '700' },
   secondary: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { fontSize: 14, fontWeight: '600' },
 });

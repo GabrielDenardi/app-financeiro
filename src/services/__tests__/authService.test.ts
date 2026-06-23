@@ -65,6 +65,23 @@ describe('authService', () => {
     await expect(signInWithCpf('39053344705', 'errada')).rejects.toBeInstanceOf(AuthServiceError);
   });
 
+  it('surfaces Edge Function rate-limit responses', async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: null,
+      error: {
+        message: 'Edge Function returned a non-2xx status code',
+        context: {
+          status: 429,
+          json: jest.fn().mockResolvedValue({ error: 'Muitas tentativas. Tente novamente mais tarde.' }),
+        },
+      },
+    });
+
+    await expect(signInWithCpf('39053344705', 'errada')).rejects.toMatchObject({
+      message: 'Muitas tentativas. Tente novamente mais tarde.',
+    });
+  });
+
   it('registers new account with draft metadata', async () => {
     mockSignUp.mockResolvedValueOnce({ error: null });
 

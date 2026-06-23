@@ -228,7 +228,7 @@ async function fetchProfiles(userIds: string[]) {
     throw new GroupsServiceError('unknown', error.message);
   }
 
-  return new Map((data as ProfileRow[]).map((profile) => [profile.id, profile]));
+  return new Map(((data as ProfileRow[] | null) ?? []).map((profile) => [profile.id, profile]));
 }
 
 async function fetchGroupGraph(groupIds: string[]) {

@@ -3,6 +3,7 @@ import {
   OCR_MAX_BYTES,
   OCR_MIME_TYPES,
   PayloadValidationError,
+  readBoundedJsonRequest,
   validateBase64Payload,
 } from '../../../supabase/functions/_shared/securityControls';
 
@@ -25,6 +26,22 @@ describe('Edge payload controls', () => {
     expect(() => assertJsonRequestSize(String(20 * 1024 * 1024), OCR_MAX_BYTES)).toThrow(
       PayloadValidationError,
     );
+  });
+
+  it('bounds chunked requests even without a content-length header', async () => {
+    const validRequest = new Request('https://example.test', {
+      method: 'POST',
+      body: JSON.stringify({ base64Data: validBase64 }),
+    });
+    await expect(readBoundedJsonRequest(validRequest, OCR_MAX_BYTES)).resolves.toMatchObject({
+      base64Data: validBase64,
+    });
+
+    const oversizedRequest = new Request('https://example.test', {
+      method: 'POST',
+      body: JSON.stringify({ payload: 'x'.repeat(70 * 1024) }),
+    });
+    await expect(readBoundedJsonRequest(oversizedRequest, 1)).rejects.toMatchObject({ status: 413 });
   });
 
   it('rejects non-allowlisted media and malformed base64', () => {

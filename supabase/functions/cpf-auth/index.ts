@@ -46,8 +46,9 @@ Deno.serve(async (request) => {
     return json({ error: 'Requisicao invalida.' }, 400);
   }
 
-  const clientAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  const rateKey = await sha256(`${cpf}:${clientAddress}`);
+  // Bound attempts per CPF. Client-forwarded IP headers are attacker-controlled here and
+  // must not participate in the security key, otherwise rotating the header bypasses throttling.
+  const rateKey = await sha256(cpf);
   const { data: allowed, error: limitError } = await adminClient.rpc('consume_auth_rate_limit', {
     p_key: rateKey,
   });
