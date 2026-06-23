@@ -4,9 +4,17 @@ import {
   buildDataUrl,
   callOpenAIJson,
   corsHeaders,
+  enforceEdgeSecurity,
   normalizeDraft,
   requireAuthenticatedUser,
 } from '../_shared/transactionParsing.ts';
+import {
+  OCR_MAX_BYTES,
+  OCR_MIME_TYPES,
+  PayloadValidationError,
+  readBoundedJsonRequest,
+  validateBase64Payload,
+} from '../_shared/securityControls.ts';
 
 const OCR_SCHEMA = {
   type: 'object',
@@ -48,19 +56,20 @@ Deno.serve(async (request) => {
   }
 
   try {
-    await requireAuthenticatedUser(request);
-
-    const payload = await request.json();
-    const base64Data = String(payload.base64Data ?? '');
-    const fileName = String(payload.fileName ?? 'documento');
-    const mimeType = String(payload.mimeType ?? 'application/octet-stream');
-
-    if (!base64Data) {
-      return new Response(JSON.stringify({ error: 'Arquivo nao enviado para OCR.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const authContext = await requireAuthenticatedUser(request);
+    const payload = await readBoundedJsonRequest(request, OCR_MAX_BYTES);
+    const validated = validateBase64Payload({
+      base64Data: String(payload.base64Data ?? ''),
+      fileName: String(payload.fileName ?? 'documento'),
+      mimeType: String(payload.mimeType ?? 'application/octet-stream'),
+      allowedMimeTypes: OCR_MIME_TYPES,
+      maxDecodedBytes: OCR_MAX_BYTES,
+    });
+    const { base64Data, fileName, mimeType } = validated;
+    await enforceEdgeSecurity(authContext, {
+      quota: 'ocr',
+      units: validated.decodedBytes,
+    });
 
     const userContent =
       mimeType.startsWith('image/')
@@ -114,6 +123,13 @@ Deno.serve(async (request) => {
   } catch (error) {
     if (error instanceof Response) {
       return error;
+    }
+
+    if (error instanceof PayloadValidationError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: error.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const message = error instanceof Error ? error.message : 'Falha ao processar o OCR.';

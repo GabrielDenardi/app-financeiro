@@ -1,7 +1,5 @@
 import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
-import type { EmailOtpType } from '@supabase/supabase-js';
-
 import { appEnv } from '../config/env';
 import { supabase } from './supabase';
 
@@ -12,25 +10,12 @@ export type AuthCallbackOutcome = {
   type: 'signup' | 'recovery' | 'email_change' | 'magiclink' | 'invite' | 'unknown';
 };
 
-const supportedOtpTypes: EmailOtpType[] = [
-  'signup',
-  'invite',
-  'magiclink',
-  'recovery',
-  'email_change',
-  'email',
-];
-
 function createRuntimeRedirectUrl() {
   if (Platform.OS !== 'web') {
     return NATIVE_AUTH_CALLBACK_URL;
   }
 
   return Linking.createURL(AUTH_CALLBACK_PATH);
-}
-
-function isSupportedOtpType(value: string | null): value is EmailOtpType {
-  return Boolean(value && supportedOtpTypes.includes(value as EmailOtpType));
 }
 
 function normalizeCallbackType(value: string | null): AuthCallbackOutcome['type'] {
@@ -62,20 +47,19 @@ function extractParams(url: string) {
 }
 
 export function isAuthCallbackUrl(url: string) {
-  const parsedUrl = new URL(url);
-  const params = extractParams(url);
-  const normalizedPath = parsedUrl.pathname.replace(/^\/+/, '');
-  const normalizedHostPath = [parsedUrl.hostname, parsedUrl.pathname.replace(/^\/+/, '')]
-    .filter(Boolean)
-    .join('/');
+  try {
+    const candidate = new URL(url);
+    const expected = new URL(getAuthRedirectUrl());
+    const sameTarget =
+      candidate.protocol === expected.protocol &&
+      candidate.hostname === expected.hostname &&
+      candidate.port === expected.port &&
+      candidate.pathname.replace(/\/+$/, '') === expected.pathname.replace(/\/+$/, '');
 
-  return (
-    normalizedPath.endsWith(AUTH_CALLBACK_PATH) ||
-    normalizedHostPath.endsWith(AUTH_CALLBACK_PATH) ||
-    params.has('code') ||
-    params.has('token_hash') ||
-    params.has('access_token')
-  );
+    return sameTarget && extractParams(url).has('code');
+  } catch {
+    return false;
+  }
 }
 
 export function getAuthRedirectUrl() {
@@ -108,37 +92,5 @@ export async function createSessionFromAuthUrl(url: string): Promise<AuthCallbac
     return { type: callbackType };
   }
 
-  const accessToken = params.get('access_token');
-  const refreshToken = params.get('refresh_token');
-
-  if (accessToken && refreshToken) {
-    const { error } = await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
-
-    if (error) {
-      throw error;
-    }
-    return { type: callbackType };
-  }
-
-  const tokenHash = params.get('token_hash');
-
-  if (tokenHash && isSupportedOtpType(type)) {
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash: tokenHash,
-      type,
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    return {
-      type: normalizeCallbackType(type),
-    };
-  }
-
-  return { type: callbackType };
+  return null;
 }

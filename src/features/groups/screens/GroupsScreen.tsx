@@ -85,8 +85,8 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
   };
 
   const handleJoinGroup = async () => {
-    if (joinCode.trim().length < 6) {
-      Alert.alert('Grupo', 'Informe um código válido com 6 caracteres.');
+    if (!/^[A-F0-9]{16}$/.test(joinCode.trim().toUpperCase())) {
+      Alert.alert('Grupo', 'Informe um código válido com 16 caracteres.');
       return;
     }
 
@@ -310,8 +310,8 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
 
             <TextInput
               value={joinCode}
-              onChangeText={(value) => setJoinCode(value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
-              placeholder="Ex: CASA01"
+              onChangeText={(value) => setJoinCode(value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16))}
+              placeholder="Ex: A1B2C3D4E5F60718"
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="characters"
               style={styles.input}

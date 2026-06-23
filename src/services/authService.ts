@@ -2,11 +2,10 @@ import { hasSupabaseEnv } from '../config/env';
 import { digitsOnly } from '../features/auth/utils/masks';
 import { getAuthRedirectUrl } from '../lib/authRedirect';
 import { supabase } from '../lib/supabase';
-import type { CpfLookupResult, RegistrationDraft } from '../types/auth';
+import type { RegistrationDraft } from '../types/auth';
 
 export type AuthServiceErrorCode =
   | 'missing_env'
-  | 'cpf_not_found'
   | 'invalid_credentials'
   | 'email_not_confirmed'
   | 'missing_recovery_session'
@@ -24,13 +23,6 @@ export class AuthServiceError extends Error {
   }
 }
 
-type LookupRpcRow = {
-  account_exists: boolean;
-  email: string | null;
-  email_masked: string | null;
-  email_confirmed: boolean;
-};
-
 function ensureSupabaseEnv() {
   if (!hasSupabaseEnv) {
     throw new AuthServiceError(
@@ -38,25 +30,6 @@ function ensureSupabaseEnv() {
       'Configure EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY antes de usar autenticação.',
     );
   }
-}
-
-function normalizeLookupPayload(value: LookupRpcRow | LookupRpcRow[] | null): CpfLookupResult {
-  if (!value) {
-    return {
-      account_exists: false,
-      email: null,
-      email_masked: null,
-      email_confirmed: false,
-    };
-  }
-
-  const row = Array.isArray(value) ? value[0] : value;
-  return {
-    account_exists: Boolean(row?.account_exists),
-    email: row?.email ?? null,
-    email_masked: row?.email_masked ?? null,
-    email_confirmed: Boolean(row?.email_confirmed),
-  };
 }
 
 function mapAuthError(errorMessage: string): AuthServiceError {
@@ -74,6 +47,36 @@ function mapAuthError(errorMessage: string): AuthServiceError {
   }
 
   return new AuthServiceError('unknown', errorMessage);
+}
+
+async function getFunctionErrorDetails(error: unknown): Promise<{ message: string; status?: number }> {
+  const candidate = error && typeof error === 'object'
+    ? (error as {
+        message?: unknown;
+        context?: {
+          status?: unknown;
+          json?: () => Promise<unknown>;
+        };
+      })
+    : null;
+  const fallbackMessage =
+    typeof candidate?.message === 'string' ? candidate.message : 'Falha ao acessar o serviço de autenticação.';
+  const status = typeof candidate?.context?.status === 'number' ? candidate.context.status : undefined;
+
+  if (typeof candidate?.context?.json === 'function') {
+    try {
+      const body = await candidate.context.json();
+      const responseMessage =
+        body && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
+          ? (body as { error: string }).error
+          : null;
+      if (responseMessage) return { message: responseMessage, status };
+    } catch {
+      // Keep the SDK error as a safe fallback when the response body is unavailable.
+    }
+  }
+
+  return { message: fallbackMessage, status };
 }
 
 function mapRecoveryError(errorMessage: string): AuthServiceError {
@@ -102,61 +105,37 @@ function mapPasswordUpdateError(errorMessage: string): AuthServiceError {
   return new AuthServiceError('unknown', errorMessage);
 }
 
-export async function lookupCpf(cpfDigits: string): Promise<CpfLookupResult> {
-  ensureSupabaseEnv();
-
-  const normalizedCpf = digitsOnly(cpfDigits);
-
-  // Compatibility fallback: some databases expose lookup_account_by_cpf(cpf text)
-  // while others use lookup_account_by_cpf(p_cpf text).
-  let response = await supabase.rpc('lookup_account_by_cpf', {
-    p_cpf: normalizedCpf,
-  });
-
-  if (response.error) {
-    const message = response.error.message.toLowerCase();
-    const canRetryWithLegacyParam =
-      message.includes('lookup_account_by_cpf(p_cpf)') ||
-      message.includes('could not find the function');
-
-    if (canRetryWithLegacyParam) {
-      response = await supabase.rpc('lookup_account_by_cpf', {
-        cpf: normalizedCpf,
-      });
-    }
-  }
-
-  if (response.error) {
-    const lowered = response.error.message.toLowerCase();
-
-    if (lowered.includes('could not find the function')) {
-      throw new AuthServiceError(
-        'unknown',
-        'Função lookup_account_by_cpf não encontrada no Supabase. Rode a migration SQL de onboarding no seu projeto.',
-      );
-    }
-
-    throw new AuthServiceError('unknown', response.error.message);
-  }
-
-  return normalizeLookupPayload(response.data as LookupRpcRow | LookupRpcRow[] | null);
-}
-
 export async function signInWithCpf(cpfDigits: string, password: string): Promise<void> {
   ensureSupabaseEnv();
-
-  const lookup = await lookupCpf(cpfDigits);
-  if (!lookup.account_exists || !lookup.email) {
-    throw new AuthServiceError('cpf_not_found', 'Não existe conta para este CPF.');
-  }
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: lookup.email,
-    password,
+  const { data, error } = await supabase.functions.invoke('cpf-auth', {
+    body: {
+      action: 'sign_in',
+      cpf: digitsOnly(cpfDigits),
+      password,
+    },
   });
 
   if (error) {
-    throw mapAuthError(error.message);
+    const details = await getFunctionErrorDetails(error);
+    if (details.status === 429) {
+      throw new AuthServiceError('unknown', 'Muitas tentativas. Tente novamente mais tarde.');
+    }
+    throw mapAuthError('Invalid login credentials');
+  }
+
+  const session = (data as {
+    session?: { access_token?: string; refresh_token?: string };
+  } | null)?.session;
+  if (!session?.access_token || !session.refresh_token) {
+    throw new AuthServiceError('invalid_credentials', 'CPF ou senha inválidos.');
+  }
+
+  const { error: sessionError } = await supabase.auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  });
+  if (sessionError) {
+    throw mapAuthError(sessionError.message);
   }
 }
 
@@ -215,24 +194,19 @@ export async function resendConfirmation(email: string): Promise<void> {
 
 export async function requestPasswordResetByCpf(cpfDigits: string): Promise<PasswordRecoveryResult> {
   ensureSupabaseEnv();
-  const redirectTo = getAuthRedirectUrl();
-
-  const lookup = await lookupCpf(cpfDigits);
-  if (!lookup.account_exists || !lookup.email) {
-    throw new AuthServiceError('cpf_not_found', 'Não existe conta para este CPF.');
-  }
-
-  if (!lookup.email_confirmed) {
-    await resendConfirmation(lookup.email);
-    return 'confirmation_resent';
-  }
-
-  const { error } = await supabase.auth.resetPasswordForEmail(lookup.email, {
-    redirectTo,
+  const { error } = await supabase.functions.invoke('cpf-auth', {
+    body: {
+      action: 'recover',
+      cpf: digitsOnly(cpfDigits),
+    },
   });
 
   if (error) {
-    throw mapRecoveryError(error.message);
+    const details = await getFunctionErrorDetails(error);
+    if (details.status === 429) {
+      throw new AuthServiceError('unknown', 'Muitas tentativas. Tente novamente mais tarde.');
+    }
+    throw mapRecoveryError(details.message);
   }
 
   return 'password_reset';

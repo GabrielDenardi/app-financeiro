@@ -31,13 +31,6 @@ export type ExistingAccountInfo = {
   emailConfirmed: boolean;
 };
 
-export type CpfLookupResult = {
-  account_exists: boolean;
-  email: string | null;
-  email_masked: string | null;
-  email_confirmed: boolean;
-};
-
 export function createEmptyRegistrationDraft(): RegistrationDraft {
   return {
     cpf: '',

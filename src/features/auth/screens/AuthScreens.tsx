@@ -11,7 +11,6 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { appEnv } from '../../../config/env';
 import {
   AuthServiceError,
-  lookupCpf,
   registerWithDraft,
   requestPasswordResetByCpf,
   resendConfirmation,
@@ -57,20 +56,6 @@ const progressMap = {
   password: 0.98,
 } as const;
 
-function maskEmailFallback(email: string): string {
-  const [localPart, domain] = email.split('@');
-
-  if (!localPart || !domain) {
-    return email;
-  }
-
-  if (localPart.length <= 2) {
-    return `${localPart[0]}***@${domain}`;
-  }
-
-  return `${localPart.slice(0, 2)}***${localPart.slice(-1)}@${domain}`;
-}
-
 function getReadableError(error: unknown, fallback: string): string {
   if (error instanceof AuthServiceError) {
     return error.message;
@@ -83,12 +68,12 @@ function getReadableError(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function toExistingAccount(cpf: string, lookup: Awaited<ReturnType<typeof lookupCpf>>): ExistingAccountInfo {
+function toExistingAccount(cpf: string): ExistingAccountInfo {
   return {
     cpf,
-    email: lookup.email ?? '',
-    emailMasked: lookup.email_masked ?? (lookup.email ? maskEmailFallback(lookup.email) : ''),
-    emailConfirmed: lookup.email_confirmed,
+    email: '',
+    emailMasked: '',
+    emailConfirmed: false,
   };
 }
 
@@ -111,9 +96,7 @@ export function CpfScreen({ navigation }: ScreenProps<'Cpf'>) {
   const { draft, mergeDraft, setExistingAccount } = useAuthFlow();
   const [cpf, setCpf] = useState(formatCpf(draft.cpf));
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleContinue = async () => {
+  const handleContinue = () => {
     const cpfDigits = digitsOnly(cpf);
 
     if (!isValidCpf(cpfDigits)) {
@@ -121,26 +104,10 @@ export function CpfScreen({ navigation }: ScreenProps<'Cpf'>) {
       return;
     }
 
-    setIsLoading(true);
     setError(null);
-
-    try {
-      const lookup = await lookupCpf(cpfDigits);
-      mergeDraft({ cpf: cpfDigits });
-
-      if (lookup.account_exists && lookup.email) {
-        setExistingAccount(toExistingAccount(cpfDigits, lookup));
-        navigation.navigate('ExistingPassword');
-        return;
-      }
-
-      setExistingAccount(null);
-      navigation.navigate('RegisterEmail');
-    } catch (lookupError) {
-      setError(getReadableError(lookupError, 'Não foi possível validar o CPF agora.'));
-    } finally {
-      setIsLoading(false);
-    }
+    mergeDraft({ cpf: cpfDigits });
+    setExistingAccount(toExistingAccount(cpfDigits));
+    navigation.navigate('ExistingPassword');
   };
 
   return (
@@ -149,7 +116,7 @@ export function CpfScreen({ navigation }: ScreenProps<'Cpf'>) {
       subtitle="Precisamos dele para iniciar o cadastro ou acessar o aplicativo."
       progress={progressMap.cpf}
       onBack={() => navigation.goBack()}
-      footer={<PrimaryButton title="Continuar" onPress={handleContinue} loading={isLoading} />}
+      footer={<PrimaryButton title="Continuar" onPress={handleContinue} />}
     >
       <MaskedTextInput
         placeholder="000.000.000-00"
@@ -161,7 +128,7 @@ export function CpfScreen({ navigation }: ScreenProps<'Cpf'>) {
         keyboardType="number-pad"
         maxLength={14}
         error={error}
-        helperText="Somente seu CPF para identificar se você já tem conta."
+        helperText="Seu CPF não será usado para revelar dados de outras contas."
       />
     </AuthScaffold>
   );
@@ -173,7 +140,6 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isResending, setIsResending] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
   if (!existingAccount) {
@@ -202,12 +168,7 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
     try {
       await signInWithCpf(existingAccount.cpf, password);
     } catch (signInError) {
-      if (signInError instanceof AuthServiceError && signInError.code === 'email_not_confirmed') {
-        setError(signInError.message);
-        setInfo('Reenvie o e-mail de confirmação para liberar o acesso.');
-      } else {
-        setError(getReadableError(signInError, 'Não foi possível entrar agora.'));
-      }
+      setError(getReadableError(signInError, 'CPF ou senha inválidos.'));
     } finally {
       setIsLoading(false);
     }
@@ -219,13 +180,8 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
     setInfo(null);
 
     try {
-      const result = await requestPasswordResetByCpf(existingAccount.cpf);
-
-      if (result === 'confirmation_resent') {
-        setInfo(`Sua conta ainda nao foi confirmada. Reenviamos o e-mail de confirmação para ${existingAccount.emailMasked}.`);
-      } else {
-        setInfo(`Enviamos um link de redefinição para ${existingAccount.emailMasked}.`);
-      }
+      await requestPasswordResetByCpf(existingAccount.cpf);
+      setInfo('Se houver uma conta elegível para este CPF, enviaremos as instruções por e-mail.');
     } catch (resetError) {
       setError(getReadableError(resetError, 'Nao foi possivel enviar a redefinição.'));
     } finally {
@@ -233,25 +189,10 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
     }
   };
 
-  const handleResendConfirmation = async () => {
-    setIsResending(true);
-    setError(null);
-    setInfo(null);
-
-    try {
-      await resendConfirmation(existingAccount.email);
-      setInfo(`Enviamos um novo e-mail de confirmação para ${existingAccount.emailMasked}.`);
-    } catch (resendError) {
-      setError(getReadableError(resendError, 'Não foi possível reenviar o e-mail.'));
-    } finally {
-      setIsResending(false);
-    }
-  };
-
   return (
     <AuthScaffold
-      title="Esta conta já existe"
-      subtitle={`Já existe uma conta com este CPF. Digite sua senha para entrar (${existingAccount.emailMasked}).`}
+      title="Acesse sua conta"
+      subtitle="Digite sua senha. A resposta é a mesma para CPFs cadastrados ou não cadastrados."
       onBack={() => navigation.goBack()}
       footer={
         <AuthButtonRow>
@@ -281,13 +222,10 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
       {info ? <InlineMessage variant="info" message={info} /> : null}
 
       <Pressable
-        onPress={handleResendConfirmation}
+        onPress={() => navigation.navigate('RegisterEmail')}
         style={({ pressed }) => [styles.linkButton, pressed && styles.pressed]}
       >
-        <Text style={styles.linkButtonText}>
-          Reenviar e-mail de confirmação
-          {isResending ? '...' : ''}
-        </Text>
+        <Text style={styles.linkButtonText}>Ainda não tem conta? Criar conta</Text>
       </Pressable>
     </AuthScaffold>
   );

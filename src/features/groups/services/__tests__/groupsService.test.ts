@@ -65,10 +65,10 @@ describe('groupsService rpc wrappers', () => {
   it('joins group with normalized share code', async () => {
     mockRpc.mockResolvedValueOnce({ data: 'group-2', error: null });
 
-    await expect(joinGroupByCode(' casa01 ')).resolves.toBe('group-2');
+    await expect(joinGroupByCode(' a1b2c3d4e5f60718 ')).resolves.toBe('group-2');
 
     expect(mockRpc).toHaveBeenCalledWith('join_group_by_code', {
-      p_share_code: 'CASA01',
+      p_share_code: 'A1B2C3D4E5F60718',
     });
   });
 

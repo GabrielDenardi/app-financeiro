@@ -1,8 +1,7 @@
-const mockRpc = jest.fn();
-const mockSignInWithPassword = jest.fn();
+const mockInvoke = jest.fn();
+const mockSetSession = jest.fn();
 const mockSignUp = jest.fn();
 const mockResend = jest.fn();
-const mockResetPassword = jest.fn();
 const mockUpdateUser = jest.fn();
 
 jest.mock('../../config/env', () => ({
@@ -17,12 +16,13 @@ jest.mock('../../config/env', () => ({
 
 jest.mock('../../lib/supabase', () => ({
     supabase: {
-    rpc: (...args: unknown[]) => mockRpc(...args),
+    functions: {
+      invoke: (...args: unknown[]) => mockInvoke(...args),
+    },
     auth: {
-      signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
+      setSession: (...args: unknown[]) => mockSetSession(...args),
       signUp: (...args: unknown[]) => mockSignUp(...args),
       resend: (...args: unknown[]) => mockResend(...args),
-      resetPasswordForEmail: (...args: unknown[]) => mockResetPassword(...args),
       updateUser: (...args: unknown[]) => mockUpdateUser(...args),
     },
   },
@@ -34,7 +34,6 @@ jest.mock('../../lib/authRedirect', () => ({
 
 import {
   AuthServiceError,
-  lookupCpf,
   registerWithDraft,
   requestPasswordResetByCpf,
   signInWithCpf,
@@ -46,59 +45,41 @@ describe('authService', () => {
     jest.clearAllMocks();
   });
 
-  it('looks up cpf and returns account details', async () => {
-    mockRpc.mockResolvedValueOnce({
-      data: {
-        account_exists: true,
-        email: 'cliente@teste.com',
-        email_masked: 'cl***e@teste.com',
-        email_confirmed: true,
-      },
+  it('authenticates CPF through the non-enumerating Edge Function', async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: { session: { access_token: 'access', refresh_token: 'refresh' } },
       error: null,
     });
-
-    await expect(lookupCpf('390.533.447-05')).resolves.toEqual({
-      account_exists: true,
-      email: 'cliente@teste.com',
-      email_masked: 'cl***e@teste.com',
-      email_confirmed: true,
-    });
-  });
-
-  it('authenticates existing cpf with password', async () => {
-    mockRpc.mockResolvedValueOnce({
-      data: {
-        account_exists: true,
-        email: 'cliente@teste.com',
-        email_masked: 'cl***e@teste.com',
-        email_confirmed: true,
-      },
-      error: null,
-    });
-    mockSignInWithPassword.mockResolvedValueOnce({ error: null });
+    mockSetSession.mockResolvedValueOnce({ error: null });
 
     await expect(signInWithCpf('39053344705', 'Senha123')).resolves.toBeUndefined();
-    expect(mockSignInWithPassword).toHaveBeenCalledWith({
-      email: 'cliente@teste.com',
-      password: 'Senha123',
+    expect(mockInvoke).toHaveBeenCalledWith('cpf-auth', {
+      body: { action: 'sign_in', cpf: '39053344705', password: 'Senha123' },
     });
+    expect(mockSetSession).toHaveBeenCalledWith({ access_token: 'access', refresh_token: 'refresh' });
   });
 
   it('throws explicit error for invalid credentials', async () => {
-    mockRpc.mockResolvedValueOnce({
-      data: {
-        account_exists: true,
-        email: 'cliente@teste.com',
-        email_masked: 'cl***e@teste.com',
-        email_confirmed: true,
-      },
-      error: null,
-    });
-    mockSignInWithPassword.mockResolvedValueOnce({
-      error: { message: 'Invalid login credentials' },
-    });
+    mockInvoke.mockResolvedValueOnce({ data: null, error: { message: 'Unauthorized' } });
 
     await expect(signInWithCpf('39053344705', 'errada')).rejects.toBeInstanceOf(AuthServiceError);
+  });
+
+  it('surfaces Edge Function rate-limit responses', async () => {
+    mockInvoke.mockResolvedValueOnce({
+      data: null,
+      error: {
+        message: 'Edge Function returned a non-2xx status code',
+        context: {
+          status: 429,
+          json: jest.fn().mockResolvedValue({ error: 'Muitas tentativas. Tente novamente mais tarde.' }),
+        },
+      },
+    });
+
+    await expect(signInWithCpf('39053344705', 'errada')).rejects.toMatchObject({
+      message: 'Muitas tentativas. Tente novamente mais tarde.',
+    });
   });
 
   it('registers new account with draft metadata', async () => {
@@ -136,46 +117,13 @@ describe('authService', () => {
     );
   });
 
-  it('sends password reset using cpf lookup', async () => {
-    mockRpc.mockResolvedValueOnce({
-      data: {
-        account_exists: true,
-        email: 'cliente@teste.com',
-        email_masked: 'cl***e@teste.com',
-        email_confirmed: true,
-      },
-      error: null,
-    });
-    mockResetPassword.mockResolvedValueOnce({ error: null });
+  it('requests recovery without exposing account state', async () => {
+    mockInvoke.mockResolvedValueOnce({ data: { accepted: true }, error: null });
 
     await expect(requestPasswordResetByCpf('39053344705')).resolves.toBe('password_reset');
-    expect(mockResetPassword).toHaveBeenCalledWith(
-      'cliente@teste.com',
-      expect.objectContaining({ redirectTo: 'appfinanceiro://auth/callback' }),
-    );
-  });
-
-  it('resends confirmation instead of password reset for unconfirmed email', async () => {
-    mockRpc.mockResolvedValueOnce({
-      data: {
-        account_exists: true,
-        email: 'cliente@teste.com',
-        email_masked: 'cl***e@teste.com',
-        email_confirmed: false,
-      },
-      error: null,
+    expect(mockInvoke).toHaveBeenCalledWith('cpf-auth', {
+      body: { action: 'recover', cpf: '39053344705' },
     });
-    mockResend.mockResolvedValueOnce({ error: null });
-
-    await expect(requestPasswordResetByCpf('39053344705')).resolves.toBe('confirmation_resent');
-    expect(mockResend).toHaveBeenCalledWith({
-      type: 'signup',
-      email: 'cliente@teste.com',
-      options: {
-        emailRedirectTo: 'appfinanceiro://auth/callback',
-      },
-    });
-    expect(mockResetPassword).not.toHaveBeenCalled();
   });
 
   it('updates the password for a recovery session', async () => {

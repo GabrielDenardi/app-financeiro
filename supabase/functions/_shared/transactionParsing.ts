@@ -1,5 +1,4 @@
 /// <reference path="../deno-globals.d.ts" />
-/// <reference path="../deno-npm-modules.d.ts" />
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -8,7 +7,7 @@ export const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-type AuthenticatedContext = {
+export type AuthenticatedContext = {
   supabase: ReturnType<typeof createUserClient>;
   userId: string;
 };
@@ -22,6 +21,44 @@ export function createUserClient(authHeader: string | null) {
       headers: authHeader ? { Authorization: authHeader } : {},
     },
   });
+}
+
+export async function enforceEdgeSecurity(
+  context: AuthenticatedContext,
+  {
+    entitlement,
+    quota,
+    units,
+  }: { entitlement?: 'voice_capture' | 'data_import_export'; quota: 'ocr' | 'voice'; units: number },
+) {
+  if (entitlement) {
+    const { error } = await context.supabase.rpc('assert_entitlement', {
+      p_feature: entitlement,
+    });
+    if (error) {
+      const isMfaRequired =
+        error.code === '42501' &&
+        /verificacao em duas etapas|mfa|aal2/i.test(error.message ?? '');
+      const message = isMfaRequired
+        ? 'Verificacao em duas etapas obrigatoria.'
+        : 'Recurso indisponivel no plano atual.';
+      throw new Response(JSON.stringify({ error: message }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
+  const { error: quotaError } = await context.supabase.rpc('consume_edge_quota', {
+    p_feature: quota,
+    p_units: units,
+  });
+  if (quotaError) {
+    throw new Response(JSON.stringify({ error: 'Limite de uso temporario atingido.' }), {
+      status: 429,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 }
 
 export async function requireAuthenticatedUser(

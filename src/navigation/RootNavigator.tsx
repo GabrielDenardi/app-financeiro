@@ -1,9 +1,10 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import type { Session } from '@supabase/supabase-js';
 
 import { AuthCallbackResult } from '../features/auth/components/AuthCallbackResult';
+import { MfaChallengeScreen } from '../features/auth/components/MfaChallengeScreen';
 import { AuthFlowProvider } from '../features/auth/context/AuthFlowContext';
 import { PasswordRecoveryScreen } from '../features/auth/screens/AuthScreens';
 import { isValidPlanId } from '../features/plans/plans';
@@ -44,6 +45,7 @@ type CallbackNotice = {
  */
 type AppUnlockState = 'locked' | 'checking' | 'unlocked';
 type PlanGateState = 'checking' | 'ready';
+type MfaGateState = 'checking' | 'required' | 'verified' | 'error';
 
 function isRecoveryUrl(url: string): boolean {
   return /(?:[?#&]|^)type=recovery(?:[&#]|$)/i.test(url);
@@ -82,6 +84,8 @@ export function RootNavigator() {
   const [sessionState, setSessionState] = useState<AuthSessionState>('loading');
   const [callbackNotice, setCallbackNotice] = useState<CallbackNotice | null>(null);
   const [planGateState, setPlanGateState] = useState<PlanGateState>('checking');
+  const [mfaGateState, setMfaGateState] = useState<MfaGateState>('checking');
+  const [sessionSyncAttempt, setSessionSyncAttempt] = useState(0);
   const [isPasswordRecoveryFlow, setIsPasswordRecoveryFlow] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthenticatedUserSummary | null>(null);
 
@@ -204,14 +208,47 @@ export function RootNavigator() {
     };
     const syncSessionState = async (): Promise<void> => {
       const { data } = await supabase.auth.getSession();
-      const hadValidPlan = data.session ? await loadCurrentUser(data.session) : false;
+      if (!data.session) {
+        if (isMounted) {
+          setMfaGateState('checking');
+          setSessionState('unauthenticated');
+        }
+        await loadCurrentUser(null);
+        return;
+      }
+
+      const { data: assurance, error: assuranceError } =
+        await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assuranceError) {
+        if (isMounted) {
+          setMfaGateState('error');
+          setCurrentUser(null);
+          setPlanGateState('checking');
+          setAppUnlockState('locked');
+          setSessionState('authenticated');
+        }
+        return;
+      }
+      const requiresChallenge =
+        assurance?.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2';
+      if (requiresChallenge) {
+        if (isMounted) {
+          setMfaGateState('required');
+          setCurrentUser(null);
+          setPlanGateState('checking');
+          setAppUnlockState('locked');
+          setSessionState('authenticated');
+        }
+        return;
+      }
+
+      if (isMounted) setMfaGateState('verified');
+      const hadValidPlan = await loadCurrentUser(data.session);
       await maybeRegisterLogin(data.session);
       if (hadValidPlan) {
         await performBiometricCheck(data.session);
       }
-      if (isMounted) {
-        setSessionState(data.session ? 'authenticated' : 'unauthenticated');
-      }
+      if (isMounted) setSessionState('authenticated');
     };
 
     const handleIncomingUrl = async (url: string): Promise<void> => {
@@ -282,36 +319,15 @@ export function RootNavigator() {
         setIsPasswordRecoveryFlow(true);
         setCallbackNotice(null);
       }
-      const planCheckPromise = loadCurrentUser(session).catch(() => {
-        if (isMounted) {
-          setCurrentUser(null);
-          setPlanGateState(session ? 'ready' : 'checking');
-        }
-        return Boolean(session);
-      });
-      if (_event === 'SIGNED_IN') {
-        maybeRegisterLogin(session).catch(() => undefined);
-      }
       if (!session) {
         lastLoggedUserIdRef.current = null;
         setAppUnlockState('locked');
       }
-
-      const nextSessionState = session ? 'authenticated' : 'unauthenticated';
-
-      if (session && (_event === 'SIGNED_IN' || _event === 'USER_UPDATED')) {
-        planCheckPromise
-          .then((hadValidPlan) => (hadValidPlan ? performBiometricCheck(session) : undefined))
-          .catch(() => undefined)
-          .finally(() => {
-            if (isMounted) {
-              setSessionState(nextSessionState);
-            }
-          });
-        return;
-      }
-
-      setSessionState(nextSessionState);
+      setTimeout(() => {
+        syncSessionState().catch(() => {
+          if (isMounted) setSessionState('unauthenticated');
+        });
+      }, 0);
     });
 
     /**
@@ -364,7 +380,7 @@ export function RootNavigator() {
       data.subscription.unsubscribe();
       appStateSubscription.remove();
     };
-  }, []);
+  }, [sessionSyncAttempt]);
 
   // Loading state during bootstrap
   if (sessionState === 'loading') {
@@ -395,6 +411,51 @@ export function RootNavigator() {
 
   // Authenticated but potentially locked
   if (sessionState === 'authenticated') {
+    if (mfaGateState === 'checking') {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primaryLight} />
+        </View>
+      );
+    }
+
+    if (mfaGateState === 'required') {
+      return (
+        <MfaChallengeScreen
+          onVerified={() => {
+            setSessionState('loading');
+            supabase.auth.refreshSession().catch(() => supabase.auth.signOut());
+          }}
+          onSignOut={async () => {
+            await supabase.auth.signOut();
+          }}
+        />
+      );
+    }
+
+    if (mfaGateState === 'error') {
+      return (
+        <View style={styles.mfaErrorContainer}>
+          <Text style={styles.mfaErrorTitle}>Não foi possível verificar a autenticação</Text>
+          <Text style={styles.mfaErrorMessage}>
+            Confira sua conexão e tente novamente. Seus dados continuam protegidos.
+          </Text>
+          <Pressable
+            style={styles.mfaRetryButton}
+            onPress={() => {
+              setMfaGateState('checking');
+              setSessionSyncAttempt((attempt) => attempt + 1);
+            }}
+          >
+            <Text style={styles.mfaRetryText}>Tentar novamente</Text>
+          </Pressable>
+          <Pressable style={styles.mfaSignOutButton} onPress={() => supabase.auth.signOut()}>
+            <Text style={styles.mfaSignOutText}>Sair da conta</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
     if (planGateState === 'checking') {
       return (
         <View style={styles.loadingContainer}>
@@ -446,6 +507,50 @@ const createStyles = (colors: AppColors) =>
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.background,
+    },
+    mfaErrorContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 14,
+      padding: 24,
+      backgroundColor: colors.background,
+    },
+    mfaErrorTitle: {
+      color: colors.textPrimary,
+      fontSize: 22,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    mfaErrorMessage: {
+      maxWidth: 420,
+      color: colors.textSecondary,
+      fontSize: 15,
+      lineHeight: 22,
+      textAlign: 'center',
+    },
+    mfaRetryButton: {
+      minHeight: 48,
+      minWidth: 220,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+    },
+    mfaRetryText: {
+      color: colors.white,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    mfaSignOutButton: {
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    mfaSignOutText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
     },
   });
 

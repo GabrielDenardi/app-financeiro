@@ -44,7 +44,6 @@ type GroupMemberRow = {
 type ProfileRow = {
   id: string;
   full_name: string;
-  email: string;
 };
 
 type GroupSplitRow = {
@@ -148,7 +147,7 @@ function mapGroupMember(row: GroupMemberRow, profilesById: Map<string, ProfileRo
     groupId: row.group_id,
     userId: row.user_id,
     fullName: profile?.full_name?.trim() || 'Usuário',
-    email: profile?.email?.trim() || '',
+    email: '',
     role: row.role,
     joinedAt: row.joined_at,
     removedAt: row.removed_at,
@@ -221,16 +220,15 @@ async function fetchProfiles(userIds: string[]) {
     return new Map<string, ProfileRow>();
   }
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, full_name, email')
-    .in('id', userIds);
+  const { data, error } = await supabase.rpc('get_group_member_profiles', {
+    p_user_ids: userIds,
+  });
 
   if (error) {
     throw new GroupsServiceError('unknown', error.message);
   }
 
-  return new Map((data as ProfileRow[]).map((profile) => [profile.id, profile]));
+  return new Map(((data as ProfileRow[] | null) ?? []).map((profile) => [profile.id, profile]));
 }
 
 async function fetchGroupGraph(groupIds: string[]) {

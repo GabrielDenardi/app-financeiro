@@ -11,7 +11,7 @@ jest.mock('react-native', () => ({
   },
 }));
 
-jest.mock('xlsx', () => ({
+jest.mock('@e965/xlsx', () => ({
   read: jest.fn(),
   utils: {
     sheet_to_json: jest.fn(),
@@ -33,10 +33,14 @@ jest.mock('../../../transactions/services/transactionsService', () => ({
   listCategories: jest.fn(),
 }));
 
-import { parseAmount, parseRow } from '../importService';
+import { MAX_IMPORT_ROWS, parseAmount, parseRow, XLSX_SHEET_ROW_LIMIT } from '../importService';
 
 // Serial Excel 46_000 → data correta: 09/12/2025 no sistema 1900 do Excel.
 const EXCEL_SERIAL_46000_DATE = '2025-12-09';
+
+it('reserves one header row plus one overflow sentinel when reading spreadsheets', () => {
+  expect(XLSX_SHEET_ROW_LIMIT).toBe(MAX_IMPORT_ROWS + 2);
+});
 
 describe('importService amount parsing', () => {
   it.each([

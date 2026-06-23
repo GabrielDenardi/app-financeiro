@@ -1,0 +1,240 @@
+begin;
+
+-- Simulate the Data API grants used by the linked project; RLS/triggers remain authoritative.
+grant select, update on public.profiles to authenticated;
+grant select, insert, update on public.personal_accounts to authenticated;
+grant select, insert, update on public.import_batches to authenticated;
+grant select, insert, update on public.import_batch_rows to authenticated;
+grant select, insert, update on public.support_conversations to authenticated;
+grant select, insert, update on public.support_messages to authenticated;
+grant select on public.groups, public.group_members to authenticated;
+
+insert into auth.users (id, email, raw_user_meta_data)
+values
+  (
+    '11111111-1111-4111-8111-111111111111',
+    'one@example.test',
+    '{"cpf":"11144477735","full_name":"User One"}'::jsonb
+  ),
+  (
+    '22222222-2222-4222-8222-222222222222',
+    'two@example.test',
+    '{"cpf":"52998224725","full_name":"User Two","subscription_plan":"pro"}'::jsonb
+  );
+
+do $$
+begin
+  if (select subscription_plan from public.profiles where id = '22222222-2222-4222-8222-222222222222') <> 'free' then
+    raise exception 'SEC-BILL-SIGNUP-PLAN-014 reproduced';
+  end if;
+end;
+$$;
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","aal":"aal1"}',
+  true
+);
+
+do $$
+begin
+  begin
+    update public.profiles set subscription_plan = 'pro' where id = auth.uid();
+    raise exception 'SEC-BILL-MASSASSIGN-013 reproduced';
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    insert into public.personal_accounts (user_id, name) values (auth.uid(), 'Second account');
+    raise exception 'SEC-PLAN-ACCOUNT-LIMIT-031 reproduced';
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    insert into public.import_batches (user_id, file_name, file_type)
+    values (auth.uid(), 'attack.xlsx', 'xlsx');
+    raise exception 'SEC-IMPORT-ENTITLEMENT-010 reproduced';
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    insert into public.support_conversations (user_id, title)
+    values (auth.uid(), 'Bypass');
+    raise exception 'SEC-PLAN-SUPPORT-CHAT-032 reproduced';
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    perform public.lookup_account_by_cpf('52998224725');
+    raise exception 'SEC-CPF-ENUM-018 reproduced';
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    perform public.ensure_default_personal_account('22222222-2222-4222-8222-222222222222');
+    raise exception 'SEC-RPC-DEFAULT-ACCOUNT-022 reproduced';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$$;
+
+reset role;
+select set_config('request.jwt.claims', '{}', true);
+update public.profiles
+set subscription_plan = 'pro', subscription_status = 'active'
+where id = '11111111-1111-4111-8111-111111111111';
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","aal":"aal1"}',
+  true
+);
+
+do $$
+declare
+  created_group uuid;
+  conversation_id uuid;
+  message_id uuid;
+  actual_role text;
+  affected_rows integer;
+begin
+  created_group := public.create_group('Secure group', 'test');
+  perform set_config('test.created_group_id', created_group::text, true);
+  perform set_config('test.old_group_code', (select share_code from public.groups where id = created_group), true);
+
+  insert into public.support_conversations (user_id, title)
+  values (auth.uid(), 'Secure support') returning id into conversation_id;
+  insert into public.support_messages (conversation_id, sender_user_id, sender_role, body)
+  values (
+    conversation_id,
+    '22222222-2222-4222-8222-222222222222',
+    'system',
+    'hello'
+  )
+  returning id, sender_role into message_id, actual_role;
+  if actual_role <> 'user' then raise exception 'SEC-SUPPORT-SENDER-FORGE-006 reproduced'; end if;
+
+  update public.support_messages set body = 'tampered' where id = message_id;
+  get diagnostics affected_rows = row_count;
+  if affected_rows <> 0 then raise exception 'SEC-SUPPORT-MESSAGE-TAMPER-007 reproduced'; end if;
+end;
+$$;
+
+reset role;
+do $$
+begin
+  if length((select share_code from public.groups where id = current_setting('test.created_group_id')::uuid)) <> 16 then
+    raise exception 'SEC-GROUP-CODE-020 reproduced';
+  end if;
+end;
+$$;
+
+insert into public.group_members (group_id, user_id, role)
+values (
+  current_setting('test.created_group_id')::uuid,
+  '22222222-2222-4222-8222-222222222222',
+  'member'
+);
+update public.group_members
+set removed_at = now()
+where group_id = current_setting('test.created_group_id')::uuid
+  and user_id = '22222222-2222-4222-8222-222222222222';
+
+do $$
+begin
+  if (select share_code from public.groups where id = current_setting('test.created_group_id')::uuid)
+     = current_setting('test.old_group_code') then
+    raise exception 'SEC-GROUP-REJOIN-019 code was not rotated';
+  end if;
+end;
+$$;
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"22222222-2222-4222-8222-222222222222","role":"authenticated","aal":"aal1"}',
+  true
+);
+set local role authenticated;
+do $$
+begin
+  begin
+    perform public.join_group_by_code(current_setting('test.old_group_code'));
+    raise exception 'SEC-GROUP-REJOIN-019 reproduced';
+  exception
+    when others then
+      if sqlerrm not like '%Codigo de grupo invalido%' then raise; end if;
+  end;
+end;
+$$;
+
+reset role;
+select set_config('request.jwt.claims', '{}', true);
+insert into public.import_batches (id, user_id, file_name, file_type)
+values (
+  '44444444-4444-4444-8444-444444444444',
+  '22222222-2222-4222-8222-222222222222',
+  'other.xlsx',
+  'xlsx'
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","aal":"aal1"}',
+  true
+);
+do $$
+begin
+  begin
+    insert into public.import_batch_rows (batch_id, user_id, row_index, fingerprint)
+    values ('44444444-4444-4444-8444-444444444444', auth.uid(), 1, 'cross-batch');
+    raise exception 'SEC-IMPORT-CROSSBATCH-026 reproduced';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$$;
+
+reset role;
+insert into auth.mfa_factors (
+  id, user_id, factor_type, status, created_at, updated_at, secret
+) values (
+  '33333333-3333-4333-8333-333333333333',
+  '11111111-1111-4111-8111-111111111111',
+  'totp', 'verified', now(), now(), 'TESTSECRET'
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","aal":"aal1"}',
+  true
+);
+
+do $$
+begin
+  if (select count(*) from public.profiles where id = auth.uid()) <> 0 then
+    raise exception 'SEC-MFA-NOT-ENFORCED-009 reproduced at aal1';
+  end if;
+end;
+$$;
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","aal":"aal2"}',
+  true
+);
+
+do $$
+begin
+  if (select count(*) from public.profiles where id = auth.uid()) <> 1 then
+    raise exception 'Legitimate aal2 profile access failed';
+  end if;
+  if (select count(*) from public.profiles where id = '22222222-2222-4222-8222-222222222222') <> 0 then
+    raise exception 'SEC-GROUP-PII-021 reproduced';
+  end if;
+end;
+$$;
+
+rollback;

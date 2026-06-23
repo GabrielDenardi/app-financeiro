@@ -1,7 +1,7 @@
 /// <reference path="../deno-globals.d.ts" />
-/// <reference path="../deno-npm-modules.d.ts" />
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { removeAllUserObjects } from '../_shared/storageCleanup.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -69,29 +69,8 @@ Deno.serve(async (request) => {
       .eq('id', requestId)
       .eq('user_id', userId);
 
-    const { data: objectList } = await adminClient.storage
-      .from('user-data-exports')
-      .list(userId, {
-        limit: 100,
-      });
-
-    if (objectList?.length) {
-      await adminClient.storage
-        .from('user-data-exports')
-        .remove(objectList.map((item) => `${userId}/${item.name}`));
-    }
-
-    const { data: receiptObjectList } = await adminClient.storage
-      .from('transaction-receipts')
-      .list(userId, {
-        limit: 100,
-      });
-
-    if (receiptObjectList?.length) {
-      await adminClient.storage
-        .from('transaction-receipts')
-        .remove(receiptObjectList.map((item) => `${userId}/${item.name}`));
-    }
+    await removeAllUserObjects(adminClient.storage, 'user-data-exports', userId);
+    await removeAllUserObjects(adminClient.storage, 'transaction-receipts', userId);
 
     const { error: completeError } = await adminClient
       .from('account_deletion_requests')

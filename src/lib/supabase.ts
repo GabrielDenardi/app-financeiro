@@ -93,5 +93,6 @@ export const supabase = createClient(fallbackUrl, fallbackAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    flowType: 'pkce',
   },
 });
