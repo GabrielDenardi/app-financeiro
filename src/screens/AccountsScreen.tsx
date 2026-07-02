@@ -385,7 +385,7 @@ const createStyles = (colors: AppColors) =>
       fontWeight: "700",
     },
     totalCard: {
-      backgroundColor: "rgba(255,255,255,0.1)",
+      backgroundColor: colors.whiteAlpha08,
       padding: spacing.lg,
       borderRadius: radius.lg,
       marginTop: spacing.sm,
@@ -399,7 +399,7 @@ const createStyles = (colors: AppColors) =>
     },
     totalLabel: {
       ...typography.caption,
-      color: "rgba(255,255,255,0.7)",
+      color: colors.whiteAlpha65,
       fontWeight: "600",
     },
     totalValue: {
@@ -413,19 +413,19 @@ const createStyles = (colors: AppColors) =>
       marginTop: spacing.lg,
       paddingTop: spacing.md,
       borderTopWidth: 1,
-      borderTopColor: "rgba(255,255,255,0.1)",
+      borderTopColor: colors.whiteAlpha08,
     },
     statItem: {
       flex: 1,
     },
     statDivider: {
       width: 1,
-      backgroundColor: "rgba(255,255,255,0.1)",
+      backgroundColor: colors.whiteAlpha08,
       marginHorizontal: spacing.md,
     },
     statLabel: {
       ...typography.caption,
-      color: "rgba(255,255,255,0.5)",
+      color: colors.whiteAlpha50,
     },
     statValue: {
       ...typography.body,

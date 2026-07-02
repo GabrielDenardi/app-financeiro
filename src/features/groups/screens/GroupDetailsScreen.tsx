@@ -294,8 +294,8 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
       await createSplitMutation.mutateAsync({
         groupId,
-        title: splitTitle,
-        description: splitDescription,
+        title: splitTitle.trim(),
+        description: splitDescription.trim(),
         kind: splitKind,
         splitMode,
         totalAmount: parseDecimal(splitTotal),

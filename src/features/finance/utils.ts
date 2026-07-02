@@ -49,7 +49,10 @@ export function monthLabel(dateLike: string | Date): string {
 }
 
 export function weekBucket(dateLike: string): 'S1' | 'S2' | 'S3' | 'S4' | 'S5' {
-  const day = new Date(dateLike).getDate();
+  // Parse do dia direto da string: new Date('YYYY-MM-DD') é UTC e deslocaria
+  // o dia para trás em fusos negativos (Brasil).
+  const parsedDay = Number(dateLike.slice(8, 10));
+  const day = Number.isInteger(parsedDay) && parsedDay >= 1 ? parsedDay : new Date(dateLike).getDate();
 
   if (day <= 7) {
     return 'S1';
@@ -90,6 +93,14 @@ export function groupTransactionsByDate(items: TransactionFeedItem[]): Transacti
 
 export function toNumber(value: number | string | null | undefined): number {
   return Number(value ?? 0);
+}
+
+/**
+ * Arredonda para 2 casas (centavos). Use ao acumular somas de valores
+ * monetários — floats acumulam erro (0.1 + 0.2 = 0.30000000000000004).
+ */
+export function roundCurrency(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 export function clampPercent(value: number): number {

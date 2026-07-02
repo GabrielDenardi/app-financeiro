@@ -1,4 +1,5 @@
 import { requireCurrentUserId } from '../../../lib/auth';
+import { localIsoDate, roundCurrency } from '../../finance/utils';
 import { listTransactionFeed } from '../../transactions/services/transactionsService';
 import type { TransactionFeedItem } from '../../transactions/types';
 import type { ReportCategoryStat, ReportPaymentMethodStat, ReportRange, ReportsSummary } from '../types';
@@ -28,7 +29,7 @@ function buildTopCategories(items: TransactionFeedItem[]): ReportCategoryStat[] 
       color: item.categoryColor ?? '#94A3B8',
     };
 
-    current.amount += item.amount;
+    current.amount = roundCurrency(current.amount + item.amount);
     totals.set(item.category, current);
   });
 
@@ -49,7 +50,7 @@ function buildPaymentMethods(items: TransactionFeedItem[]): ReportPaymentMethodS
       return;
     }
 
-    totals.set(item.paymentMethod, (totals.get(item.paymentMethod) ?? 0) + item.amount);
+    totals.set(item.paymentMethod, roundCurrency((totals.get(item.paymentMethod) ?? 0) + item.amount));
   });
 
   return [...totals.entries()]
@@ -63,10 +64,11 @@ function buildSeries(items: TransactionFeedItem[]) {
   const expenseBar = items.filter((item) => item.type === 'expense').reduce((sum, item) => sum + item.amount, 0);
 
   items.forEach((item) => {
-    const occurredOn = item.occurredOn ?? item.dateISO ?? new Date().toISOString();
-    const day = new Date(occurredOn).getDate();
+    const occurredOn = item.occurredOn ?? item.dateISO ?? localIsoDate(new Date());
+    // Dia extraído da string: new Date('YYYY-MM-DD') é UTC e deslocaria o dia.
+    const day = Number(occurredOn.slice(8, 10)) || 1;
     const index = Math.min(3, Math.floor((day - 1) / 8));
-    chunks[index] += item.type === 'expense' ? item.amount : -item.amount;
+    chunks[index] = roundCurrency(chunks[index] + (item.type === 'expense' ? item.amount : -item.amount));
   });
 
   return {
@@ -86,13 +88,17 @@ export async function getReportsSummary(range: ReportRange): Promise<ReportsSumm
   });
 
   const reportableItems = feed.filter((item) => !EXCLUDED_REPORT_SOURCES.has(item.sourceType ?? 'manual'));
-  const income = reportableItems
-    .filter((item) => item.type === 'income')
-    .reduce((sum, item) => sum + item.amount, 0);
-  const expense = reportableItems
-    .filter((item) => item.type === 'expense')
-    .reduce((sum, item) => sum + item.amount, 0);
-  const balance = income - expense;
+  const income = roundCurrency(
+    reportableItems
+      .filter((item) => item.type === 'income')
+      .reduce((sum, item) => sum + item.amount, 0),
+  );
+  const expense = roundCurrency(
+    reportableItems
+      .filter((item) => item.type === 'expense')
+      .reduce((sum, item) => sum + item.amount, 0),
+  );
+  const balance = roundCurrency(income - expense);
   const savingsRate = income > 0 ? Number(((balance / income) * 100).toFixed(1)) : 0;
   const series = buildSeries(reportableItems);
 

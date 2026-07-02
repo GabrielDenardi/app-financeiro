@@ -553,7 +553,7 @@ const createStyles = (colors: AppColors) =>
     },
     heroSubtitle: {
       ...typography.body,
-      color: "rgba(255,255,255,0.7)",
+      color: colors.whiteAlpha65,
     },
     searchWrapper: {
       paddingHorizontal: layout.pageHorizontal,
@@ -568,7 +568,7 @@ const createStyles = (colors: AppColors) =>
       paddingHorizontal: spacing.lg,
       gap: spacing.sm,
       elevation: 4,
-      shadowColor: "#000",
+      shadowColor: colors.shadow,
       shadowOpacity: 0.1,
       shadowRadius: 10,
     },
@@ -746,7 +746,7 @@ const createStyles = (colors: AppColors) =>
       width: 40,
       height: 40,
       borderRadius: radius.md,
-      backgroundColor: "rgba(255,255,255,0.2)",
+      backgroundColor: colors.whiteAlpha20,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -756,7 +756,7 @@ const createStyles = (colors: AppColors) =>
     },
     resultsHeaderSub: {
       ...typography.caption,
-      color: "rgba(255,255,255,0.8)",
+      color: colors.whiteAlpha80,
     },
     resultsList: {
       paddingVertical: spacing.sm,

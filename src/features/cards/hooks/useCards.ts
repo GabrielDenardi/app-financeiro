@@ -77,6 +77,8 @@ export function usePayCardInvoiceMutation(userId?: string | null) {
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.cards.all });
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.accounts.all });
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.transactions.all });
+      // O pagamento debita uma conta — o saldo exibido na Home precisa atualizar.
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.dashboard.all });
     },
   });
 }

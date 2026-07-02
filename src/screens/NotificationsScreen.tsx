@@ -61,7 +61,7 @@ export function NotificationsScreen() {
       case "success":
         return <CircleCheck size={18} color={colors.success} />;
       case "warning":
-        return <TriangleAlert size={18} color="#D97706" />;
+        return <TriangleAlert size={18} color={colors.warning} />;
       case "security":
         return <ShieldAlert size={18} color={colors.primary} />;
       default:

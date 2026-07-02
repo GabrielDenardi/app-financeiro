@@ -278,7 +278,13 @@ export default function CardsScreen({ navigation }: any) {
                       </View>
                       <View style={styles.cardHeaderRight}>
                         <Text style={styles.cardNetwork}>{card.network}</Text>
-                        <Pressable onPress={() => setEditingCard(card)} style={styles.editCardBtn}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Editar cartão ${card.name}`}
+                          hitSlop={spacing.sm}
+                          onPress={() => setEditingCard(card)}
+                          style={styles.editCardBtn}
+                        >
                           <Pencil size={14} color={colors.whiteAlpha80} />
                         </Pressable>
                       </View>
@@ -418,7 +424,12 @@ export default function CardsScreen({ navigation }: any) {
                   </View>
 
                   {/* History link */}
-                  <Pressable onPress={() => setHistoryCardId(card.id)} style={styles.historyLink}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ver histórico de faturas de ${card.name}`}
+                    onPress={() => setHistoryCardId(card.id)}
+                    style={styles.historyLink}
+                  >
                     <Clock size={14} color={colors.textSecondary} />
                     <Text style={styles.historyLinkText}>Ver histórico de faturas</Text>
                     <ChevronRight size={14} color={colors.textSecondary} />

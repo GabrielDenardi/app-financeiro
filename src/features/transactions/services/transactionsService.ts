@@ -1,7 +1,7 @@
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { formatShortDate } from '../../../utils/format';
-import { endOfMonth, formatInstallmentLabel, groupTransactionsByDate, startOfMonth, toNumber } from '../../finance/utils';
+import { endOfMonth, formatInstallmentLabel, groupTransactionsByDate, roundCurrency, startOfMonth, toNumber } from '../../finance/utils';
 import type {
   CreateTransactionInput,
   FinanceCategory,
@@ -399,9 +399,9 @@ export function summarizeTransactions(items: TransactionFeedItem[]) {
   return items.reduce(
     (accumulator, item) => {
       if (item.type === 'income') {
-        accumulator.income += item.amount;
+        accumulator.income = roundCurrency(accumulator.income + item.amount);
       } else {
-        accumulator.expense += item.amount;
+        accumulator.expense = roundCurrency(accumulator.expense + item.amount);
       }
 
       return accumulator;

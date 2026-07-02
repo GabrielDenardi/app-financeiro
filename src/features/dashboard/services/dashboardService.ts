@@ -1,6 +1,6 @@
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
-import { formatMonthDate, monthLabel, weekBucket } from '../../finance/utils';
+import { formatMonthDate, localIsoDate, monthLabel, roundCurrency, weekBucket } from '../../finance/utils';
 import { getAccountsOverview } from '../../accounts/services/accountsService';
 import { listTransactionFeed, summarizeTransactions } from '../../transactions/services/transactionsService';
 import type { DashboardCategoryBreakdown, DashboardData, WeeklyFlowPoint } from '../types';
@@ -30,11 +30,11 @@ function buildWeeklyFlow(items: DashboardData['recentTransactions']): WeeklyFlow
   };
 
   items.forEach((item) => {
-    const bucket = weekBucket(item.occurredOn ?? new Date().toISOString());
+    const bucket = weekBucket(item.occurredOn ?? localIsoDate(new Date()));
     if (item.type === 'income') {
-      base[bucket].income += item.amount;
+      base[bucket].income = roundCurrency(base[bucket].income + item.amount);
     } else {
-      base[bucket].expense += item.amount;
+      base[bucket].expense = roundCurrency(base[bucket].expense + item.amount);
     }
   });
 
@@ -50,7 +50,7 @@ function buildCategorySpending(items: DashboardData['recentTransactions']): Dash
       return;
     }
 
-    totalExpense += item.amount;
+    totalExpense = roundCurrency(totalExpense + item.amount);
     const current = totals.get(item.category) ?? {
       category: item.category,
       amount: 0,
@@ -58,7 +58,7 @@ function buildCategorySpending(items: DashboardData['recentTransactions']): Dash
       share: 0,
     };
 
-    current.amount += item.amount;
+    current.amount = roundCurrency(current.amount + item.amount);
     totals.set(item.category, current);
   });
 

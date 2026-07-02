@@ -14,6 +14,7 @@ import { PageHeader } from "../components/PageHeader";
 import { PageShell } from "../components/PageShell";
 import { BottomSheet } from "../components/BottomSheet";
 import { Button } from "../components/Button";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Chip } from "../components/Chip";
 import { FieldCard, FieldRow } from "../components/FormField";
 import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
@@ -54,6 +55,7 @@ export default function BudgetsScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [limitAmount, setLimitAmount] = useState("");
+  const [budgetToDelete, setBudgetToDelete] = useState<string | null>(null);
 
   const expenseCategories = useMemo(
     () =>
@@ -126,10 +128,15 @@ export default function BudgetsScreen() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => setBudgetToDelete(id);
+
+  const confirmDeleteBudget = async () => {
+    if (!budgetToDelete) return;
     try {
-      await deleteBudgetMutation.mutateAsync(id);
+      await deleteBudgetMutation.mutateAsync(budgetToDelete);
+      setBudgetToDelete(null);
     } catch (error) {
+      setBudgetToDelete(null);
       Alert.alert(
         "Erro",
         error instanceof Error
@@ -216,12 +223,16 @@ export default function BudgetsScreen() {
 
                     <View style={styles.actionButtons}>
                       <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Editar orçamento de ${item.categoryLabel ?? "categoria"}`}
                         onPress={() => handleEdit(item)}
                         style={styles.iconButton}
                       >
                         <Pencil size={18} color={colors.primaryLight} />
                       </Pressable>
                       <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Excluir orçamento de ${item.categoryLabel ?? "categoria"}`}
                         onPress={() => handleDelete(item.id)}
                         style={styles.iconButton}
                       >
@@ -316,6 +327,16 @@ export default function BudgetsScreen() {
 
         <View style={styles.bottomSpacer} />
       </BottomSheet>
+
+      <ConfirmDialog
+        visible={budgetToDelete !== null}
+        title="Excluir orçamento"
+        message="O limite mensal desta categoria será removido. As transações não são afetadas."
+        confirmLabel="Excluir"
+        loading={deleteBudgetMutation.isPending}
+        onConfirm={confirmDeleteBudget}
+        onCancel={() => setBudgetToDelete(null)}
+      />
     </>
   );
 }
