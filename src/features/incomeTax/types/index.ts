@@ -24,6 +24,8 @@ export type IncomeTaxReceipt = {
 
 export type IncomeTaxReport = {
   year: number;
+  ownerName: string | null;
+  ownerCpf: string | null;
   sections: IncomeTaxSection[];
   totalIncome: number;
   totalDeductible: number;

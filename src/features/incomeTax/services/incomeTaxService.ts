@@ -29,6 +29,14 @@ type AttachmentRow = {
 
 const RECEIPTS_BUCKET = 'transaction-receipts';
 
+/**
+ * Validade dos links assinados dos comprovantes no relatório exportado.
+ * O documento é durável (vai para o contador, fica arquivado) — 1 hora tornava
+ * os links inúteis; 7 dias equilibra utilidade e exposição dos arquivos.
+ */
+const RECEIPT_LINK_TTL_SECONDS = 60 * 60 * 24 * 7;
+const RECEIPT_LINK_VALIDITY_LABEL = '7 dias';
+
 /** Fontes internas que não representam movimentações reais e ficam fora do relatório fiscal. */
 const EXCLUDED_SOURCES = new Set([
   'transfer',
@@ -85,6 +93,20 @@ function formatBrDate(dateISO: string | null): string {
   return `${day}/${month}/${year}`;
 }
 
+/** Data local a partir de um timestamp ISO — slice(0,10) usaria o dia em UTC. */
+function formatBrDateTimeLocal(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '--' : date.toLocaleDateString('pt-BR');
+}
+
+function formatCpf(cpf: string | null): string | null {
+  if (!cpf || !/^\d{11}$/.test(cpf)) {
+    return cpf;
+  }
+
+  return `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}`;
+}
+
 function buildLines(items: TransactionFeedItem[]): IncomeTaxLine[] {
   const totals = new Map<string, IncomeTaxLine>();
 
@@ -104,10 +126,16 @@ function sumAmount(items: TransactionFeedItem[]) {
   return Number(items.reduce((sum, item) => sum + item.amount, 0).toFixed(2));
 }
 
-async function ensureExportAllowed(userId: string) {
+type ExportProfileRow = ProfilePlanRow & {
+  full_name: string | null;
+  cpf: string | null;
+};
+
+/** Valida o entitlement e retorna os dados de identificação para o cabeçalho do relatório. */
+async function ensureExportAllowed(userId: string): Promise<{ fullName: string | null; cpf: string | null }> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('subscription_plan, trial_ends_at')
+    .select('subscription_plan, trial_ends_at, full_name, cpf')
     .eq('id', userId)
     .maybeSingle();
 
@@ -115,13 +143,13 @@ async function ensureExportAllowed(userId: string) {
     throw new Error(error.message);
   }
 
-  const entitlements = getPlanEntitlements(
-    normalizePlanId((data as ProfilePlanRow | null)?.subscription_plan),
-    (data as ProfilePlanRow | null)?.trial_ends_at,
-  );
+  const row = data as ExportProfileRow | null;
+  const entitlements = getPlanEntitlements(normalizePlanId(row?.subscription_plan), row?.trial_ends_at);
   if (!entitlements.dataImportExport) {
     throw new Error(getUpgradeMessage('Exportar para o Imposto de Renda'));
   }
+
+  return { fullName: row?.full_name ?? null, cpf: row?.cpf ?? null };
 }
 
 async function listReceipts(
@@ -151,7 +179,7 @@ async function listReceipts(
   const paths = rows.map((row) => row.storage_path);
   const { data: signed, error: signedError } = await supabase.storage
     .from(RECEIPTS_BUCKET)
-    .createSignedUrls(paths, 60 * 60);
+    .createSignedUrls(paths, RECEIPT_LINK_TTL_SECONDS);
 
   if (signedError) {
     throw new Error(signedError.message);
@@ -178,7 +206,7 @@ async function listReceipts(
 
 export async function getIncomeTaxReport(year: number): Promise<IncomeTaxReport> {
   const userId = await requireCurrentUserId();
-  await ensureExportAllowed(userId);
+  const owner = await ensureExportAllowed(userId);
 
   const feed = await listTransactionFeed(userId, {
     from: `${year}-01-01`,
@@ -202,7 +230,8 @@ export async function getIncomeTaxReport(year: number): Promise<IncomeTaxReport>
     {
       key: 'dedutiveis',
       title: 'Despesas potencialmente dedutíveis',
-      description: 'Gastos com saúde, educação e previdência que costumam ser dedutíveis.',
+      description:
+        'Gastos com saúde, educação e previdência que costumam ser dedutíveis. Atenção: cursos livres, academias e similares NÃO são dedutíveis — confirme cada item com seu contador.',
       lines: buildLines(deductible),
       total: sumAmount(deductible),
     },
@@ -227,6 +256,8 @@ export async function getIncomeTaxReport(year: number): Promise<IncomeTaxReport>
 
   return {
     year,
+    ownerName: owner.fullName,
+    ownerCpf: owner.cpf,
     sections,
     totalIncome: sumAmount(income),
     totalDeductible: sumAmount(deductible),
@@ -269,7 +300,8 @@ function buildReportHtml(report: IncomeTaxReport): string {
     .join('');
 
   const receiptsHtml = report.receipts.length
-    ? `<table>
+    ? `<p class="desc">Os links abaixo são válidos por ${RECEIPT_LINK_VALIDITY_LABEL} a partir da geração deste documento. Depois disso, gere um novo relatório no aplicativo.</p>
+      <table>
         <thead><tr><th>Transação</th><th>Data</th><th>Arquivo</th><th>Link</th></tr></thead>
         <tbody>${report.receipts
           .map(
@@ -279,6 +311,13 @@ function buildReportHtml(report: IncomeTaxReport): string {
           .join('')}</tbody>
       </table>`
     : '<p class="desc">Nenhum comprovante anexado às transações deste ano.</p>';
+
+  const ownerLine = [
+    report.ownerName ? escapeHtml(report.ownerName) : null,
+    report.ownerCpf ? `CPF ${escapeHtml(formatCpf(report.ownerCpf) ?? report.ownerCpf)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return `<!DOCTYPE html>
 <html lang="pt-br">
@@ -304,7 +343,8 @@ function buildReportHtml(report: IncomeTaxReport): string {
 </head>
 <body>
   <h1>Relatório para o Imposto de Renda — ${report.year}</h1>
-  <p class="sub">Gerado em ${formatBrDate(report.generatedAt)} · ${report.transactionCount} lançamentos</p>
+  ${ownerLine ? `<p class="sub">${ownerLine}</p>` : ''}
+  <p class="sub">Gerado em ${formatBrDateTimeLocal(report.generatedAt)} · ${report.transactionCount} lançamentos</p>
   <div class="totals">
     <div><span>Rendimentos</span><strong>${formatCurrencyBRL(report.totalIncome)}</strong></div>
     <div><span>Despesas dedutíveis</span><strong>${formatCurrencyBRL(report.totalDeductible)}</strong></div>
@@ -314,27 +354,43 @@ function buildReportHtml(report: IncomeTaxReport): string {
   <h2>Comprovantes / Recibos</h2>
   ${receiptsHtml}
   <p class="note">Este é um relatório de apoio para preencher a sua declaração. Ele não importa diretamente
-  no programa da Receita Federal — use os valores e comprovantes acima como referência.</p>
+  no programa da Receita Federal — use os valores e comprovantes acima como referência. A seção de despesas
+  potencialmente dedutíveis é uma classificação automática por categoria: cursos livres, academias e itens
+  similares não são dedutíveis no IRPF — revise cada lançamento com seu contador.</p>
 </body>
 </html>`;
 }
 
-export async function generateIncomeTaxPdf(report: IncomeTaxReport): Promise<string> {
+/**
+ * Gera o PDF e retorna o caminho do arquivo. No web (usado apenas para testes;
+ * o alvo é mobile) printToFileAsync não é suportado — abre o diálogo de
+ * impressão do navegador ("Salvar como PDF") e retorna null.
+ */
+export async function generateIncomeTaxPdf(report: IncomeTaxReport): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    await Print.printAsync({ html: buildReportHtml(report) });
+    return null;
+  }
+
   const { uri } = await Print.printToFileAsync({ html: buildReportHtml(report) });
   return uri;
 }
 
-export async function generateIncomeTaxXlsx(report: IncomeTaxReport): Promise<string> {
+export async function generateIncomeTaxXlsx(report: IncomeTaxReport): Promise<string | null> {
   const workbook = XLSX.utils.book_new();
 
   const summaryRows = [
     ['Relatório para o Imposto de Renda', String(report.year)],
-    ['Gerado em', formatBrDate(report.generatedAt)],
+    ['Titular', report.ownerName ?? ''],
+    ['CPF', formatCpf(report.ownerCpf) ?? ''],
+    ['Gerado em', formatBrDateTimeLocal(report.generatedAt)],
     ['Lançamentos', report.transactionCount],
     [],
     ['Rendimentos', report.totalIncome],
     ['Despesas dedutíveis', report.totalDeductible],
     ['Total de despesas', report.totalExpense],
+    [],
+    [`Links de comprovantes válidos por ${RECEIPT_LINK_VALIDITY_LABEL} após a geração.`],
   ];
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(summaryRows), 'Resumo');
 
@@ -383,18 +439,33 @@ export async function generateIncomeTaxXlsx(report: IncomeTaxReport): Promise<st
     'Recibos',
   );
 
+  const fileName = `imposto-de-renda-${report.year}.xlsx`;
+
+  // Web (apenas para testes; o alvo é mobile): cacheDirectory é null — baixa via blob.
+  if (Platform.OS === 'web') {
+    const buffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
+    const doc = (globalThis as any).document;
+    const blob = new (globalThis as any).Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = (globalThis as any).URL.createObjectURL(blob);
+    const anchor = doc.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    doc.body.appendChild(anchor);
+    anchor.click();
+    doc.body.removeChild(anchor);
+    (globalThis as any).URL.revokeObjectURL(url);
+    return null;
+  }
+
   const base64 = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
-  const uri = `${FileSystem.cacheDirectory}imposto-de-renda-${report.year}.xlsx`;
+  const uri = `${FileSystem.cacheDirectory}${fileName}`;
   await FileSystem.writeAsStringAsync(uri, base64, { encoding: FileSystem.EncodingType.Base64 });
   return uri;
 }
 
 export async function shareFile(uri: string) {
-  if (Platform.OS === 'web') {
-    await Linking.openURL(uri);
-    return;
-  }
-
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(uri);
     return;

@@ -21,7 +21,10 @@ export function useExportIncomeTax() {
   return useMutation({
     mutationFn: async ({ report, format }: { report: IncomeTaxReport; format: 'pdf' | 'xlsx' }) => {
       const uri = format === 'pdf' ? await generateIncomeTaxPdf(report) : await generateIncomeTaxXlsx(report);
-      await shareFile(uri);
+      // uri null = plataforma web, onde o download/impressão já aconteceu inline.
+      if (uri) {
+        await shareFile(uri);
+      }
       return uri;
     },
   });

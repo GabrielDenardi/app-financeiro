@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Calendar, Check, ChevronDown, FileSpreadsheet, FileText, Paperclip } from 'lucide-react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Calendar, Check, ChevronDown, ExternalLink, FileSpreadsheet, FileText, Paperclip } from 'lucide-react-native';
 
+import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
@@ -29,6 +30,8 @@ export default function IncomeTaxScreen({ navigation }: any) {
   const exportMutation = useExportIncomeTax();
   const report = reportQuery.data;
 
+  const [exportingFormat, setExportingFormat] = useState<'pdf' | 'xlsx' | null>(null);
+
   const onExport = async (format: 'pdf' | 'xlsx') => {
     if (!allowed) {
       setPaywallOpen(true);
@@ -40,10 +43,13 @@ export default function IncomeTaxScreen({ navigation }: any) {
       return;
     }
 
+    setExportingFormat(format);
     try {
       await exportMutation.mutateAsync({ report, format });
     } catch (error) {
       Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível gerar o arquivo.');
+    } finally {
+      setExportingFormat(null);
     }
   };
 
@@ -57,8 +63,12 @@ export default function IncomeTaxScreen({ navigation }: any) {
           </View>
           <Text style={styles.cardTitle}>Recurso do Plano Pro</Text>
           <Text style={styles.cardSub}>{getUpgradeMessage('Exportação para o Imposto de Renda')}</Text>
-          <Pressable style={styles.unlockButton} onPress={() => setPaywallOpen(true)}>
-            <Text style={styles.unlockButtonText}>Ver opcoes de desbloqueio</Text>
+          <Pressable
+            accessibilityRole="button"
+            style={styles.unlockButton}
+            onPress={() => setPaywallOpen(true)}
+          >
+            <Text style={styles.unlockButtonText}>Ver opções de desbloqueio</Text>
           </Pressable>
         </Card>
 
@@ -66,17 +76,31 @@ export default function IncomeTaxScreen({ navigation }: any) {
           visible={paywallOpen}
           onClose={() => setPaywallOpen(false)}
           featureTitle="Imposto de Renda"
-          description="Gere o relatorio anual organizado por categoria e exporte em PDF ou Excel para a sua declaracao — recurso do Plano Pro."
+          description="Gere o relatório anual organizado por categoria e exporte em PDF ou Excel para a sua declaração — recurso do Plano Pro."
         />
       </PageShell>
     );
   }
 
   return (
-    <PageShell>
+    <PageShell
+      refreshControl={
+        <RefreshControl
+          refreshing={reportQuery.isRefetching}
+          onRefresh={() => reportQuery.refetch()}
+          tintColor={colors.primary}
+        />
+      }
+    >
       <PageHeader title="Imposto de Renda" onBackPress={() => navigation.goBack()} />
 
-      <Pressable style={styles.selector} onPress={() => setYearOpen((open) => !open)}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Selecionar ano-base, atual ${year}`}
+        accessibilityState={{ expanded: yearOpen }}
+        style={styles.selector}
+        onPress={() => setYearOpen((open) => !open)}
+      >
         <Calendar size={16} color={colors.textSecondary} />
         <Text style={styles.selectorText}>Ano-base {year}</Text>
         <ChevronDown size={16} color={colors.textSecondary} />
@@ -137,7 +161,16 @@ export default function IncomeTaxScreen({ navigation }: any) {
         </Card>
       ) : null}
 
-      {report && !reportQuery.isLoading
+      {report && !reportQuery.isLoading && report.transactionCount === 0 ? (
+        <Card style={styles.cardCenter}>
+          <Text style={styles.cardTitle}>Nenhuma movimentação em {year}</Text>
+          <Text style={styles.cardSub}>
+            Não há lançamentos neste ano-base. Selecione outro ano no seletor acima.
+          </Text>
+        </Card>
+      ) : null}
+
+      {report && !reportQuery.isLoading && report.transactionCount > 0
         ? report.sections.map((section) => (
             <Card key={section.key} style={styles.card}>
               <Text style={styles.section}>{section.title}</Text>
@@ -160,26 +193,52 @@ export default function IncomeTaxScreen({ navigation }: any) {
           ))
         : null}
 
+      {report && report.receipts.length > 0 ? (
+        <Card style={styles.card}>
+          <View style={styles.noteHead}>
+            <Paperclip size={16} color={colors.textSecondary} />
+            <Text style={styles.section}>Comprovantes anexados</Text>
+          </View>
+          {report.receipts.map((receipt, index) => (
+            <Pressable
+              key={`${receipt.fileName}-${index}`}
+              accessibilityRole="button"
+              accessibilityLabel={`Abrir comprovante ${receipt.transactionTitle}`}
+              style={styles.receiptRow}
+              disabled={!receipt.url}
+              onPress={() => receipt.url && Linking.openURL(receipt.url)}
+            >
+              <View style={styles.receiptInfo}>
+                <Text style={styles.lineName} numberOfLines={1}>
+                  {receipt.transactionTitle}
+                </Text>
+                <Text style={styles.receiptMeta}>{receipt.fileName}</Text>
+              </View>
+              {receipt.url ? <ExternalLink size={16} color={colors.primaryLight} /> : null}
+            </Pressable>
+          ))}
+        </Card>
+      ) : null}
+
       <View style={styles.actions}>
-        <Pressable
-          style={[styles.primary, (!report || exportMutation.isPending) && styles.dim]}
+        <Button
+          label="Exportar PDF"
+          icon={<FileText size={18} color={colors.white} />}
+          fullWidth
           onPress={() => onExport('pdf')}
           disabled={!report || exportMutation.isPending}
-        >
-          <FileText size={18} color={colors.white} />
-          <Text style={styles.primaryText}>Exportar PDF</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.secondary, (!report || exportMutation.isPending) && styles.dim]}
+          loading={exportingFormat === 'pdf'}
+        />
+        <Button
+          label="Exportar planilha"
+          variant="secondary"
+          icon={<FileSpreadsheet size={18} color={colors.primary} />}
+          fullWidth
           onPress={() => onExport('xlsx')}
           disabled={!report || exportMutation.isPending}
-        >
-          <FileSpreadsheet size={18} color={colors.primary} />
-          <Text style={styles.secondaryText}>Exportar planilha</Text>
-        </Pressable>
+          loading={exportingFormat === 'xlsx'}
+        />
       </View>
-
-      {exportMutation.isPending ? <ActivityIndicator color={colors.primaryLight} style={styles.loader} /> : null}
 
       <Card style={styles.card}>
         <View style={styles.noteHead}>
@@ -359,41 +418,23 @@ const createStyles = (colors: AppColors) =>
     actions: {
       gap: spacing.sm,
     },
-    primary: {
+    receiptRow: {
       flexDirection: 'row',
-      gap: spacing.sm,
-      minHeight: 50,
-      borderRadius: radius.md,
-      backgroundColor: colors.primaryLight,
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+      paddingVertical: spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
-    primaryText: {
-      ...typography.body,
-      color: colors.white,
-      fontWeight: '800',
+    receiptInfo: {
+      flex: 1,
+      minWidth: 0,
     },
-    secondary: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      minHeight: 50,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: colors.primary,
-      backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    secondaryText: {
-      ...typography.body,
-      color: colors.primary,
-      fontWeight: '800',
-    },
-    dim: {
-      opacity: 0.6,
-    },
-    loader: {
-      marginVertical: spacing.sm,
+    receiptMeta: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      marginTop: 2,
     },
     retry: {
       backgroundColor: colors.primaryLight,
