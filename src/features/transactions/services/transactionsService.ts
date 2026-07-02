@@ -229,8 +229,18 @@ export async function listTransactionFeed(
     installmentsQuery = installmentsQuery.gte('invoice_month', fromDate).lte('invoice_month', toDate);
   }
 
+  if (filters.accountId) {
+    personalQuery = personalQuery.eq('account_id', filters.accountId);
+  }
+
+  // Parcelas de cartão não pertencem a uma conta (só o pagamento da fatura
+  // debita a conta) — com filtro de conta ativo, ficam de fora do feed.
+  const installmentsPromise = filters.accountId
+    ? Promise.resolve({ data: [] as CardInstallmentRow[] | null, error: null })
+    : installmentsQuery;
+
   const [{ data: personalData, error: personalError }, { data: installmentData, error: installmentError }] =
-    await Promise.all([personalQuery, installmentsQuery]);
+    await Promise.all([personalQuery, installmentsPromise]);
 
   if (personalError || installmentError) {
     throw new Error(personalError?.message ?? installmentError?.message ?? 'Não foi possível carregar as transações.');

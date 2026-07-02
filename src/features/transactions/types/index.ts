@@ -61,6 +61,7 @@ export type TransactionFilters = {
   type?: 'all' | EntryType;
   month?: number | null;
   paymentMethod?: string | null;
+  accountId?: string | null;
   from?: string | null;
   to?: string | null;
 };

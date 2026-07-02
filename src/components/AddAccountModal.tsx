@@ -10,6 +10,7 @@ import {
 } from "lucide-react-native";
 
 import type {
+  AccountBalanceSnapshot,
   AccountType,
   CreateAccountInput,
 } from "../features/accounts/types";
@@ -44,6 +45,8 @@ const POPULAR_BANKS = [
 type AddAccountModalProps = {
   visible: boolean;
   submitting?: boolean;
+  /** Conta a editar. Quando informada, o modal abre preenchido em modo edição. */
+  account?: AccountBalanceSnapshot | null;
   onClose: () => void;
   onSubmit: (input: CreateAccountInput) => Promise<void> | void;
 };
@@ -51,11 +54,13 @@ type AddAccountModalProps = {
 export function AddAccountModal({
   visible,
   submitting = false,
+  account = null,
   onClose,
   onSubmit,
 }: AddAccountModalProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const isEditing = account !== null;
   const [name, setName] = useState("");
   const [institution, setInstitution] = useState("");
   const [openingBalance, setOpeningBalance] = useState("");
@@ -71,8 +76,22 @@ export function AddAccountModal({
       setOpeningBalance("");
       setType("checking");
       setSelectedColor(colors.primaryLight);
+      return;
     }
-  }, [colors.primaryLight, visible]);
+
+    if (account) {
+      setName(account.name);
+      setInstitution(account.institution);
+      setOpeningBalance(
+        account.openingBalance.toLocaleString("pt-BR", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }),
+      );
+      setType(account.type);
+      setSelectedColor(account.color);
+    }
+  }, [account, colors.primaryLight, visible]);
 
   const handleSubmit = async () => {
     await onSubmit({
@@ -88,14 +107,14 @@ export function AddAccountModal({
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      title="Nova Conta"
-      subtitle="Configure os detalhes da conta"
+      title={isEditing ? "Editar Conta" : "Nova Conta"}
+      subtitle={isEditing ? "Atualize os detalhes da conta" : "Configure os detalhes da conta"}
       maxHeightRatio={0.85}
       footer={(close) => (
         <>
           <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
           <Button
-            label="Criar Conta"
+            label={isEditing ? "Salvar" : "Criar Conta"}
             fullWidth
             onPress={handleSubmit}
             disabled={!name.trim()}
@@ -183,6 +202,12 @@ export function AddAccountModal({
           onChangeText={(value) => setOpeningBalance(formatCurrencyInput(value))}
         />
       </FieldCard>
+      {isEditing ? (
+        <Text style={styles.helperText}>
+          O saldo atual da conta é o saldo inicial somado às transações lançadas. Para ajustar o
+          saldo atual, altere o saldo inicial.
+        </Text>
+      ) : null}
 
       <View style={styles.bottomSpacer} />
     </BottomSheet>
@@ -198,6 +223,12 @@ const createStyles = (colors: AppColors) =>
       textTransform: "uppercase",
       fontWeight: "700",
       letterSpacing: 0.5,
+    },
+    helperText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      marginTop: spacing.sm,
+      lineHeight: 16,
     },
     horizontalScroll: {
       marginHorizontal: -spacing.xl,

@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { financeQueryKeys } from '../../finance/queryKeys';
-import { createAccount, createTransfer, getAccountsOverview, listAccounts } from '../services/accountsService';
-import type { CreateAccountInput, CreateTransferInput } from '../types';
+import { createAccount, createTransfer, getAccountsOverview, listAccounts, updateAccount } from '../services/accountsService';
+import type { CreateAccountInput, CreateTransferInput, UpdateAccountInput } from '../types';
 
 export function useAccounts(userId?: string | null) {
   return useQuery({
@@ -25,6 +25,19 @@ export function useCreateAccountMutation(userId?: string | null) {
 
   return useMutation({
     mutationFn: (input: CreateAccountInput) => createAccount(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.root });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.accounts.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.dashboard.all });
+    },
+  });
+}
+
+export function useUpdateAccountMutation(userId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UpdateAccountInput) => updateAccount(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.root });
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.accounts.all });

@@ -18,7 +18,7 @@ import { FloatingActionButton } from '../components/FloatingActionButton';
 import { TransactionListItem } from '../components/TransactionListItem';
 import { useAccounts } from '../features/accounts/hooks/useAccounts';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
-import { endOfMonth, localIsoDate, monthLabel, startOfMonth } from '../features/finance/utils';
+import { endOfMonth, localIsoDate, monthLabel, roundCurrency, startOfMonth } from '../features/finance/utils';
 import { useCurrentPlan } from '../features/plans/hooks';
 import { QuickAddTransactionSheet } from '../features/transactions/components/QuickAddTransactionSheet';
 import { TransactionActionsSheet } from '../features/transactions/components/TransactionActionsSheet';
@@ -30,6 +30,10 @@ import { layout, radius, spacing, typography, type AppColors, useThemeColors } f
 
 const METHODS = ['Todos', 'Pix', 'Transferência', 'Dinheiro', 'Cartão de crédito', 'Cartão de débito', 'Boleto'];
 
+// Fora do resumo (mesma regra dos relatórios/dashboard): transferências e aportes
+// não são receita/despesa, e o pagamento de fatura duplicaria as parcelas do cartão.
+const EXCLUDED_SUMMARY_SOURCES = new Set(['transfer', 'group_settlement', 'goal_contribution', 'card_payment']);
+
 export function TransactionsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -37,6 +41,7 @@ export function TransactionsScreen() {
   const [searchText, setSearchText] = useState('');
   const [activeType, setActiveType] = useState<'all' | 'income' | 'expense'>('all');
   const [activeMethod, setActiveMethod] = useState('Todos');
+  const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(new Date()));
   const [allPeriod, setAllPeriod] = useState(false);
@@ -52,6 +57,7 @@ export function TransactionsScreen() {
     search: debouncedSearch,
     type: activeType,
     paymentMethod: activeMethod === 'Todos' ? null : activeMethod,
+    accountId: activeAccountId,
     from: allPeriod ? null : localIsoDate(startOfMonth(monthCursor)),
     to: allPeriod ? null : localIsoDate(endOfMonth(monthCursor)),
   });
@@ -65,16 +71,27 @@ export function TransactionsScreen() {
   }, [monthCursor]);
 
   const hasActiveFilters =
-    Boolean(debouncedSearch.trim()) || activeType !== 'all' || activeMethod !== 'Todos';
+    Boolean(debouncedSearch.trim()) ||
+    activeType !== 'all' ||
+    activeMethod !== 'Todos' ||
+    activeAccountId !== null;
 
   const totals = useMemo(() => {
+    // Com uma conta selecionada, o resumo vira visão caixa: transferências e
+    // pagamentos de fatura são entradas/saídas reais daquela conta.
+    const isAccountView = activeAccountId !== null;
+
     return (sectionsQuery.data ?? []).reduce(
       (accumulator, section) => {
         section.data.forEach((item) => {
+          if (!isAccountView && EXCLUDED_SUMMARY_SOURCES.has(item.sourceType ?? 'manual')) {
+            return;
+          }
+
           if (item.type === 'income') {
-            accumulator.income += item.amount;
+            accumulator.income = roundCurrency(accumulator.income + item.amount);
           } else {
-            accumulator.expense += item.amount;
+            accumulator.expense = roundCurrency(accumulator.expense + item.amount);
           }
         });
 
@@ -82,7 +99,7 @@ export function TransactionsScreen() {
       },
       { income: 0, expense: 0 },
     );
-  }, [sectionsQuery.data]);
+  }, [sectionsQuery.data, activeAccountId]);
 
   const shiftMonth = (delta: number) => {
     setMonthCursor((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
@@ -155,6 +172,31 @@ export function TransactionsScreen() {
 
       {showFilters ? (
         <View style={styles.advancedFilters}>
+          {accounts.length > 0 ? (
+            <>
+              <Text style={styles.filterLabel}>Conta</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalScroll}
+              >
+                <Chip
+                  label="Todas"
+                  selected={activeAccountId === null}
+                  onPress={() => setActiveAccountId(null)}
+                />
+                {accounts.map((account) => (
+                  <Chip
+                    key={account.id}
+                    label={account.name}
+                    selected={activeAccountId === account.id}
+                    onPress={() => setActiveAccountId(account.id)}
+                  />
+                ))}
+              </ScrollView>
+            </>
+          ) : null}
+
           <Text style={styles.filterLabel}>Método de pagamento</Text>
           <ScrollView
             horizontal
@@ -192,7 +234,11 @@ export function TransactionsScreen() {
           styles={styles}
         />
       </View>
-      {hasActiveFilters ? (
+      {activeAccountId !== null ? (
+        <Text style={styles.filteredTotalsHint}>
+          Movimentações da conta selecionada (inclui transferências e pagamentos de fatura)
+        </Text>
+      ) : hasActiveFilters ? (
         <Text style={styles.filteredTotalsHint}>Totais dos resultados filtrados</Text>
       ) : null}
 
