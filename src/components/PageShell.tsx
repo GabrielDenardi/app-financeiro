@@ -1,5 +1,5 @@
-import { type PropsWithChildren, useMemo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import { type PropsWithChildren, type ReactElement, useMemo } from 'react';
+import type { RefreshControlProps, StyleProp, ViewStyle } from 'react-native';
 import { SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BOTTOM_TAB_BAR_HEIGHT } from './BottomTabBarMock';
@@ -11,6 +11,8 @@ type PageShellProps = PropsWithChildren<{
   showsVerticalScrollIndicator?: boolean;
   withTabBarInset?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** RefreshControl para pull-to-refresh (apenas com scroll habilitado). */
+  refreshControl?: ReactElement<RefreshControlProps>;
 }>;
 
 export function PageShell({
@@ -20,6 +22,7 @@ export function PageShell({
   showsVerticalScrollIndicator = false,
   withTabBarInset = false,
   style,
+  refreshControl,
 }: PageShellProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -35,6 +38,7 @@ export function PageShell({
         <ScrollView
           contentContainerStyle={baseContentStyle}
           showsVerticalScrollIndicator={showsVerticalScrollIndicator}
+          refreshControl={refreshControl}
         >
           {children}
         </ScrollView>

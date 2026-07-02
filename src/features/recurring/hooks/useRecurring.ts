@@ -6,12 +6,14 @@ import {
   createRecurringTransaction,
   deleteRecurringTransaction,
   listRecurringTransactions,
+  undoRecurringConfirmation,
   updateRecurringTransaction,
 } from '../services/recurringService';
 import type {
   ConfirmRecurringTransactionInput,
   CreateRecurringTransactionInput,
   RecurringTransaction,
+  UndoRecurringConfirmationInput,
   UpdateRecurringTransactionInput,
 } from '../types';
 
@@ -88,6 +90,15 @@ export function useConfirmRecurringTransactionMutation(userId?: string | null) {
 
   return useMutation({
     mutationFn: (input: ConfirmRecurringTransactionInput) => confirmRecurringTransaction(input),
+    onSuccess: () => invalidateRecurringQueries(queryClient),
+  });
+}
+
+export function useUndoRecurringConfirmationMutation(userId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: UndoRecurringConfirmationInput) => undoRecurringConfirmation(input),
     onSuccess: () => invalidateRecurringQueries(queryClient),
   });
 }

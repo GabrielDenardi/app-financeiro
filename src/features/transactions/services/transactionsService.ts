@@ -333,12 +333,34 @@ export async function updateTransaction(id: string, input: UpdateTransactionInpu
 
 export async function deleteTransaction(id: string): Promise<void> {
   const userId = await requireCurrentUserId();
+
+  // Se a transação veio de uma recorrência confirmada, localizar a execução ANTES
+  // de excluir: o FK é "on delete set null", então depois o vínculo some e a
+  // recorrência ficaria marcada como paga para sempre.
+  const { data: executionsData, error: executionsError } = await supabase
+    .from('recurring_transaction_executions')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('transaction_id', id);
+
+  if (executionsError) throw new Error('Não foi possível excluir a transação.');
+
   const { error } = await supabase
     .from('personal_transactions')
     .delete()
     .eq('id', id)
     .eq('user_id', userId);
   if (error) throw new Error('Não foi possível excluir a transação.');
+
+  const executionIds = ((executionsData as Array<{ id: string }> | null) ?? []).map((row) => row.id);
+  if (executionIds.length > 0) {
+    const { error: cleanupError } = await supabase
+      .from('recurring_transaction_executions')
+      .delete()
+      .in('id', executionIds)
+      .eq('user_id', userId);
+    if (cleanupError) throw new Error('Não foi possível atualizar a recorrência vinculada.');
+  }
 }
 
 export async function deleteTransfer(transactionId: string): Promise<void> {

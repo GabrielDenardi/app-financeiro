@@ -68,6 +68,8 @@ export function useDeleteTransactionMutation() {
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.accounts.all });
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.budgets.all });
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.reports.all });
+      // Excluir lançamento de recorrência reabre o mês na tela de recorrentes.
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.recurring.all });
     },
   });
 }
