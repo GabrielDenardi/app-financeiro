@@ -44,6 +44,9 @@ export function Chip({
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected, disabled }}
       style={[styles.chip, selectedStyle, disabled && styles.disabled, style]}
     >
       {dotColor ? <View style={[styles.dot, { backgroundColor: dotColor }]} /> : null}

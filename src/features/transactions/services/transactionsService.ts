@@ -139,7 +139,9 @@ function mapPersonalTransaction(row: PersonalTransactionRow): TransactionFeedIte
 }
 
 function mapCardInstallment(row: CardInstallmentRow): TransactionFeedItem {
-  const occurredOn = row.invoice_month;
+  // Agrupar/ordenar pela mesma data exibida no card (vencimento), não pelo mês
+  // da fatura — caso contrário o cabeçalho da seção não bate com a data do card.
+  const occurredOn = row.due_date;
 
   return {
     id: `installment-${row.installment_id}`,

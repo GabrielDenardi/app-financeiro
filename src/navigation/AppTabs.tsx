@@ -27,9 +27,9 @@ export function AppTabs({ currentUser }: AppTabsProps) {
         {() => <HomeScreen currentUser={currentUser} />}
       </Tab.Screen>
       <Tab.Screen name="Transactions">
-        {(props) => (
+        {() => (
           <PremiumGate featureTitle="Extrato de transacoes">
-            <TransactionsScreen {...(props as any)} />
+            <TransactionsScreen />
           </PremiumGate>
         )}
       </Tab.Screen>

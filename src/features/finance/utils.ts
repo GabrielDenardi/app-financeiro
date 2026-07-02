@@ -1,4 +1,4 @@
-import { formatDateTitle } from '../../utils/format';
+import { formatSectionDateTitle } from '../../utils/format';
 import type { TransactionFeedItem, TransactionSection } from '../transactions/types';
 
 export function formatMonthDate(date = new Date()): string {
@@ -22,6 +22,17 @@ export function endOfMonth(date = new Date()): Date {
 
 export function isoDate(date = new Date()): string {
   return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Data ISO (YYYY-MM-DD) usando os componentes locais — sem o deslocamento
+ * de fuso do toISOString() (que converteria 30/09 23:59 local em 01/10 UTC).
+ */
+export function localIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function isoDateTime(date = new Date()): string {
@@ -72,7 +83,7 @@ export function groupTransactionsByDate(items: TransactionFeedItem[]): Transacti
   return [...sections.entries()]
     .sort(([left], [right]) => (left < right ? 1 : -1))
     .map(([date, data]) => ({
-      date: formatDateTitle(date),
+      date: formatSectionDateTitle(date),
       data,
     }));
 }
