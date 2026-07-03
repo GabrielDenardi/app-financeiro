@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  Image,
   Linking,
   Pressable,
   StyleSheet,
@@ -26,7 +27,7 @@ import { birthCountries, brazilStates } from '../constants/locations';
 import { useAuthFlow } from '../context/AuthFlowContext';
 import { PrimaryButton, SecondaryButton } from '../components/AuthButton';
 import { AuthCallbackResult } from '../components/AuthCallbackResult';
-import { ConsentIllustration, HeroCardsIllustration, SecurityIllustration } from '../components/AuthIllustrations';
+import { BrandCardIllustration, ConsentIllustration, SecurityIllustration } from '../components/AuthIllustrations';
 import { AuthScaffold } from '../components/AuthScaffold';
 import { InlineMessage } from '../components/InlineMessage';
 import { MaskedTextInput } from '../components/MaskedTextInput';
@@ -86,7 +87,12 @@ export function WelcomeScreen({ navigation }: ScreenProps<'Welcome'>) {
       footer={<PrimaryButton title="Começar" onPress={() => navigation.navigate('Cpf')} />}
     >
       <View style={styles.welcomeContent}>
-        <HeroCardsIllustration />
+        <Image
+          source={require('../../../../assets/brand/nitin-logo-black-transparent.png')}
+          style={styles.welcomeWordmark}
+          resizeMode="contain"
+        />
+        <BrandCardIllustration />
       </View>
     </AuthScaffold>
   );
@@ -287,7 +293,7 @@ export function PasswordRecoveryScreen({ onComplete }: PasswordRecoveryScreenPro
   return (
     <AuthScaffold
       title="Redefina sua senha"
-      subtitle="Escolha uma nova senha para continuar no App Financeiro."
+      subtitle="Escolha uma nova senha para continuar no nitin."
       scrollable={false}
       footer={<PrimaryButton title="Salvar nova senha" onPress={handleSubmit} loading={isLoading} />}
     >
@@ -974,6 +980,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingBottom: 20,
+  },
+  welcomeWordmark: {
+    alignSelf: 'center',
+    width: 300,
+    height: 150,
+    marginBottom: -16,
+    marginTop: -24,
   },
   formContent: {
     gap: 16,

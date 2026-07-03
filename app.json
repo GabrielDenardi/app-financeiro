@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "App Financeiro",
+    "name": "nitin",
     "slug": "app-financeiro",
     "scheme": "appfinanceiro",
     "version": "1.0.0",
@@ -11,7 +11,8 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "imageWidth": 480,
+      "backgroundColor": "#02040C"
     },
     "ios": {
       "supportsTablet": true
@@ -19,7 +20,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0A3FD4"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,

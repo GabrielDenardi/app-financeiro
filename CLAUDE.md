@@ -274,17 +274,19 @@ O bloqueio de telas para o plano Free é feito pelo componente `PremiumGate` (`s
 
 Tokens em `src/theme/` — **sempre usar os tokens, nunca valores hardcoded**. Acesso via `useAppTheme()` / `useThemeColors()` do `AppThemeProvider`. Tema (claro/escuro) persistido em AsyncStorage com a chave `app-financeiro:theme-mode`.
 
+Paleta da marca **nitin** (ver `assets/brand/` e o PDF de identidade): Abyss `#02040C` · Midnight `#0330B0` · Sapphire `#0A3FD4` · Electric `#1D60F5` · White `#FFFFFF`.
+
 | Token | Light | Dark |
 |---|---|---|
-| `primary` | `#1E3A8A` | `#0050b3` |
-| `primaryLight` | `#2563EB` | `#3376c2` |
+| `primary` | `#0330B0` | `#0A3FD4` |
+| `primaryLight` | `#1D60F5` | `#1D60F5` |
 | `success` | `#16A34A` | `#16A34A` |
 | `danger` | `#DC2626` | `#DC2626` |
-| `background` | `#F8FAFC` | `#020617` |
-| `surface` | `#FFFFFF` | `#0F172A` |
+| `background` | `#F8FAFC` | `#02040C` |
+| `surface` | `#FFFFFF` | `#0B1226` |
 | `textPrimary` | `#0F172A` | `#E2E8F0` |
 | `textSecondary` | `#64748B` | `#94A3B8` |
-| `border` | `#E2E8F0` | `#1E293B` |
+| `border` | `#E2E8F0` | `#1B2547` |
 
 Variantes "soft" para fundos de status: `primarySoft`, `successSoft`, `dangerSoft`, `warningSoft`.
 

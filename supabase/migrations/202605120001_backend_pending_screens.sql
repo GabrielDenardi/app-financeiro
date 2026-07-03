@@ -458,7 +458,7 @@ set text = excluded.text;
 
 insert into public.app_content_blocks (area, key, title, body, metadata, display_order)
 values
-  ('about', 'hero', 'Finance Control', 'O Finance Control é o seu parceiro para organizar finanças, acompanhar metas, dividir despesas e entender sua vida financeira em um só lugar.', '{"version":"1.0.0"}'::jsonb, 1),
+  ('about', 'hero', 'nitin', 'O nitin é o seu parceiro para organizar finanças, acompanhar metas, dividir despesas e entender sua vida financeira em um só lugar. Entradas e saídas, sempre em equilíbrio.', '{"version":"1.0.0"}'::jsonb, 1),
   ('about', 'rating', 'Sua opinião importa', 'Avalie sua experiência no app e ajude a priorizar as próximas melhorias.', '{}'::jsonb, 2),
   ('about_feature', 'feature_transactions', 'Controle completo de receitas e despesas', '', '{}'::jsonb, 1),
   ('about_feature', 'feature_goals', 'Metas financeiras personalizadas', '', '{}'::jsonb, 2),
