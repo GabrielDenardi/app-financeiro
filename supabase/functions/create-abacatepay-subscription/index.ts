@@ -21,21 +21,21 @@ type CheckoutReservation = {
 const plans: Record<PlanId, { externalId: string; name: string; price: number; description: string }> = {
   basic: {
     externalId: 'app-financeiro-basic-monthly',
-    name: 'App Financeiro - Plano Basico',
+    name: 'nitin - Plano Basico',
     price: 799,
-    description: 'Plano Basico mensal do App Financeiro.',
+    description: 'Plano Basico mensal do nitin.',
   },
   intermediate: {
     externalId: 'app-financeiro-intermediate-monthly',
-    name: 'App Financeiro - Plano Intermediario',
+    name: 'nitin - Plano Intermediario',
     price: 1299,
-    description: 'Plano Intermediario mensal do App Financeiro.',
+    description: 'Plano Intermediario mensal do nitin.',
   },
   pro: {
     externalId: 'app-financeiro-pro-monthly',
-    name: 'App Financeiro - Plano Pro',
+    name: 'nitin - Plano Pro',
     price: 1499,
-    description: 'Plano Pro mensal do App Financeiro.',
+    description: 'Plano Pro mensal do nitin.',
   },
 };
 

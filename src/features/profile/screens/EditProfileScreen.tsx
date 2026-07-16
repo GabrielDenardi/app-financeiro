@@ -293,12 +293,10 @@ export function EditProfileScreen({
       setForm(profileToForm(updatedProfile));
       setHydratedProfileId(updatedProfile.id);
 
-      Alert.alert("Perfil", "Alterações salvas com sucesso.", [
-        {
-          text: "OK",
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      // Navegar direto: Alert com botões é no-op no web e o usuário ficaria preso.
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      }
     } catch (error) {
       Alert.alert(
         "Perfil",

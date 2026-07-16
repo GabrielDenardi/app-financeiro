@@ -1,9 +1,9 @@
 export const authTheme = {
   colors: {
-    brand: '#1E3A8A',
-    brandLight: '#2563EB',
-    brandDark: '#1E3A8A',
-    brandMuted: '#DBEAFE',
+    brand: '#0330B0',
+    brandLight: '#1D60F5',
+    brandDark: '#02237D',
+    brandMuted: '#E3EAFE',
     background: '#F8FAFC',
     surface: '#FFFFFF',
     textPrimary: '#0F172A',
@@ -11,7 +11,7 @@ export const authTheme = {
     border: '#E2E8F0',
     danger: '#DC2626',
     success: '#16A34A',
-    info: '#1E40AF',
+    info: '#0A3FD4',
     white: '#FFFFFF',
   },
 } as const;

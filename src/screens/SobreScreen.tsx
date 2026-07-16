@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
+  Image,
   Linking,
   Pressable,
   SafeAreaView,
@@ -10,12 +11,14 @@ import {
   View,
 } from "react-native";
 import { FontAwesome5 } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   ArrowLeft,
   CheckCircle2,
   ExternalLink,
-  PiggyBank,
 } from "lucide-react-native";
+
+const brandMark = require("../../assets/brand/nitin-app-icon-1024.png");
 
 import { useAboutContent } from "../features/about/hooks/useAbout";
 import {
@@ -58,7 +61,12 @@ export default function SobreScreen({ navigation }: any) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
+        <LinearGradient
+          colors={[colors.primary, colors.primaryLight]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
           <Pressable
             style={({ pressed }) => [
               styles.backButton,
@@ -69,14 +77,15 @@ export default function SobreScreen({ navigation }: any) {
             <ArrowLeft size={24} color={colors.white} />
           </Pressable>
 
-          <View style={styles.logoContainer}>
-            <PiggyBank size={36} color={colors.white} />
+          <Image source={brandMark} style={styles.logoContainer} resizeMode="contain" />
+          <Text style={styles.appName}>{about?.appName ?? "nitin"}</Text>
+          <Text style={styles.appTagline}>Seu dinheiro, sob controle.</Text>
+          <View style={styles.versionBadge}>
+            <Text style={styles.appVersion}>
+              Versão {about?.version ?? "1.0.0"}
+            </Text>
           </View>
-          <Text style={styles.appName}>{about?.appName ?? "Finance Control"}</Text>
-          <Text style={styles.appVersion}>
-            Versão {about?.version ?? "1.0.0"}
-          </Text>
-        </View>
+        </LinearGradient>
 
         <View style={styles.body}>
           {aboutQuery.isLoading ? (
@@ -102,7 +111,9 @@ export default function SobreScreen({ navigation }: any) {
                 <Text style={styles.sectionTitle}>Funcionalidades</Text>
                 {about.features.map((item) => (
                   <View key={item.id} style={styles.listItem}>
-                    <View style={styles.bullet} />
+                    <View style={styles.featureIcon}>
+                      <CheckCircle2 size={16} color={colors.primaryLight} />
+                    </View>
                     <Text style={styles.bodyText}>{item.title}</Text>
                   </View>
                 ))}
@@ -194,6 +205,8 @@ export default function SobreScreen({ navigation }: any) {
                   </React.Fragment>
                 ))}
               </View>
+
+              <Text style={styles.footerText}>nitin © 2026 — entradas e saídas, sempre em equilíbrio</Text>
             </>
           ) : null}
         </View>
@@ -221,11 +234,12 @@ const createStyles = (colors: AppColors) =>
 
     // Header
     header: {
-      backgroundColor: colors.primary,
       paddingTop: layout.pageHeaderTop,
-      paddingBottom: spacing.xxl + spacing.md,
+      paddingBottom: spacing.xxl + spacing.xl,
       paddingHorizontal: layout.pageHorizontal,
       alignItems: "center",
+      borderBottomLeftRadius: radius.lg + spacing.md,
+      borderBottomRightRadius: radius.lg + spacing.md,
     },
     backButton: {
       alignSelf: "flex-start",
@@ -238,25 +252,39 @@ const createStyles = (colors: AppColors) =>
       marginBottom: spacing.xl,
     },
     logoContainer: {
-      width: 80,
-      height: 80,
-      backgroundColor: colors.whiteAlpha15,
+      width: 88,
+      height: 88,
       borderRadius: radius.xl,
-      justifyContent: "center",
-      alignItems: "center",
       marginBottom: spacing.lg,
-      borderWidth: 1,
-      borderColor: colors.whiteAlpha20,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 16,
+      elevation: 8,
     },
     appName: {
       ...typography.h1,
+      fontSize: 28,
       color: colors.white,
       fontWeight: "700",
     },
-    appVersion: {
+    appTagline: {
       ...typography.body,
-      color: colors.whiteAlpha65,
+      color: colors.whiteAlpha80,
       marginTop: spacing.xs,
+    },
+    versionBadge: {
+      marginTop: spacing.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: radius.pill,
+      backgroundColor: colors.whiteAlpha15,
+      borderWidth: 1,
+      borderColor: colors.whiteAlpha20,
+    },
+    appVersion: {
+      ...typography.caption,
+      color: colors.whiteAlpha80,
     },
 
     // Body
@@ -272,6 +300,11 @@ const createStyles = (colors: AppColors) =>
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.border,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      elevation: 2,
     },
     centerCard: {
       alignItems: "center",
@@ -298,11 +331,13 @@ const createStyles = (colors: AppColors) =>
       marginBottom: spacing.sm,
       gap: spacing.md,
     },
-    bullet: {
-      width: 6,
-      height: 6,
+    featureIcon: {
+      width: 28,
+      height: 28,
       borderRadius: radius.pill,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.primarySoft,
+      alignItems: "center",
+      justifyContent: "center",
       flexShrink: 0,
     },
 
@@ -351,9 +386,9 @@ const createStyles = (colors: AppColors) =>
       marginTop: spacing.xs,
     },
     socialButton: {
-      width: 48,
-      height: 48,
-      borderRadius: radius.md,
+      width: 52,
+      height: 52,
+      borderRadius: radius.pill,
       backgroundColor: colors.surfaceMuted,
       alignItems: "center",
       justifyContent: "center",
@@ -376,5 +411,11 @@ const createStyles = (colors: AppColors) =>
     divider: {
       height: 1,
       backgroundColor: colors.border,
+    },
+    footerText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      textAlign: "center",
+      marginTop: spacing.sm,
     },
   });

@@ -1,7 +1,7 @@
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { formatShortDate } from '../../../utils/format';
-import { endOfMonth, formatInstallmentLabel, groupTransactionsByDate, startOfMonth, toNumber } from '../../finance/utils';
+import { endOfMonth, formatInstallmentLabel, groupTransactionsByDate, roundCurrency, startOfMonth, toNumber } from '../../finance/utils';
 import type {
   CreateTransactionInput,
   FinanceCategory,
@@ -139,7 +139,9 @@ function mapPersonalTransaction(row: PersonalTransactionRow): TransactionFeedIte
 }
 
 function mapCardInstallment(row: CardInstallmentRow): TransactionFeedItem {
-  const occurredOn = row.invoice_month;
+  // Agrupar/ordenar pela mesma data exibida no card (vencimento), não pelo mês
+  // da fatura — caso contrário o cabeçalho da seção não bate com a data do card.
+  const occurredOn = row.due_date;
 
   return {
     id: `installment-${row.installment_id}`,
@@ -227,8 +229,18 @@ export async function listTransactionFeed(
     installmentsQuery = installmentsQuery.gte('invoice_month', fromDate).lte('invoice_month', toDate);
   }
 
+  if (filters.accountId) {
+    personalQuery = personalQuery.eq('account_id', filters.accountId);
+  }
+
+  // Parcelas de cartão não pertencem a uma conta (só o pagamento da fatura
+  // debita a conta) — com filtro de conta ativo, ficam de fora do feed.
+  const installmentsPromise = filters.accountId
+    ? Promise.resolve({ data: [] as CardInstallmentRow[] | null, error: null })
+    : installmentsQuery;
+
   const [{ data: personalData, error: personalError }, { data: installmentData, error: installmentError }] =
-    await Promise.all([personalQuery, installmentsQuery]);
+    await Promise.all([personalQuery, installmentsPromise]);
 
   if (personalError || installmentError) {
     throw new Error(personalError?.message ?? installmentError?.message ?? 'Não foi possível carregar as transações.');
@@ -331,12 +343,34 @@ export async function updateTransaction(id: string, input: UpdateTransactionInpu
 
 export async function deleteTransaction(id: string): Promise<void> {
   const userId = await requireCurrentUserId();
+
+  // Se a transação veio de uma recorrência confirmada, localizar a execução ANTES
+  // de excluir: o FK é "on delete set null", então depois o vínculo some e a
+  // recorrência ficaria marcada como paga para sempre.
+  const { data: executionsData, error: executionsError } = await supabase
+    .from('recurring_transaction_executions')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('transaction_id', id);
+
+  if (executionsError) throw new Error('Não foi possível excluir a transação.');
+
   const { error } = await supabase
     .from('personal_transactions')
     .delete()
     .eq('id', id)
     .eq('user_id', userId);
   if (error) throw new Error('Não foi possível excluir a transação.');
+
+  const executionIds = ((executionsData as Array<{ id: string }> | null) ?? []).map((row) => row.id);
+  if (executionIds.length > 0) {
+    const { error: cleanupError } = await supabase
+      .from('recurring_transaction_executions')
+      .delete()
+      .in('id', executionIds)
+      .eq('user_id', userId);
+    if (cleanupError) throw new Error('Não foi possível atualizar a recorrência vinculada.');
+  }
 }
 
 export async function deleteTransfer(transactionId: string): Promise<void> {
@@ -375,9 +409,9 @@ export function summarizeTransactions(items: TransactionFeedItem[]) {
   return items.reduce(
     (accumulator, item) => {
       if (item.type === 'income') {
-        accumulator.income += item.amount;
+        accumulator.income = roundCurrency(accumulator.income + item.amount);
       } else {
-        accumulator.expense += item.amount;
+        accumulator.expense = roundCurrency(accumulator.expense + item.amount);
       }
 
       return accumulator;

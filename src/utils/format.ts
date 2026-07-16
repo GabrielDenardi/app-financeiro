@@ -124,10 +124,38 @@ export const formatCurrency = (value: number) => {
 };
 
 export const formatDateTitle = (dateString: string) => {
-  const date = new Date(dateString);
+  if (!dateString) return '';
+  // Parse only the date part (YYYY-MM-DD) using local time components to avoid
+  // the UTC-offset gotcha: new Date('2026-09-10') = UTC midnight → Sep 9 in UTC-3.
+  const datePart = dateString.split('T')[0];
+  const [y, m, d] = datePart.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const date = new Date(y, m - 1, d);
+  if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleDateString('pt-BR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   });
+};
+
+/**
+ * Título de seção da lista de transações: "Hoje", "Ontem" ou
+ * "Segunda-feira, 10 de setembro" (capitalizado).
+ */
+export const formatSectionDateTitle = (dateString: string) => {
+  const title = formatDateTitle(dateString);
+  if (!title) return '';
+
+  const [y, m, d] = dateString.split('T')[0].split('-').map(Number);
+  const target = new Date(y, m - 1, d);
+  target.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((today.getTime() - target.getTime()) / 86_400_000);
+
+  if (diffDays === 0) return 'Hoje';
+  if (diffDays === 1) return 'Ontem';
+
+  return title.charAt(0).toUpperCase() + title.slice(1);
 };

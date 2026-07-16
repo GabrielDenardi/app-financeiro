@@ -2,7 +2,7 @@ import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { getAccountLimitMessage, getPlanEntitlements, normalizePlanId } from '../../plans/plans';
 import type { ProfilePlanRow } from '../../plans/types';
-import { endOfMonth, startOfMonth, toNumber } from '../../finance/utils';
+import { endOfMonth, roundCurrency, startOfMonth, toNumber } from '../../finance/utils';
 import type {
   AccountBalanceSnapshot,
   AccountsOverview,
@@ -104,9 +104,9 @@ export async function getAccountsOverview(): Promise<AccountsOverview> {
   const monthlyTotals = ((data as MonthlyTransactionRow[] | null) ?? []).reduce(
     (accumulator, item) => {
       if (item.type === 'income') {
-        accumulator.monthlyIncome += toNumber(item.amount);
+        accumulator.monthlyIncome = roundCurrency(accumulator.monthlyIncome + toNumber(item.amount));
       } else {
-        accumulator.monthlyExpense += toNumber(item.amount);
+        accumulator.monthlyExpense = roundCurrency(accumulator.monthlyExpense + toNumber(item.amount));
       }
 
       return accumulator;
@@ -114,15 +114,17 @@ export async function getAccountsOverview(): Promise<AccountsOverview> {
     { monthlyIncome: 0, monthlyExpense: 0 },
   );
 
-  const totalBalance = accounts.reduce((sum, account) => sum + account.currentBalance, 0);
+  const totalBalance = roundCurrency(accounts.reduce((sum, account) => sum + account.currentBalance, 0));
   const totalLiabilities = Math.abs(
-    accounts.filter((account) => account.currentBalance < 0).reduce((sum, account) => sum + account.currentBalance, 0),
+    roundCurrency(
+      accounts.filter((account) => account.currentBalance < 0).reduce((sum, account) => sum + account.currentBalance, 0),
+    ),
   );
 
   return {
     accounts,
     totalBalance,
-    totalAssets: totalBalance + totalLiabilities,
+    totalAssets: roundCurrency(totalBalance + totalLiabilities),
     totalLiabilities,
     monthlyIncome: monthlyTotals.monthlyIncome,
     monthlyExpense: monthlyTotals.monthlyExpense,

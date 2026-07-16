@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { CheckCircle2 } from 'lucide-react-native';
 
 import { Card } from '../components/Card';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
@@ -22,19 +23,37 @@ export function PlansScreen({ navigation }: any) {
   const currentPlan = useCurrentPlan(user?.id);
   const startTrial = useStartTrialMutation(user?.id);
   const [selectingPlanId, setSelectingPlanId] = useState<string | null>(null);
+  const [freeDowngradeVisible, setFreeDowngradeVisible] = useState(false);
 
   const handleStartTrial = async () => {
     try {
       await startTrial.mutateAsync();
       Alert.alert(
         'Teste gratuito ativado',
-        `Voce tem ${TRIAL_DURATION_DAYS} dias com os recursos do Plano Intermediario. Aproveite!`,
+        `Você tem ${TRIAL_DURATION_DAYS} dias com os recursos do Plano Intermediário. Aproveite!`,
       );
     } catch (error) {
       Alert.alert(
         'Teste gratuito',
-        error instanceof Error ? error.message : 'Nao foi possivel iniciar o periodo de teste.',
+        error instanceof Error ? error.message : 'Não foi possível iniciar o período de teste.',
       );
+    }
+  };
+
+  const confirmFreeDowngrade = async () => {
+    setSelectingPlanId('free');
+    try {
+      await selectFreePlan();
+      await currentPlan.refetch();
+      setFreeDowngradeVisible(false);
+    } catch (error) {
+      setFreeDowngradeVisible(false);
+      Alert.alert(
+        'Planos',
+        error instanceof Error ? error.message : 'Não foi possível mudar de plano.',
+      );
+    } finally {
+      setSelectingPlanId(null);
     }
   };
 
@@ -44,31 +63,7 @@ export function PlansScreen({ navigation }: any) {
     }
 
     if (planId === 'free') {
-      Alert.alert(
-        'Mudar para o plano Free',
-        'Voce perdera o acesso aos recursos pagos. Deseja continuar?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Confirmar',
-            style: 'destructive',
-            onPress: async () => {
-              setSelectingPlanId(planId);
-              try {
-                await selectFreePlan();
-                await currentPlan.refetch();
-              } catch (error) {
-                Alert.alert(
-                  'Planos',
-                  error instanceof Error ? error.message : 'Nao foi possivel mudar de plano.',
-                );
-              } finally {
-                setSelectingPlanId(null);
-              }
-            },
-          },
-        ],
-      );
+      setFreeDowngradeVisible(true);
       return;
     }
 
@@ -82,7 +77,7 @@ export function PlansScreen({ navigation }: any) {
     } catch (error) {
       Alert.alert(
         'Planos',
-        error instanceof Error ? error.message : 'Nao foi possivel iniciar a assinatura.',
+        error instanceof Error ? error.message : 'Não foi possível iniciar a assinatura.',
       );
     } finally {
       setSelectingPlanId(null);
@@ -109,10 +104,10 @@ export function PlansScreen({ navigation }: any) {
 
       {currentPlan.trial.isEligible ? (
         <Card style={styles.trialCard}>
-          <Text style={styles.trialTitle}>Experimente o Plano Intermediario</Text>
+          <Text style={styles.trialTitle}>Experimente o Plano Intermediário</Text>
           <Text style={styles.trialText}>
-            {TRIAL_DURATION_DAYS} dias gratis com relatorios completos, grupos e cadastro por voz.
-            Sem cartao de credito.
+            {TRIAL_DURATION_DAYS} dias grátis com relatórios completos, grupos e cadastro por voz.
+            Sem cartão de crédito.
           </Text>
           <Pressable
             style={[styles.planButton, startTrial.isPending && styles.planButtonMuted]}
@@ -122,7 +117,7 @@ export function PlansScreen({ navigation }: any) {
             <Text style={[styles.planButtonText, startTrial.isPending && styles.planButtonMutedText]}>
               {startTrial.isPending
                 ? 'Ativando...'
-                : `Experimentar gratis por ${TRIAL_DURATION_DAYS} dias`}
+                : `Experimentar grátis por ${TRIAL_DURATION_DAYS} dias`}
             </Text>
           </Pressable>
         </Card>
@@ -139,7 +134,7 @@ export function PlansScreen({ navigation }: any) {
               <View>
                 <Text style={styles.planName}>{plan.name}</Text>
                 <Text style={styles.planPrice}>
-                  {plan.id === 'free' ? plan.priceLabel : `${plan.priceLabel}/mes`}
+                  {plan.id === 'free' ? plan.priceLabel : `${plan.priceLabel}/mês`}
                 </Text>
               </View>
               {active ? (
@@ -178,6 +173,16 @@ export function PlansScreen({ navigation }: any) {
           </Card>
         );
       })}
+
+      <ConfirmDialog
+        visible={freeDowngradeVisible}
+        title="Mudar para o plano Free"
+        message="Você perderá o acesso aos recursos pagos. Deseja continuar?"
+        confirmLabel="Confirmar"
+        loading={selectingPlanId === 'free'}
+        onConfirm={confirmFreeDowngrade}
+        onCancel={() => setFreeDowngradeVisible(false)}
+      />
     </PageShell>
   );
 }
@@ -191,7 +196,7 @@ const createStyles = (colors: AppColors) =>
     },
     currentLabel: {
       ...typography.caption,
-      color: 'rgba(255,255,255,0.75)',
+      color: colors.whiteAlpha80,
       fontWeight: '700',
     },
     currentTitle: {
@@ -200,7 +205,7 @@ const createStyles = (colors: AppColors) =>
     },
     currentText: {
       ...typography.body,
-      color: 'rgba(255,255,255,0.84)',
+      color: colors.whiteAlpha80,
       lineHeight: 19,
     },
     currentTrial: {

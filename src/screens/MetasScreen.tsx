@@ -23,6 +23,7 @@ import { useNavigation } from "@react-navigation/native";
 import { PageHeader } from "../components/PageHeader";
 import { PageShell } from "../components/PageShell";
 import { BottomSheet } from "../components/BottomSheet";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
 import { FieldCard, FieldDivider, FieldRow } from "../components/FormField";
@@ -112,6 +113,7 @@ export default function MetasScreen() {
   const [note, setNote] = useState("");
   const [accountId, setAccountId] = useState("");
   const [tempDue, setTempDue] = useState(TODAY);
+  const [goalToDelete, setGoalToDelete] = useState<string | null>(null);
 
   const goals = goalsQuery.data ?? [];
   const accounts = (accountsQuery.data ?? []).filter((item) => item.isActive);
@@ -168,26 +170,23 @@ export default function MetasScreen() {
     }
   };
 
-  const onDelete = (id: string) =>
-    Alert.alert("Excluir meta", "Deseja realmente apagar esta meta?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Excluir",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteGoal.mutateAsync(id);
-          } catch (error) {
-            Alert.alert(
-              "Erro",
-              error instanceof Error
-                ? error.message
-                : "Não foi possível excluir a meta.",
-            );
-          }
-        },
-      },
-    ]);
+  const onDelete = (id: string) => setGoalToDelete(id);
+
+  const confirmDeleteGoal = async () => {
+    if (!goalToDelete) return;
+    try {
+      await deleteGoal.mutateAsync(goalToDelete);
+      setGoalToDelete(null);
+    } catch (error) {
+      setGoalToDelete(null);
+      Alert.alert(
+        "Erro",
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir a meta.",
+      );
+    }
+  };
 
   const onContribute = async () => {
     if (!goalId || !accountId || normalizeCurrencyInput(amount) <= 0) {
@@ -391,6 +390,16 @@ export default function MetasScreen() {
           );
         })}
       </PageShell>
+
+      <ConfirmDialog
+        visible={goalToDelete !== null}
+        title="Excluir meta"
+        message="Deseja realmente apagar esta meta?"
+        confirmLabel="Excluir"
+        loading={deleteGoal.isPending}
+        onConfirm={confirmDeleteGoal}
+        onCancel={() => setGoalToDelete(null)}
+      />
 
       {/* Criar Nova Meta */}
       <BottomSheet

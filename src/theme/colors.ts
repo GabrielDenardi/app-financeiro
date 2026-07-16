@@ -28,13 +28,14 @@ export type AppColors = {
   overlay: string;
 };
 
+// Paleta da marca nitin: Abyss #02040C · Midnight #0330B0 · Sapphire #0A3FD4 · Electric #1D60F5
 export const lightColors: AppColors = {
-  primary: "#1E3A8A",
-  primaryLight: "#2563EB",
+  primary: "#0330B0",
+  primaryLight: "#1D60F5",
   success: "#16A34A",
   danger: "#DC2626",
   warning: "#F59E0B",
-  primarySoft: "#DBEAFE",
+  primarySoft: "#E3EAFE",
   successSoft: "#DCFCE7",
   dangerSoft: "#FEE2E2",
   warningSoft: "#FEF3C7",
@@ -57,22 +58,22 @@ export const lightColors: AppColors = {
 };
 
 export const darkColors: AppColors = {
-  primary: "#0050b3",
-  primaryLight: "#3376c2",
+  primary: "#0A3FD4",
+  primaryLight: "#1D60F5",
   success: "#16A34A",
   danger: "#DC2626",
   warning: "#D97706",
-  primarySoft: "#172554",
+  primarySoft: "#0A1D66",
   successSoft: "#14532D",
   dangerSoft: "#7F1D1D",
   warningSoft: "#78350F",
-  background: "#020617",
-  surface: "#0F172A",
-  surfaceMuted: "#172033",
+  background: "#02040C",
+  surface: "#0B1226",
+  surfaceMuted: "#111A36",
   textPrimary: "#E2E8F0",
   textSecondary: "#94A3B8",
-  border: "#1E293B",
-  mutedSurface: "#162235",
+  border: "#1B2547",
+  mutedSurface: "#101833",
   white: "#FFFFFF",
   whiteAlpha80: "rgba(255, 255, 255, 0.8)",
   whiteAlpha65: "rgba(255, 255, 255, 0.65)",
@@ -81,7 +82,7 @@ export const darkColors: AppColors = {
   whiteAlpha15: "rgba(255, 255, 255, 0.15)",
   whiteAlpha08: "rgba(255, 255, 255, 0.08)",
   shadow: "#000000",
-  overlay: "rgba(2, 6, 23, 0.72)",
+  overlay: "rgba(2, 4, 12, 0.72)",
 };
 
 export const colors = lightColors;

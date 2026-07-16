@@ -6,6 +6,7 @@ export type RecurringTransaction = {
   accountName: string;
   categoryId: string | null;
   categoryLabel: string;
+  categoryColor: string;
   title: string;
   notes: string;
   amount: number;
@@ -39,4 +40,9 @@ export type ConfirmRecurringTransactionInput = {
   amount: number;
   note?: string;
   executionMonth?: string | null;
+};
+
+export type UndoRecurringConfirmationInput = {
+  ruleId: string;
+  executionMonth: string;
 };

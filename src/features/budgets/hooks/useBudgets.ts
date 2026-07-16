@@ -34,6 +34,7 @@ export function useDeleteBudgetMutation(userId?: string | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.root });
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.budgets.all });
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.dashboard.all });
     },
   });
 }

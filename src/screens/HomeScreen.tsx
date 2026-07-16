@@ -226,6 +226,12 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
             <View style={styles.loadingWrap}>
               <ActivityIndicator />
             </View>
+          ) : dashboardQuery.isError ? (
+            <Pressable onPress={() => dashboardQuery.refetch()} accessibilityRole="button">
+              <Text style={styles.emptyText}>
+                Não foi possível carregar os dados. Toque para tentar novamente.
+              </Text>
+            </Pressable>
           ) : categorySpending.length ? (
             categorySpending.map((item) => (
               <View key={item.category} style={styles.categoryRow}>

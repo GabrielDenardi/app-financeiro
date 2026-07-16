@@ -10,47 +10,88 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Search, SlidersHorizontal, X } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react-native';
 
+import { BOTTOM_TAB_BAR_HEIGHT } from '../components/BottomTabBarMock';
+import { Chip } from '../components/Chip';
+import { FloatingActionButton } from '../components/FloatingActionButton';
 import { TransactionListItem } from '../components/TransactionListItem';
+import { useAccounts } from '../features/accounts/hooks/useAccounts';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
+import { endOfMonth, localIsoDate, monthLabel, roundCurrency, startOfMonth } from '../features/finance/utils';
+import { useCurrentPlan } from '../features/plans/hooks';
+import { QuickAddTransactionSheet } from '../features/transactions/components/QuickAddTransactionSheet';
 import { TransactionActionsSheet } from '../features/transactions/components/TransactionActionsSheet';
+import { useDebouncedValue } from '../features/transactions/hooks/useDebouncedValue';
 import { useFinanceCategories, useTransactionSections } from '../features/transactions/hooks/useTransactions';
 import type { TransactionFeedItem } from '../features/transactions/types';
 import { formatCurrencyBRL } from '../utils/format';
 import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
-const MONTHS = ['Todos', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const METHODS = ['Todos', 'Pix', 'Transferência', 'Dinheiro', 'Cartão de crédito', 'Cartão de débito', 'Boleto'];
 
-export function TransactionsScreen({ navigation }: any) {
+// Fora do resumo (mesma regra dos relatórios/dashboard): transferências e aportes
+// não são receita/despesa, e o pagamento de fatura duplicaria as parcelas do cartão.
+const EXCLUDED_SUMMARY_SOURCES = new Set(['transfer', 'group_settlement', 'goal_contribution', 'card_payment']);
+
+export function TransactionsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const currentUser = useAuthenticatedUser();
   const [searchText, setSearchText] = useState('');
   const [activeType, setActiveType] = useState<'all' | 'income' | 'expense'>('all');
-  const [activeMonth, setActiveMonth] = useState('Todos');
   const [activeMethod, setActiveMethod] = useState('Todos');
+  const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [monthCursor, setMonthCursor] = useState(() => startOfMonth(new Date()));
+  const [allPeriod, setAllPeriod] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionFeedItem | null>(null);
+  const [quickAddVisible, setQuickAddVisible] = useState(false);
 
-  const monthIndex = activeMonth === 'Todos' ? null : MONTHS.indexOf(activeMonth) - 1;
+  const debouncedSearch = useDebouncedValue(searchText);
+
   const categoriesQuery = useFinanceCategories(currentUser?.id);
+  const accountsQuery = useAccounts(currentUser?.id);
+  const currentPlan = useCurrentPlan(currentUser?.id);
   const sectionsQuery = useTransactionSections(currentUser?.id, {
-    search: searchText,
+    search: debouncedSearch,
     type: activeType,
-    month: monthIndex,
     paymentMethod: activeMethod === 'Todos' ? null : activeMethod,
+    accountId: activeAccountId,
+    from: allPeriod ? null : localIsoDate(startOfMonth(monthCursor)),
+    to: allPeriod ? null : localIsoDate(endOfMonth(monthCursor)),
   });
 
+  const accounts = accountsQuery.data ?? [];
+  const primaryAccount = accounts.find((account) => account.isActive) ?? accounts[0] ?? null;
+
+  const monthTitle = useMemo(() => {
+    const label = monthLabel(monthCursor);
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }, [monthCursor]);
+
+  const hasActiveFilters =
+    Boolean(debouncedSearch.trim()) ||
+    activeType !== 'all' ||
+    activeMethod !== 'Todos' ||
+    activeAccountId !== null;
+
   const totals = useMemo(() => {
+    // Com uma conta selecionada, o resumo vira visão caixa: transferências e
+    // pagamentos de fatura são entradas/saídas reais daquela conta.
+    const isAccountView = activeAccountId !== null;
+
     return (sectionsQuery.data ?? []).reduce(
       (accumulator, section) => {
         section.data.forEach((item) => {
+          if (!isAccountView && EXCLUDED_SUMMARY_SOURCES.has(item.sourceType ?? 'manual')) {
+            return;
+          }
+
           if (item.type === 'income') {
-            accumulator.income += item.amount;
+            accumulator.income = roundCurrency(accumulator.income + item.amount);
           } else {
-            accumulator.expense += item.amount;
+            accumulator.expense = roundCurrency(accumulator.expense + item.amount);
           }
         });
 
@@ -58,13 +99,20 @@ export function TransactionsScreen({ navigation }: any) {
       },
       { income: 0, expense: 0 },
     );
-  }, [sectionsQuery.data]);
+  }, [sectionsQuery.data, activeAccountId]);
+
+  const shiftMonth = (delta: number) => {
+    setMonthCursor((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.title}>Transações</Text>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Filtros"
+          accessibilityState={{ expanded: showFilters }}
           style={[styles.filterToggle, showFilters && styles.filterToggleActive]}
           onPress={() => setShowFilters((current) => !current)}
         >
@@ -84,33 +132,70 @@ export function TransactionsScreen({ navigation }: any) {
             placeholderTextColor={colors.textSecondary}
             value={searchText}
             onChangeText={setSearchText}
+            accessibilityLabel="Buscar transações"
           />
           {searchText ? (
-            <Pressable onPress={() => setSearchText('')}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Limpar busca" onPress={() => setSearchText('')}>
               <X size={16} color={colors.textSecondary} />
             </Pressable>
           ) : null}
         </View>
       </View>
 
+      <View style={styles.monthRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Mês anterior"
+          disabled={allPeriod}
+          onPress={() => shiftMonth(-1)}
+          style={[styles.monthArrow, allPeriod && styles.monthArrowDisabled]}
+        >
+          <ChevronLeft size={18} color={allPeriod ? colors.textSecondary : colors.textPrimary} />
+        </Pressable>
+        <Text style={styles.monthLabel}>{allPeriod ? 'Todo o período' : monthTitle}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Próximo mês"
+          disabled={allPeriod}
+          onPress={() => shiftMonth(1)}
+          style={[styles.monthArrow, allPeriod && styles.monthArrowDisabled]}
+        >
+          <ChevronRight size={18} color={allPeriod ? colors.textSecondary : colors.textPrimary} />
+        </Pressable>
+        <Chip
+          label="Todos"
+          selected={allPeriod}
+          onPress={() => setAllPeriod((current) => !current)}
+          style={styles.allPeriodChip}
+        />
+      </View>
+
       {showFilters ? (
         <View style={styles.advancedFilters}>
-          <Text style={styles.filterLabel}>Período</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalScroll}
-          >
-            {MONTHS.map((month) => (
-              <FilterChip
-                key={month}
-                label={month}
-                active={activeMonth === month}
-                onPress={() => setActiveMonth(month)}
-                styles={styles}
-              />
-            ))}
-          </ScrollView>
+          {accounts.length > 0 ? (
+            <>
+              <Text style={styles.filterLabel}>Conta</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalScroll}
+              >
+                <Chip
+                  label="Todas"
+                  selected={activeAccountId === null}
+                  onPress={() => setActiveAccountId(null)}
+                />
+                {accounts.map((account) => (
+                  <Chip
+                    key={account.id}
+                    label={account.name}
+                    selected={activeAccountId === account.id}
+                    onPress={() => setActiveAccountId(account.id)}
+                  />
+                ))}
+              </ScrollView>
+            </>
+          ) : null}
 
           <Text style={styles.filterLabel}>Método de pagamento</Text>
           <ScrollView
@@ -119,21 +204,20 @@ export function TransactionsScreen({ navigation }: any) {
             contentContainerStyle={styles.horizontalScroll}
           >
             {METHODS.map((method) => (
-              <FilterChip
+              <Chip
                 key={method}
                 label={method}
-                active={activeMethod === method}
+                selected={activeMethod === method}
                 onPress={() => setActiveMethod(method)}
-                styles={styles}
               />
             ))}
           </ScrollView>
 
           <Text style={styles.filterLabel}>Tipo</Text>
           <View style={styles.chipRow}>
-            <FilterChip label="Tudo" active={activeType === 'all'} onPress={() => setActiveType('all')} styles={styles} />
-            <FilterChip label="Entradas" active={activeType === 'income'} onPress={() => setActiveType('income')} styles={styles} />
-            <FilterChip label="Saídas" active={activeType === 'expense'} onPress={() => setActiveType('expense')} styles={styles} />
+            <Chip label="Tudo" selected={activeType === 'all'} onPress={() => setActiveType('all')} />
+            <Chip label="Entradas" selected={activeType === 'income'} onPress={() => setActiveType('income')} />
+            <Chip label="Saídas" selected={activeType === 'expense'} onPress={() => setActiveType('expense')} />
           </View>
         </View>
       ) : null}
@@ -150,15 +234,29 @@ export function TransactionsScreen({ navigation }: any) {
           styles={styles}
         />
       </View>
+      {activeAccountId !== null ? (
+        <Text style={styles.filteredTotalsHint}>
+          Movimentações da conta selecionada (inclui transferências e pagamentos de fatura)
+        </Text>
+      ) : hasActiveFilters ? (
+        <Text style={styles.filteredTotalsHint}>Totais dos resultados filtrados</Text>
+      ) : null}
 
       <SectionList
         sections={sectionsQuery.data ?? []}
         keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled={false}
         contentContainerStyle={styles.listContent}
+        refreshing={sectionsQuery.isRefetching}
+        onRefresh={() => sectionsQuery.refetch()}
         renderSectionHeader={({ section }) => <Text style={styles.sectionTitle}>{section.date}</Text>}
         renderItem={({ item, index, section }) => (
-          <Pressable style={styles.transactionCard} onPress={() => setSelectedTransaction(item)}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Transação ${item.title}`}
+            style={styles.transactionCard}
+            onPress={() => setSelectedTransaction(item)}
+          >
             <TransactionListItem item={item} showDivider={index < section.data.length - 1} showOptions />
           </Pressable>
         )}
@@ -166,12 +264,36 @@ export function TransactionsScreen({ navigation }: any) {
           <View style={styles.emptyContainer}>
             {sectionsQuery.isLoading ? (
               <ActivityIndicator />
+            ) : sectionsQuery.isError ? (
+              <>
+                <Text style={styles.emptyText}>Não foi possível carregar as transações.</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  style={styles.retryButton}
+                  onPress={() => sectionsQuery.refetch()}
+                >
+                  <Text style={styles.retryText}>Tentar novamente</Text>
+                </Pressable>
+              </>
             ) : (
               <Text style={styles.emptyText}>Nenhuma transação para os filtros selecionados.</Text>
             )}
           </View>
         }
       />
+
+      <FloatingActionButton style={styles.fab} onPress={() => setQuickAddVisible(true)} />
+
+      <QuickAddTransactionSheet
+        visible={quickAddVisible}
+        currentUserId={currentUser?.id}
+        accounts={accounts}
+        categories={categoriesQuery.data ?? []}
+        primaryAccountId={primaryAccount?.id ?? null}
+        allowVoiceCapture={currentPlan.entitlements.voiceCapture}
+        onClose={() => setQuickAddVisible(false)}
+      />
+
       <TransactionActionsSheet
         visible={selectedTransaction !== null}
         transaction={selectedTransaction}
@@ -179,24 +301,6 @@ export function TransactionsScreen({ navigation }: any) {
         onClose={() => setSelectedTransaction(null)}
       />
     </SafeAreaView>
-  );
-}
-
-function FilterChip({
-  label,
-  active,
-  onPress,
-  styles,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-  styles: ReturnType<typeof createStyles>;
-}) {
-  return (
-    <Pressable style={[styles.chip, active && styles.chipActive]} onPress={onPress}>
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -273,6 +377,37 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     ...typography.body,
     color: colors.textPrimary,
   },
+  monthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: layout.pageHorizontal,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  monthArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthArrowDisabled: {
+    opacity: 0.4,
+  },
+  monthLabel: {
+    flex: 1,
+    ...typography.h3,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  allPeriodChip: {
+    height: 36,
+    paddingHorizontal: spacing.md,
+  },
   advancedFilters: {
     backgroundColor: colors.surface,
     marginHorizontal: layout.pageHorizontal,
@@ -299,27 +434,6 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.xs,
   },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    marginRight: spacing.sm,
-  },
-  chipActive: {
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primary,
-  },
-  chipText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  chipTextActive: {
-    color: colors.primary,
-  },
   summaryCard: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
@@ -328,7 +442,12 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: spacing.lg,
+  },
+  filteredTotalsHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    paddingHorizontal: layout.pageHorizontal,
+    marginTop: spacing.xs,
   },
   summaryItem: {
     flex: 1,
@@ -352,13 +471,14 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: layout.pageHorizontal,
-    paddingBottom: 48,
+    paddingTop: spacing.lg,
+    paddingBottom: BOTTOM_TAB_BAR_HEIGHT + 72,
   },
   sectionTitle: {
-    ...typography.caption,
-    fontWeight: '700',
+    ...typography.h3,
+    fontWeight: '600',
     color: colors.textSecondary,
-    textTransform: 'uppercase',
+    marginTop: spacing.sm,
     marginBottom: spacing.sm,
   },
   transactionCard: {
@@ -372,9 +492,26 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     marginTop: 50,
+    gap: spacing.md,
   },
   emptyText: {
     ...typography.body,
     color: colors.textSecondary,
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing.lg,
+    bottom: BOTTOM_TAB_BAR_HEIGHT - spacing.lg,
+  },
+  retryButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primaryLight,
+  },
+  retryText: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.white,
   },
 });

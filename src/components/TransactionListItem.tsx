@@ -13,37 +13,37 @@ interface TransactionListItemProps {
   showOptions?: boolean;
 }
 
-function getCategoryIcon(category: string, colors: AppColors) {
+export function getCategoryIcon(category: string, color: string) {
   const normalized = category
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
   if (normalized.includes('combustivel') || normalized.includes('transporte')) {
-    return <Fuel size={20} color={colors.textSecondary} />;
+    return <Fuel size={20} color={color} />;
   }
 
   if (normalized.includes('alimenta') || normalized.includes('restaurante')) {
-    return <Utensils size={20} color={colors.textSecondary} />;
+    return <Utensils size={20} color={color} />;
   }
 
   if (normalized.includes('compras') || normalized.includes('mercado')) {
-    return <ShoppingBag size={20} color={colors.textSecondary} />;
+    return <ShoppingBag size={20} color={color} />;
   }
 
   if (normalized.includes('conta') || normalized.includes('luz')) {
-    return <Zap size={20} color={colors.textSecondary} />;
+    return <Zap size={20} color={color} />;
   }
 
   if (normalized.includes('saude') || normalized.includes('farmacia')) {
-    return <HeartPulse size={20} color={colors.textSecondary} />;
+    return <HeartPulse size={20} color={color} />;
   }
 
   if (normalized.includes('salario') || normalized.includes('receita')) {
-    return <Wallet size={20} color={colors.textSecondary} />;
+    return <Wallet size={20} color={color} />;
   }
 
-  return <HelpCircle size={20} color={colors.textSecondary} />;
+  return <HelpCircle size={20} color={color} />;
 }
 
 export function TransactionListItem({
@@ -63,7 +63,7 @@ export function TransactionListItem({
   return (
     <View>
       <View style={styles.container}>
-        <View style={styles.iconContainer}>{getCategoryIcon(item.category, colors)}</View>
+        <View style={styles.iconContainer}>{getCategoryIcon(item.category, colors.textSecondary)}</View>
 
         <View style={styles.details}>
           <Text style={styles.title} numberOfLines={1}>

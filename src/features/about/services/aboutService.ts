@@ -68,10 +68,14 @@ export async function getAboutContent(): Promise<AboutContent> {
     .filter((row) => row.area === 'about_feature')
     .map(mapFeature);
 
+  // O conteúdo do banco pode conter o nome antigo do app ("Finance Control")
+  // enquanto a migration de rebranding não for aplicada no Supabase.
+  const rebrand = (value: string) => value.replaceAll('Finance Control', 'nitin');
+
   return {
-    appName: hero?.title || 'Finance Control',
+    appName: hero?.title ? rebrand(hero.title) : 'nitin',
     version: typeof hero?.metadata?.version === 'string' ? hero.metadata.version : '1.0.0',
-    heroBody: hero?.body || '',
+    heroBody: hero?.body ? rebrand(hero.body) : '',
     ratingTitle: rating?.title || 'Sua opinião importa',
     ratingBody: rating?.body || '',
     features,

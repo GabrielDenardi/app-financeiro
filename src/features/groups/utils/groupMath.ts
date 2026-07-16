@@ -208,12 +208,15 @@ export function computeGroupSummary(
 ): GroupSummary {
   const pairwiseDebts = buildPairwiseDebts(splits, settlements);
 
+  // Somar em centavos e converter uma única vez evita acúmulo de erro de float.
   return {
-    totalDivided: splits.reduce((sum, split) => sum + split.totalAmount, 0),
-    settled: settlements
-      .filter((settlement) => settlement.status === 'confirmed')
-      .reduce((sum, settlement) => sum + settlement.amount, 0),
-    pending: [...pairwiseDebts.values()].reduce((sum, cents) => sum + fromCents(cents), 0),
+    totalDivided: fromCents(splits.reduce((sum, split) => sum + toCents(split.totalAmount), 0)),
+    settled: fromCents(
+      settlements
+        .filter((settlement) => settlement.status === 'confirmed')
+        .reduce((sum, settlement) => sum + toCents(settlement.amount), 0),
+    ),
+    pending: fromCents([...pairwiseDebts.values()].reduce((sum, cents) => sum + cents, 0)),
   };
 }
 

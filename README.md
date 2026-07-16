@@ -1,4 +1,4 @@
-# App Financeiro
+# nitin
 
 Aplicativo open-source de gestão financeira pessoal desenvolvido com React Native e Expo.
 

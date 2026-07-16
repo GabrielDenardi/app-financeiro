@@ -17,6 +17,7 @@ import {
   Eye,
   EyeOff,
   Landmark,
+  Pencil,
   Plus,
   Repeat,
 } from "lucide-react-native";
@@ -28,7 +29,9 @@ import {
   useAccountsOverview,
   useCreateAccountMutation,
   useCreateTransferMutation,
+  useUpdateAccountMutation,
 } from "../features/accounts/hooks/useAccounts";
+import type { AccountBalanceSnapshot } from "../features/accounts/types";
 import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
 import { useCurrentPlan } from "../features/plans/hooks";
 import {
@@ -51,11 +54,13 @@ export function AccountsScreen({ navigation }: any) {
   const currentUser = useAuthenticatedUser();
   const overviewQuery = useAccountsOverview(currentUser?.id);
   const createAccountMutation = useCreateAccountMutation(currentUser?.id);
+  const updateAccountMutation = useUpdateAccountMutation(currentUser?.id);
   const createTransferMutation = useCreateTransferMutation(currentUser?.id);
   const currentPlan = useCurrentPlan(currentUser?.id);
 
   const [showBalances, setShowBalances] = useState(true);
   const [addVisible, setAddVisible] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<AccountBalanceSnapshot | null>(null);
   const [transferVisible, setTransferVisible] = useState(false);
 
   const overview = overviewQuery.data;
@@ -68,16 +73,21 @@ export function AccountsScreen({ navigation }: any) {
     return showBalances ? formatCurrencyBRL(value) : "R$ ••••••";
   };
 
-  const handleCreateAccount = async (input: any) => {
+  const handleSubmitAccount = async (input: any) => {
     try {
-      await createAccountMutation.mutateAsync(input);
+      if (editingAccount) {
+        await updateAccountMutation.mutateAsync({ id: editingAccount.id, ...input });
+        setEditingAccount(null);
+      } else {
+        await createAccountMutation.mutateAsync(input);
+      }
       setAddVisible(false);
     } catch (error) {
       Alert.alert(
         "Erro",
         error instanceof Error
           ? error.message
-          : "Não foi possível criar a conta.",
+          : "Não foi possível salvar a conta.",
       );
     }
   };
@@ -290,6 +300,18 @@ export function AccountsScreen({ navigation }: any) {
                         : "••••"}
                     </Text>
                   </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Editar conta ${account.name}`}
+                    hitSlop={spacing.sm}
+                    style={styles.editAccountBtn}
+                    onPress={() => {
+                      setEditingAccount(account);
+                      setAddVisible(true);
+                    }}
+                  >
+                    <Pencil size={16} color={colors.textSecondary} />
+                  </Pressable>
                 </View>
               </View>
             );
@@ -307,9 +329,13 @@ export function AccountsScreen({ navigation }: any) {
 
       <AddAccountModal
         visible={addVisible}
-        submitting={createAccountMutation.isPending}
-        onClose={() => setAddVisible(false)}
-        onSubmit={handleCreateAccount}
+        account={editingAccount}
+        submitting={createAccountMutation.isPending || updateAccountMutation.isPending}
+        onClose={() => {
+          setAddVisible(false);
+          setEditingAccount(null);
+        }}
+        onSubmit={handleSubmitAccount}
       />
 
       <TransferModal
@@ -385,7 +411,7 @@ const createStyles = (colors: AppColors) =>
       fontWeight: "700",
     },
     totalCard: {
-      backgroundColor: "rgba(255,255,255,0.1)",
+      backgroundColor: colors.whiteAlpha08,
       padding: spacing.lg,
       borderRadius: radius.lg,
       marginTop: spacing.sm,
@@ -399,7 +425,7 @@ const createStyles = (colors: AppColors) =>
     },
     totalLabel: {
       ...typography.caption,
-      color: "rgba(255,255,255,0.7)",
+      color: colors.whiteAlpha65,
       fontWeight: "600",
     },
     totalValue: {
@@ -413,19 +439,19 @@ const createStyles = (colors: AppColors) =>
       marginTop: spacing.lg,
       paddingTop: spacing.md,
       borderTopWidth: 1,
-      borderTopColor: "rgba(255,255,255,0.1)",
+      borderTopColor: colors.whiteAlpha08,
     },
     statItem: {
       flex: 1,
     },
     statDivider: {
       width: 1,
-      backgroundColor: "rgba(255,255,255,0.1)",
+      backgroundColor: colors.whiteAlpha08,
       marginHorizontal: spacing.md,
     },
     statLabel: {
       ...typography.caption,
-      color: "rgba(255,255,255,0.5)",
+      color: colors.whiteAlpha50,
     },
     statValue: {
       ...typography.body,
@@ -551,6 +577,10 @@ const createStyles = (colors: AppColors) =>
     },
     balanceTextContainer: {
       justifyContent: "center",
+    },
+    editAccountBtn: {
+      padding: spacing.xs,
+      borderRadius: radius.sm,
     },
     balanceLabel: {
       ...typography.caption,

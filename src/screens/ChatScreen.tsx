@@ -41,7 +41,7 @@ export default function ChatScreen() {
   const navigation = useNavigation<any>();
   const user = useAuthenticatedUser();
   const route = useRoute();
-  const params = route.params as ChatRouteParams;
+  const params = (route.params ?? {}) as Partial<ChatRouteParams>;
   const messagesQuery = useSupportMessages(user?.id, params.chatId);
   const markReadMutation = useMarkSupportConversationReadMutation(user?.id);
   const sendMessageMutation = useSendSupportMessageMutation(user?.id);
@@ -56,7 +56,7 @@ export default function ChatScreen() {
 
   const handleSend = async () => {
     const text = messageText.trim();
-    if (!text) return;
+    if (!text || !params.chatId) return;
     await sendMessageMutation.mutateAsync({
       conversationId: params.chatId,
       body: text,

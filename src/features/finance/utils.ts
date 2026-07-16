@@ -1,4 +1,4 @@
-import { formatDateTitle } from '../../utils/format';
+import { formatSectionDateTitle } from '../../utils/format';
 import type { TransactionFeedItem, TransactionSection } from '../transactions/types';
 
 export function formatMonthDate(date = new Date()): string {
@@ -24,6 +24,17 @@ export function isoDate(date = new Date()): string {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Data ISO (YYYY-MM-DD) usando os componentes locais — sem o deslocamento
+ * de fuso do toISOString() (que converteria 30/09 23:59 local em 01/10 UTC).
+ */
+export function localIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function isoDateTime(date = new Date()): string {
   return date.toISOString();
 }
@@ -38,7 +49,10 @@ export function monthLabel(dateLike: string | Date): string {
 }
 
 export function weekBucket(dateLike: string): 'S1' | 'S2' | 'S3' | 'S4' | 'S5' {
-  const day = new Date(dateLike).getDate();
+  // Parse do dia direto da string: new Date('YYYY-MM-DD') é UTC e deslocaria
+  // o dia para trás em fusos negativos (Brasil).
+  const parsedDay = Number(dateLike.slice(8, 10));
+  const day = Number.isInteger(parsedDay) && parsedDay >= 1 ? parsedDay : new Date(dateLike).getDate();
 
   if (day <= 7) {
     return 'S1';
@@ -72,13 +86,21 @@ export function groupTransactionsByDate(items: TransactionFeedItem[]): Transacti
   return [...sections.entries()]
     .sort(([left], [right]) => (left < right ? 1 : -1))
     .map(([date, data]) => ({
-      date: formatDateTitle(date),
+      date: formatSectionDateTitle(date),
       data,
     }));
 }
 
 export function toNumber(value: number | string | null | undefined): number {
   return Number(value ?? 0);
+}
+
+/**
+ * Arredonda para 2 casas (centavos). Use ao acumular somas de valores
+ * monetários — floats acumulam erro (0.1 + 0.2 = 0.30000000000000004).
+ */
+export function roundCurrency(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 export function clampPercent(value: number): number {

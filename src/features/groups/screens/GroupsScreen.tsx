@@ -1,21 +1,23 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
   Share,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
+import { ArrowLeft, Copy, KeyRound, Plus, Users } from 'lucide-react-native';
 
+import { Badge } from '../../../components/Badge';
+import { BottomSheet } from '../../../components/BottomSheet';
+import { Button } from '../../../components/Button';
 import { Card } from '../../../components/Card';
+import { FieldCard, FieldDivider, FieldRow } from '../../../components/FormField';
 import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import type { AuthenticatedUserSummary } from '../../../types/auth';
 import { formatCurrencyBRL } from '../../../utils/format';
@@ -114,7 +116,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          <ArrowLeft size={20} color={colors.textPrimary} />
         </Pressable>
 
         <View style={styles.headerCopy}>
@@ -131,23 +133,19 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
           </Text>
 
           <View style={styles.heroActions}>
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              label="Criar grupo"
+              size="md"
+              icon={<Plus size={18} color={colors.white} />}
               onPress={openCreateModal}
-              style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="add-circle-outline" size={18} color={colors.white} />
-              <Text style={styles.primaryButtonText}>Criar grupo</Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
+            />
+            <Button
+              label="Entrar por código"
+              variant="secondary"
+              size="md"
+              icon={<KeyRound size={18} color={colors.textPrimary} />}
               onPress={() => setIsJoinModalVisible(true)}
-              style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
-            >
-              <Ionicons name="key-outline" size={18} color={colors.primary} />
-              <Text style={styles.secondaryButtonText}>Entrar por código</Text>
-            </Pressable>
+            />
           </View>
         </Card>
 
@@ -159,7 +157,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
 
         {!groupsQuery.isLoading && groupsQuery.data?.length === 0 ? (
           <Card style={styles.emptyCard}>
-            <Ionicons name="people-outline" size={28} color={colors.primary} />
+            <Users size={28} color={colors.primary} />
             <Text style={styles.emptyTitle}>Nenhum grupo ainda</Text>
             <Text style={styles.emptyDescription}>
               Crie seu primeiro grupo ou use um código para entrar em um grupo existente.
@@ -183,9 +181,10 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
                 </View>
               </View>
 
-              <View style={styles.roleBadge}>
-                <Text style={styles.roleBadgeText}>{item.currentUserRole === 'admin' ? 'ADM' : 'Membro'}</Text>
-              </View>
+              <Badge
+                label={item.currentUserRole === 'admin' ? 'ADM' : 'Membro'}
+                tone={item.currentUserRole === 'admin' ? 'primary' : 'neutral'}
+              />
             </View>
 
             <View style={styles.summaryGrid}>
@@ -223,122 +222,91 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
 
             <View style={styles.codeRow}>
               <View style={styles.codePill}>
-                <Ionicons name="copy-outline" size={14} color={colors.textSecondary} />
+                <Copy size={14} color={colors.textSecondary} />
                 <Text style={styles.codeText}>{item.group.shareCode}</Text>
               </View>
 
-              <Pressable
-                accessibilityRole="button"
+              <Button
+                label="Compartilhar código"
+                variant="ghost"
+                size="sm"
                 onPress={() => handleShareCode(item.group.title, item.group.shareCode)}
-                style={({ pressed }) => [styles.codeShareButton, pressed && styles.pressed]}
-              >
-                <Text style={styles.codeShareText}>Compartilhar código</Text>
-              </Pressable>
+              />
             </View>
 
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              label="Ver detalhes"
+              size="md"
               onPress={() => navigation.navigate('GroupDetails', { groupId: item.group.id })}
-              style={({ pressed }) => [styles.detailsButton, pressed && styles.pressed]}
-            >
-              <Text style={styles.detailsButtonText}>Ver detalhes</Text>
-            </Pressable>
+            />
           </Card>
         ))}
       </ScrollView>
 
-      <Modal
-        animationType="slide"
-        transparent
+      <BottomSheet
         visible={isCreateModalVisible}
-        onRequestClose={() => setIsCreateModalVisible(false)}
+        onClose={() => setIsCreateModalVisible(false)}
+        title="Criar grupo"
+        subtitle="Defina o nome e a descrição do grupo."
+        contentContainerStyle={styles.sheetContent}
+        footer={(close) => (
+          <>
+            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+            <Button
+              label="Criar grupo"
+              fullWidth
+              loading={createGroupMutation.isPending}
+              onPress={handleCreateGroup}
+            />
+          </>
+        )}
       >
-        <View style={styles.modalBackdrop}>
-          <Card style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Criar grupo</Text>
-            <Text style={styles.modalDescription}>Defina o nome e a descrição do grupo.</Text>
+        <FieldCard>
+          <FieldRow
+            label="Nome"
+            placeholder="Nome do grupo"
+            value={groupTitle}
+            onChangeText={setGroupTitle}
+          />
+          <FieldDivider />
+          <FieldRow
+            label="Descrição"
+            placeholder="Opcional"
+            value={groupDescription}
+            onChangeText={setGroupDescription}
+            multiline
+          />
+        </FieldCard>
+      </BottomSheet>
 
-            <TextInput
-              value={groupTitle}
-              onChangeText={setGroupTitle}
-              placeholder="Nome do grupo"
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-            />
-            <TextInput
-              value={groupDescription}
-              onChangeText={setGroupDescription}
-              placeholder="Descrição (opcional)"
-              placeholderTextColor={colors.textSecondary}
-              style={[styles.input, styles.multilineInput]}
-              multiline
-            />
-
-            <View style={styles.modalActions}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setIsCreateModalVisible(false)}
-                style={({ pressed }) => [styles.secondaryButton, styles.modalActionButton, pressed && styles.pressed]}
-              >
-                <Text style={styles.secondaryButtonText}>Cancelar</Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={handleCreateGroup}
-                style={({ pressed }) => [styles.primaryButton, styles.modalActionButton, pressed && styles.pressed]}
-              >
-                <Text style={styles.primaryButtonText}>
-                  {createGroupMutation.isPending ? 'Criando...' : 'Criar grupo'}
-                </Text>
-              </Pressable>
-            </View>
-          </Card>
-        </View>
-      </Modal>
-
-      <Modal
-        animationType="slide"
-        transparent
+      <BottomSheet
         visible={isJoinModalVisible}
-        onRequestClose={() => setIsJoinModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <Card style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Entrar em grupo</Text>
-            <Text style={styles.modalDescription}>Cole ou digite o código de compartilhamento.</Text>
-
-            <TextInput
-              value={joinCode}
-              onChangeText={(value) => setJoinCode(value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16))}
-              placeholder="Ex: A1B2C3D4E5F60718"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="characters"
-              style={styles.input}
+        onClose={() => setIsJoinModalVisible(false)}
+        title="Entrar em grupo"
+        subtitle="Cole ou digite o código de compartilhamento."
+        contentContainerStyle={styles.sheetContent}
+        footer={(close) => (
+          <>
+            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+            <Button
+              label="Entrar"
+              fullWidth
+              loading={joinGroupMutation.isPending}
+              onPress={handleJoinGroup}
             />
-
-            <View style={styles.modalActions}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setIsJoinModalVisible(false)}
-                style={({ pressed }) => [styles.secondaryButton, styles.modalActionButton, pressed && styles.pressed]}
-              >
-                <Text style={styles.secondaryButtonText}>Cancelar</Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={handleJoinGroup}
-                style={({ pressed }) => [styles.primaryButton, styles.modalActionButton, pressed && styles.pressed]}
-              >
-                <Text style={styles.primaryButtonText}>
-                  {joinGroupMutation.isPending ? 'Entrando...' : 'Entrar'}
-                </Text>
-              </Pressable>
-            </View>
-          </Card>
-        </View>
-      </Modal>
+          </>
+        )}
+      >
+        <FieldCard>
+          <FieldRow
+            label="Código"
+            placeholder="Ex: A1B2C3D4E5F60718"
+            value={joinCode}
+            onChangeText={(value) => setJoinCode(value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16))}
+            autoCapitalize="characters"
+          />
+        </FieldCard>
+      </BottomSheet>
 
       <UpgradePaywallSheet
         visible={isPaywallVisible}
@@ -404,42 +372,10 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   },
   heroDescription: {
     ...typography.body,
-    color: 'rgba(255,255,255,0.84)',
+    color: colors.whiteAlpha80,
   },
   heroActions: {
     gap: spacing.sm,
-  },
-  primaryButton: {
-    minHeight: 46,
-    borderRadius: radius.md,
-    backgroundColor: colors.success,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-  },
-  primaryButtonText: {
-    ...typography.body,
-    color: colors.white,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    minHeight: 46,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-  },
-  secondaryButtonText: {
-    ...typography.body,
-    color: colors.primary,
-    fontWeight: '700',
   },
   loadingWrap: {
     paddingVertical: spacing.xxl,
@@ -494,18 +430,6 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   groupDescription: {
     ...typography.body,
     color: colors.textSecondary,
-  },
-  roleBadge: {
-    alignSelf: 'flex-start',
-    borderRadius: radius.pill,
-    backgroundColor: colors.successSoft,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  roleBadgeText: {
-    ...typography.caption,
-    color: colors.success,
-    fontWeight: '700',
   },
   summaryGrid: {
     flexDirection: 'row',
@@ -569,63 +493,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
   },
-  codeShareButton: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  codeShareText: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  detailsButton: {
-    minHeight: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailsButtonText: {
-    ...typography.body,
-    color: colors.white,
-    fontWeight: '700',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'center',
-    padding: spacing.lg,
-  },
-  modalCard: {
-    gap: spacing.md,
-  },
-  modalTitle: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  modalDescription: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  input: {
-    minHeight: 48,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    color: colors.textPrimary,
-  },
-  multilineInput: {
-    minHeight: 92,
-    paddingTop: spacing.md,
-    textAlignVertical: 'top',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  modalActionButton: {
-    flex: 1,
+  sheetContent: {
+    paddingBottom: spacing.lg,
   },
 });

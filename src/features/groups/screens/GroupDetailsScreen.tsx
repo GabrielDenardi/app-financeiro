@@ -1,21 +1,24 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
   Share,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
+import { ArrowLeft, Camera, FileText, Image as ImageIcon, Plus, Share2, Trash2, X } from 'lucide-react-native';
 
+import { Badge } from '../../../components/Badge';
+import { BottomSheet } from '../../../components/BottomSheet';
+import { Button } from '../../../components/Button';
 import { Card } from '../../../components/Card';
+import { Chip } from '../../../components/Chip';
+import { FieldCard, FieldDivider, FieldRow } from '../../../components/FormField';
 import { usePreferences } from '../../preferences/hooks/usePreferences';
 import {
   deleteTransactionAttachment,
@@ -294,8 +297,8 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
       await createSplitMutation.mutateAsync({
         groupId,
-        title: splitTitle,
-        description: splitDescription,
+        title: splitTitle.trim(),
+        description: splitDescription.trim(),
         kind: splitKind,
         splitMode,
         totalAmount: parseDecimal(splitTotal),
@@ -411,7 +414,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          <ArrowLeft size={20} color={colors.textPrimary} />
         </Pressable>
 
         <View style={styles.headerCopy}>
@@ -420,7 +423,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         </View>
 
         <Pressable onPress={handleShareCode} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
-          <Ionicons name="share-social-outline" size={20} color={colors.textPrimary} />
+          <Share2 size={20} color={colors.textPrimary} />
         </Pressable>
       </View>
 
@@ -432,10 +435,12 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
               <Text style={styles.heroCode}>{groupData.group.shareCode}</Text>
             </View>
 
-            <Pressable onPress={handleOpenSplitModal} style={({ pressed }) => [styles.primaryChipButton, pressed && styles.pressed]}>
-              <Ionicons name="add" size={16} color={colors.white} />
-              <Text style={styles.primaryChipButtonText}>Nova divisao</Text>
-            </Pressable>
+            <Button
+              label="Nova divisao"
+              size="sm"
+              icon={<Plus size={16} color={colors.white} />}
+              onPress={handleOpenSplitModal}
+            />
           </View>
 
           <View style={styles.metricsRow}>
@@ -454,19 +459,12 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
         <View style={styles.tabsRow}>
           {TABS.map((tab) => (
-            <Pressable
+            <Chip
               key={tab.key}
+              label={tab.label}
+              selected={activeTab === tab.key}
               onPress={() => setActiveTab(tab.key)}
-              style={({ pressed }) => [
-                styles.tabButton,
-                activeTab === tab.key && styles.tabButtonActive,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={[styles.tabButtonText, activeTab === tab.key && styles.tabButtonTextActive]}>
-                {tab.label}
-              </Text>
-            </Pressable>
+            />
           ))}
         </View>
 
@@ -487,9 +485,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                 </View>
 
                 {balance.amount < -0.009 ? (
-                  <Pressable onPress={() => handleOpenSettlementModal(balance)} style={({ pressed }) => [styles.smallActionButton, pressed && styles.pressed]}>
-                    <Text style={styles.smallActionButtonText}>Pagar</Text>
-                  </Pressable>
+                  <Button label="Pagar" size="sm" onPress={() => handleOpenSettlementModal(balance)} />
                 ) : null}
               </View>
             ))}
@@ -519,7 +515,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                   {split.description || `${split.shares.length} participante(s) - modo ${split.splitMode}`}
                 </Text>
                 {split.receiptAttachmentId ? (
-                  <Text style={styles.receiptHint}>Comprovante anexado</Text>
+                  <Badge label="Comprovante anexado" tone="primary" />
                 ) : null}
               </Card>
             ))}
@@ -560,11 +556,12 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                   {settlement.note ? <Text style={styles.sectionDescription}>{settlement.note}</Text> : null}
 
                   {canConfirm ? (
-                    <Pressable onPress={() => handleConfirmSettlement(settlement)} style={({ pressed }) => [styles.smallActionButton, pressed && styles.pressed]}>
-                      <Text style={styles.smallActionButtonText}>
-                        {confirmSettlementMutation.isPending ? 'Confirmando...' : 'Confirmar recebimento'}
-                      </Text>
-                    </Pressable>
+                    <Button
+                      label="Confirmar recebimento"
+                      size="sm"
+                      loading={confirmSettlementMutation.isPending}
+                      onPress={() => handleConfirmSettlement(settlement)}
+                    />
                   ) : isOutgoing && settlement.status === 'pending' ? (
                     <Text style={styles.awaitingText}>Aguardando confirmacao do recebedor.</Text>
                   ) : null}
@@ -603,12 +600,13 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
                   {canRemove ? (
                     <Pressable onPress={() => handleRemoveMember(member)} style={({ pressed }) => [styles.removeButton, pressed && styles.pressed]}>
-                      <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                      <Trash2 size={16} color={colors.danger} />
                     </Pressable>
                   ) : (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{member.role === 'admin' ? 'ADM' : 'Ativo'}</Text>
-                    </View>
+                    <Badge
+                      label={member.role === 'admin' ? 'ADM' : 'Ativo'}
+                      tone={member.role === 'admin' ? 'primary' : 'neutral'}
+                    />
                   )}
                 </Card>
               );
@@ -617,159 +615,213 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         ) : null}
       </ScrollView>
 
-      <Modal transparent visible={isSplitModalVisible} animationType="slide" onRequestClose={() => setIsSplitModalVisible(false)}>
-        <View style={styles.modalBackdrop}>
-          <Card style={styles.modalCard}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalContent}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.modalTitle}>Registrar divisao</Text>
-                <Pressable onPress={() => setIsSplitModalVisible(false)} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
-                  <Ionicons name="close-outline" size={20} color={colors.textPrimary} />
-                </Pressable>
-              </View>
+      <BottomSheet
+        visible={isSplitModalVisible}
+        onClose={() => setIsSplitModalVisible(false)}
+        title="Registrar divisao"
+        subtitle="Divida uma despesa ou receita entre os membros."
+        contentContainerStyle={styles.sheetContent}
+        footer={(close) => (
+          <>
+            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+            <Button
+              label="Salvar divisao"
+              fullWidth
+              loading={createSplitMutation.isPending}
+              onPress={handleSaveSplit}
+            />
+          </>
+        )}
+      >
+        <FieldCard>
+          <FieldRow label="Titulo" placeholder="Ex: Mercado" value={splitTitle} onChangeText={setSplitTitle} />
+          <FieldDivider />
+          <FieldRow
+            label="Descricao"
+            placeholder="Opcional"
+            value={splitDescription}
+            onChangeText={setSplitDescription}
+            multiline
+          />
+          <FieldDivider />
+          <FieldRow
+            label="Valor total"
+            prefix="R$"
+            placeholder="0,00"
+            value={splitTotal}
+            onChangeText={setSplitTotal}
+            keyboardType="decimal-pad"
+          />
+        </FieldCard>
 
-              <TextInput value={splitTitle} onChangeText={setSplitTitle} placeholder="Titulo" placeholderTextColor={colors.textSecondary} style={styles.input} />
-              <TextInput value={splitDescription} onChangeText={setSplitDescription} placeholder="Descricao (opcional)" placeholderTextColor={colors.textSecondary} style={[styles.input, styles.multilineInput]} multiline />
-              <TextInput value={splitTotal} onChangeText={setSplitTotal} placeholder="Valor total" placeholderTextColor={colors.textSecondary} style={styles.input} keyboardType="decimal-pad" />
-
-              <View style={styles.choiceRow}>
-                {(['expense', 'income'] as GroupSplitKind[]).map((kind) => (
-                  <ChoiceButton key={kind} label={kind === 'expense' ? 'Despesa' : 'Receita'} selected={splitKind === kind} onPress={() => setSplitKind(kind)} styles={styles} />
-                ))}
-              </View>
-
-              <Text style={styles.fieldLabel}>{splitKind === 'expense' ? 'Quem pagou?' : 'Quem recebeu?'}</Text>
-              <View style={styles.wrapRow}>
-                {members.map((member) => (
-                  <ChoiceButton key={member.userId} label={resolveMemberName(member.userId)} selected={splitOwnerUserId === member.userId} onPress={() => setSplitOwnerUserId(member.userId)} styles={styles} />
-                ))}
-              </View>
-
-              <Text style={styles.fieldLabel}>Modo de divisao</Text>
-              <View style={styles.wrapRow}>
-                <ChoiceButton label="Igual" selected={splitMode === 'equal'} onPress={() => setSplitMode('equal')} styles={styles} />
-                <ChoiceButton label="Por porcentagem" selected={splitMode === 'percentage'} onPress={() => setSplitMode('percentage')} styles={styles} />
-                <ChoiceButton label="Personalizado" selected={splitMode === 'custom'} onPress={() => setSplitMode('custom')} styles={styles} />
-              </View>
-
-              <Text style={styles.fieldLabel}>Participantes</Text>
-              <View style={styles.wrapRow}>
-                {members.map((member) => (
-                  <ChoiceButton key={member.userId} label={resolveMemberName(member.userId)} selected={selectedMemberIds.includes(member.userId)} onPress={() => toggleMember(member.userId)} styles={styles} />
-                ))}
-              </View>
-
-              <Text style={styles.fieldLabel}>Comprovante</Text>
-              <Text style={styles.receiptHelper}>
-                {requireGroupExpenseReceipt && splitKind === 'expense'
-                  ? 'Obrigatorio para despesas neste usuario.'
-                  : 'Opcional. Anexe uma NF ou notinha para comprovar a despesa.'}
-              </Text>
-              <View style={styles.wrapRow}>
-                <ChoiceButton label="Camera" selected={false} onPress={handlePickSplitReceiptFromCamera} styles={styles} />
-                <ChoiceButton label="Galeria" selected={false} onPress={handlePickSplitReceiptFromLibrary} styles={styles} />
-                <ChoiceButton label="PDF" selected={false} onPress={handlePickSplitReceiptDocument} styles={styles} />
-              </View>
-              {splitReceiptFile ? (
-                <View style={styles.receiptCard}>
-                  <View style={styles.listCopy}>
-                    <Text style={styles.listTitle}>Arquivo selecionado</Text>
-                    <Text style={styles.sectionDescription}>{splitReceiptFile.name}</Text>
-                  </View>
-                  <Pressable onPress={() => setSplitReceiptFile(null)} style={({ pressed }) => [styles.removeButton, pressed && styles.pressed]}>
-                    <Ionicons name="close-outline" size={16} color={colors.danger} />
-                  </Pressable>
-                </View>
-              ) : null}
-
-              {splitMode !== 'equal' ? (
-                <View style={styles.dynamicInputs}>
-                  {selectedMemberIds.map((userId) => (
-                    <View key={userId} style={styles.dynamicRow}>
-                      <Text style={styles.dynamicLabel}>{resolveMemberName(userId)}</Text>
-                      <TextInput
-                        value={
-                          splitMode === 'percentage'
-                            ? percentageByUserId[userId] ?? ''
-                            : customAmountByUserId[userId] ?? ''
-                        }
-                        onChangeText={(value) =>
-                          splitMode === 'percentage'
-                            ? setPercentageByUserId((current) => ({ ...current, [userId]: value }))
-                            : setCustomAmountByUserId((current) => ({ ...current, [userId]: value }))
-                        }
-                        placeholder={splitMode === 'percentage' ? '%' : '0,00'}
-                        placeholderTextColor={colors.textSecondary}
-                        style={styles.dynamicInput}
-                        keyboardType="decimal-pad"
-                      />
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-
-              <Card style={styles.previewCard}>
-                <Text style={styles.sectionTitle}>Preview</Text>
-                {splitPreview.error ? <Text style={styles.errorText}>{splitPreview.error}</Text> : null}
-                {splitPreview.shares.map((share) => (
-                  <View key={share.userId} style={styles.rowBetween}>
-                    <Text style={styles.sectionDescription}>{resolveMemberName(share.userId)}</Text>
-                    <Text style={styles.listAmount}>{formatCurrencyBRL(share.amount)}</Text>
-                  </View>
-                ))}
-                {!splitPreview.error && splitPreview.shares.length === 0 ? (
-                  <Text style={styles.sectionDescription}>Preencha o valor e os participantes para ver o preview.</Text>
-                ) : null}
-              </Card>
-
-              <View style={styles.modalActions}>
-                <Pressable onPress={() => setIsSplitModalVisible(false)} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-                  <Text style={styles.secondaryButtonText}>Cancelar</Text>
-                </Pressable>
-                <Pressable onPress={handleSaveSplit} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-                  <Text style={styles.primaryButtonText}>{createSplitMutation.isPending ? 'Salvando...' : 'Salvar divisao'}</Text>
-                </Pressable>
-              </View>
-            </ScrollView>
-          </Card>
+        <Text style={styles.fieldLabel}>Tipo</Text>
+        <View style={styles.wrapRow}>
+          {(['expense', 'income'] as GroupSplitKind[]).map((kind) => (
+            <Chip
+              key={kind}
+              label={kind === 'expense' ? 'Despesa' : 'Receita'}
+              selected={splitKind === kind}
+              onPress={() => setSplitKind(kind)}
+            />
+          ))}
         </View>
-      </Modal>
 
-      <Modal transparent visible={isSettlementModalVisible} animationType="slide" onRequestClose={() => setIsSettlementModalVisible(false)}>
-        <View style={styles.modalBackdrop}>
-          <Card style={styles.modalCard}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.modalTitle}>Registrar pagamento</Text>
-              <Pressable onPress={() => setIsSettlementModalVisible(false)} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
-                <Ionicons name="close-outline" size={20} color={colors.textPrimary} />
-              </Pressable>
-            </View>
-
-            <Text style={styles.sectionDescription}>
-              {selectedBalance ? `Acerto com ${selectedBalance.fullName}` : 'Acerto'}
-            </Text>
-
-            <TextInput value={settlementAmount} onChangeText={setSettlementAmount} placeholder="Valor" placeholderTextColor={colors.textSecondary} style={styles.input} keyboardType="decimal-pad" />
-
-            <View style={styles.wrapRow}>
-              {PAYMENT_METHODS.map((method) => (
-                <ChoiceButton key={method.value} label={method.label} selected={settlementMethod === method.value} onPress={() => setSettlementMethod(method.value)} styles={styles} />
-              ))}
-            </View>
-
-            <TextInput value={settlementNote} onChangeText={setSettlementNote} placeholder="Observacao (opcional)" placeholderTextColor={colors.textSecondary} style={[styles.input, styles.multilineInput]} multiline />
-
-            <View style={styles.modalActions}>
-              <Pressable onPress={() => setIsSettlementModalVisible(false)} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-                <Text style={styles.secondaryButtonText}>Cancelar</Text>
-              </Pressable>
-              <Pressable onPress={handleRequestSettlement} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-                <Text style={styles.primaryButtonText}>{requestSettlementMutation.isPending ? 'Enviando...' : 'Solicitar acerto'}</Text>
-              </Pressable>
-            </View>
-          </Card>
+        <Text style={styles.fieldLabel}>{splitKind === 'expense' ? 'Quem pagou?' : 'Quem recebeu?'}</Text>
+        <View style={styles.wrapRow}>
+          {members.map((member) => (
+            <Chip
+              key={member.userId}
+              label={resolveMemberName(member.userId)}
+              selected={splitOwnerUserId === member.userId}
+              onPress={() => setSplitOwnerUserId(member.userId)}
+            />
+          ))}
         </View>
-      </Modal>
+
+        <Text style={styles.fieldLabel}>Modo de divisao</Text>
+        <View style={styles.wrapRow}>
+          <Chip label="Igual" selected={splitMode === 'equal'} onPress={() => setSplitMode('equal')} />
+          <Chip label="Por porcentagem" selected={splitMode === 'percentage'} onPress={() => setSplitMode('percentage')} />
+          <Chip label="Personalizado" selected={splitMode === 'custom'} onPress={() => setSplitMode('custom')} />
+        </View>
+
+        <Text style={styles.fieldLabel}>Participantes</Text>
+        <View style={styles.wrapRow}>
+          {members.map((member) => (
+            <Chip
+              key={member.userId}
+              label={resolveMemberName(member.userId)}
+              selected={selectedMemberIds.includes(member.userId)}
+              onPress={() => toggleMember(member.userId)}
+            />
+          ))}
+        </View>
+
+        <Text style={styles.fieldLabel}>Comprovante</Text>
+        <Text style={styles.receiptHelper}>
+          {requireGroupExpenseReceipt && splitKind === 'expense'
+            ? 'Obrigatorio para despesas neste usuario.'
+            : 'Opcional. Anexe uma NF ou notinha para comprovar a despesa.'}
+        </Text>
+        <View style={styles.wrapRow}>
+          <Chip
+            label="Camera"
+            icon={<Camera size={16} color={colors.textSecondary} />}
+            onPress={handlePickSplitReceiptFromCamera}
+          />
+          <Chip
+            label="Galeria"
+            icon={<ImageIcon size={16} color={colors.textSecondary} />}
+            onPress={handlePickSplitReceiptFromLibrary}
+          />
+          <Chip
+            label="PDF"
+            icon={<FileText size={16} color={colors.textSecondary} />}
+            onPress={handlePickSplitReceiptDocument}
+          />
+        </View>
+        {splitReceiptFile ? (
+          <View style={styles.receiptCard}>
+            <View style={styles.listCopy}>
+              <Text style={styles.listTitle}>Arquivo selecionado</Text>
+              <Text style={styles.sectionDescription}>{splitReceiptFile.name}</Text>
+            </View>
+            <Pressable onPress={() => setSplitReceiptFile(null)} style={({ pressed }) => [styles.removeButton, pressed && styles.pressed]}>
+              <X size={16} color={colors.danger} />
+            </Pressable>
+          </View>
+        ) : null}
+
+        {splitMode !== 'equal' ? (
+          <FieldCard>
+            {selectedMemberIds.map((userId, index) => (
+              <View key={userId}>
+                {index > 0 ? <FieldDivider /> : null}
+                <FieldRow
+                  label={resolveMemberName(userId)}
+                  prefix={splitMode === 'percentage' ? undefined : 'R$'}
+                  placeholder={splitMode === 'percentage' ? '%' : '0,00'}
+                  value={
+                    splitMode === 'percentage'
+                      ? percentageByUserId[userId] ?? ''
+                      : customAmountByUserId[userId] ?? ''
+                  }
+                  onChangeText={(value) =>
+                    splitMode === 'percentage'
+                      ? setPercentageByUserId((current) => ({ ...current, [userId]: value }))
+                      : setCustomAmountByUserId((current) => ({ ...current, [userId]: value }))
+                  }
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            ))}
+          </FieldCard>
+        ) : null}
+
+        <Card style={styles.previewCard}>
+          <Text style={styles.sectionTitle}>Preview</Text>
+          {splitPreview.error ? <Text style={styles.errorText}>{splitPreview.error}</Text> : null}
+          {splitPreview.shares.map((share) => (
+            <View key={share.userId} style={styles.rowBetween}>
+              <Text style={styles.sectionDescription}>{resolveMemberName(share.userId)}</Text>
+              <Text style={styles.listAmount}>{formatCurrencyBRL(share.amount)}</Text>
+            </View>
+          ))}
+          {!splitPreview.error && splitPreview.shares.length === 0 ? (
+            <Text style={styles.sectionDescription}>Preencha o valor e os participantes para ver o preview.</Text>
+          ) : null}
+        </Card>
+      </BottomSheet>
+
+      <BottomSheet
+        visible={isSettlementModalVisible}
+        onClose={() => setIsSettlementModalVisible(false)}
+        title="Registrar pagamento"
+        subtitle={selectedBalance ? `Acerto com ${selectedBalance.fullName}` : 'Acerto'}
+        contentContainerStyle={styles.sheetContent}
+        footer={(close) => (
+          <>
+            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+            <Button
+              label="Solicitar acerto"
+              fullWidth
+              loading={requestSettlementMutation.isPending}
+              onPress={handleRequestSettlement}
+            />
+          </>
+        )}
+      >
+        <FieldCard>
+          <FieldRow
+            label="Valor"
+            prefix="R$"
+            placeholder="0,00"
+            value={settlementAmount}
+            onChangeText={setSettlementAmount}
+            keyboardType="decimal-pad"
+          />
+          <FieldDivider />
+          <FieldRow
+            label="Observacao"
+            placeholder="Opcional"
+            value={settlementNote}
+            onChangeText={setSettlementNote}
+            multiline
+          />
+        </FieldCard>
+
+        <Text style={styles.fieldLabel}>Forma de pagamento</Text>
+        <View style={styles.wrapRow}>
+          {PAYMENT_METHODS.map((method) => (
+            <Chip
+              key={method.value}
+              label={method.label}
+              selected={settlementMethod === method.value}
+              onPress={() => setSettlementMethod(method.value)}
+            />
+          ))}
+        </View>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -793,31 +845,6 @@ function MetricCard({
   );
 }
 
-function ChoiceButton({
-  label,
-  selected,
-  onPress,
-  styles,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  styles: ReturnType<typeof createStyles>;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.choiceButton,
-        selected && styles.choiceButtonActive,
-        pressed && styles.pressed,
-      ]}
-    >
-      <Text style={[styles.choiceButtonText, selected && styles.choiceButtonTextActive]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const createStyles = (colors: AppColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -829,23 +856,17 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   pressed: { opacity: 0.85 },
   scrollContent: { padding: layout.pageHorizontal, gap: layout.pageSectionGap, paddingBottom: spacing.xxl },
   heroCard: { backgroundColor: colors.primary, borderColor: colors.primary, gap: spacing.md },
-  heroMuted: { ...typography.caption, color: 'rgba(255,255,255,0.72)' },
+  heroMuted: { ...typography.caption, color: colors.whiteAlpha80 },
   heroCode: { ...typography.h2, color: colors.white, letterSpacing: 1 },
   heroBalance: { ...typography.value, fontWeight: '700' },
   positive: { color: colors.success },
   negative: { color: colors.danger },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-  primaryChipButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md },
-  primaryChipButtonText: { ...typography.caption, color: colors.white, fontWeight: '700' },
   metricsRow: { flexDirection: 'row', gap: spacing.sm },
   metricCard: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
   metricLabel: { ...typography.caption, color: colors.textSecondary },
   metricValue: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },
   tabsRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  tabButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  tabButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabButtonText: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
-  tabButtonTextActive: { color: colors.white },
   sectionCard: { gap: spacing.sm },
   sectionTitle: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },
   sectionDescription: { ...typography.body, color: colors.textSecondary },
@@ -853,41 +874,17 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   listCopy: { flex: 1, gap: spacing.xs },
   listTitle: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },
   listAmount: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },
-  receiptHint: { ...typography.caption, color: colors.primary, fontWeight: '700' },
-  smallActionButton: { minHeight: 38, paddingHorizontal: spacing.md, borderRadius: radius.md, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  smallActionButtonText: { ...typography.caption, color: colors.white, fontWeight: '700' },
   emptyText: { ...typography.body, color: colors.textSecondary },
   awaitingText: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   memberAvatar: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   memberAvatarText: { ...typography.body, color: colors.primary, fontWeight: '700' },
-  badge: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radius.pill, backgroundColor: colors.mutedSurface },
-  badgeText: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
   removeButton: { width: 36, height: 36, borderRadius: radius.pill, backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center' },
-  modalBackdrop: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: spacing.lg },
-  modalCard: { maxHeight: '90%', gap: spacing.md },
-  modalContent: { gap: spacing.md },
-  modalTitle: { ...typography.h2, color: colors.textPrimary },
-  input: { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface, paddingHorizontal: spacing.md, color: colors.textPrimary },
-  multilineInput: { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md },
-  choiceRow: { flexDirection: 'row', gap: spacing.sm },
-  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  sheetContent: { gap: spacing.md, paddingBottom: spacing.lg },
   fieldLabel: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
-  choiceButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  choiceButtonActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  choiceButtonText: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
-  choiceButtonTextActive: { color: colors.primary },
-  dynamicInputs: { gap: spacing.sm },
-  dynamicRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  dynamicLabel: { flex: 1, ...typography.body, color: colors.textPrimary },
-  dynamicInput: { width: 110, minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface, paddingHorizontal: spacing.md, color: colors.textPrimary },
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   previewCard: { gap: spacing.sm, backgroundColor: colors.mutedSurface },
   errorText: { ...typography.body, color: colors.danger },
   receiptHelper: { ...typography.caption, color: colors.textSecondary, lineHeight: 17 },
   receiptCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md, backgroundColor: colors.surface },
-  modalActions: { flexDirection: 'row', gap: spacing.sm },
-  secondaryButton: { flex: 1, minHeight: 46, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
-  secondaryButtonText: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },
-  primaryButton: { flex: 1, minHeight: 46, borderRadius: radius.md, backgroundColor: colors.success, alignItems: 'center', justifyContent: 'center' },
-  primaryButtonText: { ...typography.body, color: colors.white, fontWeight: '700' },
 });

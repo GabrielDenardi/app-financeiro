@@ -4,6 +4,7 @@ import type {
   ConfirmRecurringTransactionInput,
   CreateRecurringTransactionInput,
   RecurringTransaction,
+  UndoRecurringConfirmationInput,
   UpdateRecurringTransactionInput,
 } from '../types';
 
@@ -20,7 +21,7 @@ type RecurringRuleRow = {
   is_active: boolean;
   is_variable: boolean;
   personal_accounts?: { name: string } | Array<{ name: string }> | null;
-  financial_categories?: { label: string } | Array<{ label: string }> | null;
+  financial_categories?: { label: string; color: string } | Array<{ label: string; color: string }> | null;
 };
 
 type RecurringExecutionRow = {
@@ -47,6 +48,7 @@ function mapRule(
     accountName: account?.name ?? 'Conta',
     categoryId: row.category_id,
     categoryLabel: category?.label ?? 'Sem categoria',
+    categoryColor: category?.color ?? '#94A3B8',
     title: row.title,
     notes: row.notes ?? '',
     amount: toNumber(row.amount),
@@ -79,7 +81,7 @@ export async function listRecurringTransactions(): Promise<RecurringTransaction[
             is_active,
             is_variable,
             personal_accounts(name),
-            financial_categories(label)
+            financial_categories(label, color)
           `,
         )
         .eq('user_id', userId)
@@ -177,4 +179,48 @@ export async function confirmRecurringTransaction(input: ConfirmRecurringTransac
   }
 
   return data as string;
+}
+
+export async function undoRecurringConfirmation(input: UndoRecurringConfirmationInput): Promise<void> {
+  const userId = await requireCurrentUserId();
+
+  const { data, error } = await supabase
+    .from('recurring_transaction_executions')
+    .select('id, transaction_id')
+    .eq('user_id', userId)
+    .eq('rule_id', input.ruleId)
+    .eq('execution_month', input.executionMonth)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    throw new Error('Confirmação deste mês não encontrada.');
+  }
+
+  const execution = data as { id: string; transaction_id: string | null };
+
+  const { error: deleteExecutionError } = await supabase
+    .from('recurring_transaction_executions')
+    .delete()
+    .eq('id', execution.id)
+    .eq('user_id', userId);
+
+  if (deleteExecutionError) {
+    throw new Error(deleteExecutionError.message);
+  }
+
+  if (execution.transaction_id) {
+    const { error: deleteTransactionError } = await supabase
+      .from('personal_transactions')
+      .delete()
+      .eq('id', execution.transaction_id)
+      .eq('user_id', userId);
+
+    if (deleteTransactionError) {
+      throw new Error(deleteTransactionError.message);
+    }
+  }
 }
