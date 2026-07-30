@@ -7,10 +7,37 @@ import { getEffectivePlanId, getPlanEntitlements, isTrialActive, SUBSCRIPTION_PL
 import { getPaywallStats, startIntermediateTrial } from './services/plansService';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const ENTITLED_SUBSCRIPTION_STATUSES = new Set([
+  'active',
+  'cancelled',
+  'grace_period',
+]);
+
+function hasCurrentPaidSubscription(
+  status?: string | null,
+  expiresAt?: string | null,
+): boolean {
+  if (!status || !ENTITLED_SUBSCRIPTION_STATUSES.has(status)) {
+    return false;
+  }
+
+  if (!expiresAt) {
+    return true;
+  }
+
+  const expiry = new Date(expiresAt).getTime();
+  return Number.isFinite(expiry) && expiry > Date.now();
+}
 
 export function useCurrentPlan(userId?: string | null) {
   const profileQuery = useProfile(userId);
-  const subscriptionPlan = profileQuery.data?.subscriptionPlan;
+  const storedSubscriptionPlan = profileQuery.data?.subscriptionPlan;
+  const subscriptionPlan = hasCurrentPaidSubscription(
+    profileQuery.data?.subscriptionStatus,
+    profileQuery.data?.subscriptionExpiresAt,
+  )
+    ? storedSubscriptionPlan
+    : 'free';
   const trialStartedAt = profileQuery.data?.trialStartedAt ?? null;
   const trialEndsAt = profileQuery.data?.trialEndsAt ?? null;
 

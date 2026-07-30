@@ -9,7 +9,8 @@ O objetivo do projeto é ajudar usuários a organizar suas finanças, acompanhar
 - Registro de despesas e receitas
 - Organização financeira pessoal
 - Integração com Supabase
-- Aplicativo multiplataforma (Android, iOS e Web)
+- Aplicativo mobile com lançamento inicial no Android
+- Assinaturas nativas pela Google Play, integradas pelo RevenueCat
 - Base para futuras funcionalidades com IA para insights financeiros
 
 ## Tecnologias
@@ -32,7 +33,7 @@ O objetivo do projeto é ajudar usuários a organizar suas finanças, acompanhar
 npm install
 ```
 
-## Configuração de ambiente (Supabase)
+## Configuração de ambiente
 
 1. Copie `.env.example` para `.env`.
 2. Preencha:
@@ -42,6 +43,7 @@ EXPO_PUBLIC_SUPABASE_URL
 EXPO_PUBLIC_SUPABASE_ANON_KEY
 EXPO_PUBLIC_PRIVACY_POLICY_URL
 EXPO_PUBLIC_EMAIL_REDIRECT_URL
+EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY
 ```
 
 3. Execute a migration SQL localizada em:
@@ -51,6 +53,9 @@ supabase/migrations/202602270001_auth_onboarding.sql
 ```
 
 no seu projeto Supabase.
+
+Para configurar as assinaturas Android, siga
+[`docs/GOOGLE_PLAY_BILLING.md`](docs/GOOGLE_PLAY_BILLING.md).
 
 ## Como iniciar o projeto
 

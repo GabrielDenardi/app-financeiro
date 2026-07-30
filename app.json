@@ -30,7 +30,7 @@
         "android.permission.USE_FINGERPRINT",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
-      "package": "com.anonymous.appfinanceiro"
+      "package": "com.nitin.appfinanceiro"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -60,8 +60,7 @@
           "microphonePermission": "Permita o uso do microfone para registrar transacoes por voz."
         }
       ],
-      "expo-asset",
-      "expo-web-browser"
+      "expo-asset"
     ]
   }
 }

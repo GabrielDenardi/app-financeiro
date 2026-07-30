@@ -1,17 +1,22 @@
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 import { CheckCircle2 } from 'lucide-react-native';
 
 import { Card } from '../components/Card';
-import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
+import { isRevenueCatTestStore } from '../config/env';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
-import { startAbacatepaySubscription } from '../features/billing/abacatepayService';
+import {
+  usePurchaseRevenueCatPlanMutation,
+  useRestoreRevenueCatPurchasesMutation,
+  useRevenueCatPlanPackages,
+} from '../features/billing/hooks';
+import {
+  openGooglePlaySubscriptionManagement,
+} from '../features/billing/revenuecatService';
 import { useCurrentPlan, useStartTrialMutation } from '../features/plans/hooks';
 import { SUBSCRIPTION_PLANS, TRIAL_DURATION_DAYS } from '../features/plans/plans';
-import { selectFreePlan } from '../features/plans/services/plansService';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 const PLAN_ORDER = ['free', 'basic', 'intermediate', 'pro'] as const;
@@ -22,8 +27,19 @@ export function PlansScreen({ navigation }: any) {
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
   const startTrial = useStartTrialMutation(user?.id);
+  const storePackagesQuery = useRevenueCatPlanPackages(user?.id);
+  const purchasePlan = usePurchaseRevenueCatPlanMutation(user?.id);
+  const restorePurchases = useRestoreRevenueCatPurchasesMutation(user?.id);
   const [selectingPlanId, setSelectingPlanId] = useState<string | null>(null);
-  const [freeDowngradeVisible, setFreeDowngradeVisible] = useState(false);
+  const storePackages = storePackagesQuery.data ?? {};
+  const storeError =
+    storePackagesQuery.error instanceof Error
+      ? storePackagesQuery.error.message
+      : null;
+  const basePlanId = currentPlan.basePlanId ?? 'free';
+  const basePlan = SUBSCRIPTION_PLANS[basePlanId];
+  const trialOverridesBasePlan =
+    currentPlan.trial.isActive && currentPlan.plan.id !== basePlan.id;
 
   const handleStartTrial = async () => {
     try {
@@ -40,20 +56,27 @@ export function PlansScreen({ navigation }: any) {
     }
   };
 
-  const confirmFreeDowngrade = async () => {
-    setSelectingPlanId('free');
+  const handleRestorePurchases = async () => {
+    if (!user?.id || restorePurchases.isPending) {
+      return;
+    }
+
     try {
-      await selectFreePlan();
+      const restored = await restorePurchases.mutateAsync();
       await currentPlan.refetch();
-      setFreeDowngradeVisible(false);
-    } catch (error) {
-      setFreeDowngradeVisible(false);
       Alert.alert(
-        'Planos',
-        error instanceof Error ? error.message : 'Não foi possível mudar de plano.',
+        'Restaurar compras',
+        restored
+          ? 'Sua assinatura foi restaurada com sucesso.'
+          : isRevenueCatTestStore
+            ? 'Nenhuma assinatura de teste ativa foi encontrada.'
+            : 'Nenhuma assinatura ativa foi encontrada nesta conta Google Play.',
       );
-    } finally {
-      setSelectingPlanId(null);
+    } catch (error) {
+      Alert.alert(
+        'Restaurar compras',
+        error instanceof Error ? error.message : 'Não foi possível restaurar suas compras.',
+      );
     }
   };
 
@@ -63,17 +86,57 @@ export function PlansScreen({ navigation }: any) {
     }
 
     if (planId === 'free') {
-      setFreeDowngradeVisible(true);
+      if (isRevenueCatTestStore) {
+        Alert.alert(
+          'Assinatura de teste',
+          'As assinaturas do RevenueCat Test Store expiram automaticamente. Reabra o app após a expiração para atualizar o Plano Free.',
+        );
+        return;
+      }
+
+      try {
+        await openGooglePlaySubscriptionManagement();
+      } catch (error) {
+        Alert.alert(
+          'Gerenciar assinatura',
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível abrir o gerenciamento da assinatura.',
+        );
+      }
+      return;
+    }
+
+    if (!user?.id) {
+      Alert.alert('Planos', 'Entre novamente na sua conta para assinar um plano.');
+      return;
+    }
+
+    const selectedPackage = storePackages[planId];
+    if (!selectedPackage) {
+      Alert.alert(
+        'Planos',
+        storeError ?? 'Este plano ainda não está disponível na Google Play.',
+      );
       return;
     }
 
     setSelectingPlanId(planId);
     try {
-      const checkoutUrl = await startAbacatepaySubscription(planId);
-      const result = await WebBrowser.openAuthSessionAsync(checkoutUrl, 'appfinanceiro://billing');
-      if (result.type === 'success') {
-        await currentPlan.refetch();
-      }
+      const result = await purchasePlan.mutateAsync(selectedPackage);
+      await currentPlan.refetch();
+      Alert.alert(
+        result.scheduled
+          ? 'Mudança agendada'
+          : isRevenueCatTestStore
+            ? 'Compra de teste confirmada'
+            : 'Assinatura confirmada',
+        result.scheduled
+          ? 'Seu novo plano entrará em vigor ao final do período atual.'
+          : isRevenueCatTestStore
+            ? 'Seu plano foi ativado no ambiente de teste da RevenueCat.'
+            : 'Seu plano foi ativado pela Google Play.',
+      );
     } catch (error) {
       Alert.alert(
         'Planos',
@@ -89,7 +152,9 @@ export function PlansScreen({ navigation }: any) {
       <PageHeader title="Planos" subtitle="Compare limites e recursos." onBackPress={() => navigation.goBack()} />
 
       <Card style={styles.currentCard}>
-        <Text style={styles.currentLabel}>Plano atual</Text>
+        <Text style={styles.currentLabel}>
+          {trialOverridesBasePlan ? 'Benefícios atuais' : 'Plano atual'}
+        </Text>
         <Text style={styles.currentTitle}>{currentPlan.plan.name}</Text>
         {currentPlan.trial.isActive ? (
           <Text style={styles.currentTrial}>
@@ -100,6 +165,11 @@ export function PlansScreen({ navigation }: any) {
         <Text style={styles.currentText}>
           {currentPlan.entitlements.accountLimit} conta(s) financeira(s) e recursos conforme o plano.
         </Text>
+        {trialOverridesBasePlan ? (
+          <Text style={styles.currentBasePlan}>
+            Assinatura contratada: {basePlan.name}
+          </Text>
+        ) : null}
       </Card>
 
       {currentPlan.trial.isEligible ? (
@@ -125,8 +195,10 @@ export function PlansScreen({ navigation }: any) {
 
       {PLAN_ORDER.map((planId) => {
         const plan = SUBSCRIPTION_PLANS[planId];
-        const active = (currentPlan.basePlanId ?? currentPlan.plan.id) === plan.id;
+        const active = basePlanId === plan.id;
         const selecting = selectingPlanId === plan.id;
+        const storePackage = plan.id === 'free' ? null : storePackages[plan.id];
+        const priceLabel = storePackage?.localizedPrice ?? plan.priceLabel;
 
         return (
           <Card key={plan.id} style={[styles.planCard, active && styles.activePlanCard]}>
@@ -134,12 +206,14 @@ export function PlansScreen({ navigation }: any) {
               <View>
                 <Text style={styles.planName}>{plan.name}</Text>
                 <Text style={styles.planPrice}>
-                  {plan.id === 'free' ? plan.priceLabel : `${plan.priceLabel}/mês`}
+                  {plan.id === 'free' ? priceLabel : `${priceLabel}/mês`}
                 </Text>
               </View>
               {active ? (
                 <View style={styles.activeBadge}>
-                  <Text style={styles.activeBadgeText}>Atual</Text>
+                  <Text style={styles.activeBadgeText}>
+                    {trialOverridesBasePlan ? 'Assinatura' : 'Atual'}
+                  </Text>
                 </View>
               ) : null}
             </View>
@@ -160,13 +234,15 @@ export function PlansScreen({ navigation }: any) {
             >
               <Text style={[styles.planButtonText, (active || selecting) && styles.planButtonMutedText]}>
                 {active
-                  ? 'Plano atual'
+                  ? trialOverridesBasePlan
+                    ? 'Assinatura atual'
+                    : 'Plano atual'
                   : selecting
                     ? plan.id === 'free'
-                      ? 'Ativando...'
-                      : 'Abrindo checkout...'
+                      ? 'Abrindo...'
+                      : 'Processando compra...'
                     : plan.id === 'free'
-                      ? 'Usar plano Free'
+                      ? 'Gerenciar assinatura'
                       : 'Assinar'}
               </Text>
             </Pressable>
@@ -174,15 +250,23 @@ export function PlansScreen({ navigation }: any) {
         );
       })}
 
-      <ConfirmDialog
-        visible={freeDowngradeVisible}
-        title="Mudar para o plano Free"
-        message="Você perderá o acesso aos recursos pagos. Deseja continuar?"
-        confirmLabel="Confirmar"
-        loading={selectingPlanId === 'free'}
-        onConfirm={confirmFreeDowngrade}
-        onCancel={() => setFreeDowngradeVisible(false)}
-      />
+      {storeError ? <Text style={styles.storeMessage}>{storeError}</Text> : null}
+
+      <Pressable
+        style={styles.restoreButton}
+        disabled={restorePurchases.isPending || Boolean(selectingPlanId)}
+        onPress={handleRestorePurchases}
+      >
+        <Text style={styles.restoreButtonText}>
+          {restorePurchases.isPending ? 'Restaurando...' : 'Restaurar compras'}
+        </Text>
+      </Pressable>
+
+      <Text style={styles.storeFootnote}>
+        {isRevenueCatTestStore
+          ? 'Ambiente de teste da RevenueCat: nenhuma cobrança real será realizada.'
+          : 'Pagamento, renovação e cancelamento são gerenciados pela Google Play.'}
+      </Text>
     </PageShell>
   );
 }
@@ -212,6 +296,12 @@ const createStyles = (colors: AppColors) =>
       ...typography.caption,
       color: colors.white,
       fontWeight: '800',
+    },
+    currentBasePlan: {
+      ...typography.caption,
+      color: colors.white,
+      fontWeight: '700',
+      marginTop: spacing.xs,
     },
     trialCard: {
       gap: spacing.sm,
@@ -289,5 +379,26 @@ const createStyles = (colors: AppColors) =>
     },
     planButtonMutedText: {
       color: colors.textSecondary,
+    },
+    storeMessage: {
+      ...typography.caption,
+      color: colors.danger,
+      textAlign: 'center',
+    },
+    restoreButton: {
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    restoreButtonText: {
+      ...typography.body,
+      color: colors.primary,
+      fontWeight: '800',
+    },
+    storeFootnote: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: spacing.lg,
     },
   });

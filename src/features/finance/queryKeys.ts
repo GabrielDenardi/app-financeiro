@@ -82,5 +82,7 @@ export const financeQueryKeys = {
   plans: {
     all: ['finance', 'plans'] as const,
     paywallStats: (userId?: string | null) => ['finance', 'plans', 'paywall-stats', userId] as const,
+    storeOfferings: (userId?: string | null) =>
+      ['finance', 'plans', 'store-offerings', userId] as const,
   },
 };

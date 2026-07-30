@@ -2,10 +2,10 @@
 
 ## Visão Geral
 
-Aplicativo de **controle de finanças pessoais** desenvolvido com React Native (Expo) e Supabase. Permite gerenciar contas bancárias, transações, cartões de crédito, orçamentos, metas, recorrências e despesas compartilhadas em grupo. Multiplataforma (Android, iOS e Web via Expo).
+Aplicativo de **controle de finanças pessoais** desenvolvido com React Native (Expo) e Supabase. Permite gerenciar contas bancárias, transações, cartões de crédito, orçamentos, metas, recorrências e despesas compartilhadas em grupo. O lançamento inicial é Android pela Google Play.
 
 - Todo o app é em **português brasileiro (pt-BR)** — sem biblioteca de i18n; strings hardcoded.
-- Modelo **freemium** com plano Free gratuito (padrão no cadastro) + 3 planos pagos (basic / intermediate / pro) cobrados via **AbacatePay**.
+- Modelo **freemium** com plano Free gratuito (padrão no cadastro) + 3 planos pagos (basic / intermediate / pro) cobrados pelo **Google Play Billing**, com RevenueCat.
 - Recursos avançados: captura de transação por **voz** e por **OCR de comprovantes** (OpenAI via Edge Functions), importação de extratos XLSX/CSV, lock biométrico, exportação de dados (LGPD).
 
 ---
@@ -27,7 +27,7 @@ Aplicativo de **controle de finanças pessoais** desenvolvido com React Native (
 | Planilhas | xlsx (importação de extratos) |
 | Biometria | expo-local-authentication |
 | Storage local | AsyncStorage + expo-secure-store |
-| Pagamentos | AbacatePay (checkout + webhook) |
+| Pagamentos | Google Play Billing + RevenueCat |
 | IA | OpenAI (OCR e transcrição de voz, nas Edge Functions) |
 | Testes | Jest + jest-expo + @testing-library/react-native |
 
@@ -72,7 +72,7 @@ app-financeiro/
 │   ├── features/              # Organização POR FEATURE (padrão principal do projeto)
 │   │   ├── accounts/          # Contas bancárias e transferências
 │   │   ├── auth/              # Telas, contexto e validações do fluxo de autenticação
-│   │   ├── billing/           # Integração AbacatePay
+│   │   ├── billing/           # Google Play Billing via RevenueCat
 │   │   ├── budgets/           # Orçamentos mensais por categoria
 │   │   ├── cards/             # Cartões de crédito, faturas e parcelas
 │   │   ├── dashboard/         # Dados da Home
@@ -196,7 +196,7 @@ Cliente inicializado em `src/lib/supabase.ts` — storage adaptativo: AsyncStora
 | Conteúdo | `help_categories`, `help_articles`, `help_article_steps`, `app_content_blocks`, `app_external_links` |
 | Suporte | `support_conversations`, `support_messages` |
 | Notificações | `user_notifications` |
-| Billing | `billing_checkout_sessions`, `billing_webhook_events` |
+| Billing | `billing_provider_events` + tabelas legadas da AbacatePay |
 
 ### Views
 
@@ -224,12 +224,12 @@ Cliente inicializado em `src/lib/supabase.ts` — storage adaptativo: AsyncStora
 |---|---|
 | `parse-transaction-ocr` | Extrai transação de imagem de comprovante (OpenAI vision) |
 | `parse-transaction-voice` | Transcreve áudio e interpreta a transação (OpenAI) |
-| `create-abacatepay-subscription` | Cria checkout de assinatura no AbacatePay |
-| `abacatepay-webhook` | Recebe webhooks de pagamento |
+| `sync-revenuecat-subscription` | Confere o estado atual da assinatura autenticada |
+| `revenuecat-webhook` | Sincroniza eventos da Google Play recebidos pelo RevenueCat |
 | `export-user-data` | Exportação de dados do usuário (LGPD) |
 | `delete-user-account` | Exclusão de conta (LGPD) |
 
-Utilitários compartilhados em `supabase/functions/_shared/transactionParsing.ts`. Todas exigem Bearer token.
+Utilitários compartilhados ficam em `supabase/functions/_shared/`. As funções chamadas pelo app exigem JWT; `revenuecat-webhook` desabilita a verificação JWT da plataforma e valida seu próprio Bearer token secreto.
 
 ---
 
@@ -242,6 +242,7 @@ EXPO_PUBLIC_SUPABASE_URL
 EXPO_PUBLIC_SUPABASE_ANON_KEY
 EXPO_PUBLIC_PRIVACY_POLICY_URL
 EXPO_PUBLIC_EMAIL_REDIRECT_URL      # appfinanceiro://auth/callback
+EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY
 ```
 
 Nas Edge Functions (secrets do Supabase, nunca no cliente):
@@ -249,6 +250,7 @@ Nas Edge Functions (secrets do Supabase, nunca no cliente):
 ```dotenv
 OPENAI_API_KEY / OPENAI_OCR_MODEL / OPENAI_PARSER_MODEL / OPENAI_TRANSCRIBE_MODEL
 RESEND_API_KEY / RESEND_FROM_EMAIL
+REVENUECAT_SECRET_API_KEY / REVENUECAT_WEBHOOK_AUTH_TOKEN
 ```
 
 Carregamento/sanitização em `src/config/env.ts`.

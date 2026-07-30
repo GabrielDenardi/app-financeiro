@@ -2,6 +2,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { RootNavigator } from "./src/navigation/RootNavigator";
+import { RevenueCatBootstrap } from "./src/features/billing/RevenueCatBootstrap";
 import { AppThemeProvider, useAppTheme } from "./src/theme";
 
 import * as NavigationBar from "expo-navigation-bar";
@@ -36,9 +37,12 @@ function AppNavigation() {
   }, []);
 
   return (
-    <NavigationContainer theme={navigationTheme}>
-      <RootNavigator />
-    </NavigationContainer>
+    <>
+      <RevenueCatBootstrap />
+      <NavigationContainer theme={navigationTheme}>
+        <RootNavigator />
+      </NavigationContainer>
+    </>
   );
 }
 
