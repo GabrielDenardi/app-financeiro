@@ -25,6 +25,25 @@ type LoginEventRow = {
 };
 
 
+// O SDK reporta apenas "non-2xx status code"; a mensagem util (ex.: limite de
+// exportacoes atingido) vem no corpo da resposta da Edge Function.
+async function getFunctionErrorMessage(error: unknown, fallback: string) {
+  const context = (error as { context?: { json?: () => Promise<unknown> } } | null)?.context;
+
+  if (typeof context?.json === 'function') {
+    try {
+      const body = await context.json();
+      if (body && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string') {
+        return (body as { error: string }).error;
+      }
+    } catch {
+      // Corpo indisponivel: mantem a mensagem generica.
+    }
+  }
+
+  return fallback;
+}
+
 async function ensureDataImportExportAllowed(userId: string) {
   const { data, error } = await supabase
     .from('profiles')
@@ -260,7 +279,7 @@ export async function requestDataExport(): Promise<string | null> {
   });
 
   if (invokeError) {
-    throw new Error(invokeError.message);
+    throw new Error(await getFunctionErrorMessage(invokeError, invokeError.message));
   }
 
   const { data: requestData, error: requestFetchError } = await supabase

@@ -383,4 +383,86 @@ begin
 end;
 $$;
 
+-- A exportacao de dados precisa ter teto por hora, e cada consumo deve descartar as
+-- janelas ja fechadas do mesmo subject em vez de acumular linhas para sempre.
+reset role;
+select set_config('request.jwt.claims', '{}', true);
+delete from private.security_rate_limits
+where subject_key = '11111111-1111-4111-8111-111111111111'
+  and feature = 'export';
+insert into private.security_rate_limits (
+  subject_key, feature, window_started_at, request_count, unit_count
+)
+values (
+  '11111111-1111-4111-8111-111111111111',
+  'export',
+  date_trunc('hour', now()) - interval '3 hours',
+  3,
+  3
+);
+
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","aal":"aal2"}',
+  true
+);
+do $$
+declare
+  live_rows integer;
+begin
+  perform public.consume_edge_quota('export', 1);
+
+  select count(*) into live_rows
+  from private.security_rate_limits
+  where subject_key = '11111111-1111-4111-8111-111111111111'
+    and feature = 'export';
+
+  if live_rows <> 1 then
+    raise exception 'SEC-RATE-LIMIT-PRUNE-034 kept % stale counter rows', live_rows - 1;
+  end if;
+
+  perform public.consume_edge_quota('export', 1);
+  perform public.consume_edge_quota('export', 1);
+
+  begin
+    perform public.consume_edge_quota('export', 1);
+    raise exception 'SEC-EXPORT-QUOTA-035 allowed an unbounded export';
+  exception
+    when others then
+      if sqlerrm not like '%Limite de uso temporario%' then raise; end if;
+  end;
+end;
+$$;
+
+-- Uma autenticacao por CPF bem-sucedida devolve o orcamento de tentativas ao dono
+-- da conta; tentativas invalidas continuam somando ate o bloqueio.
+reset role;
+select set_config('request.jwt.claims', '{}', true);
+do $$
+declare
+  rate_key text := repeat('a1b2c3d4', 8);
+begin
+  delete from private.security_rate_limits where subject_key = rate_key;
+
+  for i in 1..5 loop
+    if not public.consume_auth_rate_limit(rate_key) then
+      raise exception 'SEC-AUTH-RATE-RESET-036 blocked attempt % of 5', i;
+    end if;
+  end loop;
+
+  if public.consume_auth_rate_limit(rate_key) then
+    raise exception 'SEC-AUTH-RATE-RESET-036 allowed a sixth attempt';
+  end if;
+
+  perform public.reset_auth_rate_limit(rate_key);
+
+  if not public.consume_auth_rate_limit(rate_key) then
+    raise exception 'SEC-AUTH-RATE-RESET-036 kept a valid sign-in locked out';
+  end if;
+
+  delete from private.security_rate_limits where subject_key = rate_key;
+end;
+$$;
+
 rollback;

@@ -53,6 +53,19 @@ Deno.serve(async (request) => {
       });
     }
 
+    // Um dump completo por chamada: sem quota, o plano habilitado permite repetir em
+    // laco. Responde direto para nao virar 500 no catch abaixo.
+    const { error: quotaError } = await userClient.rpc('consume_edge_quota', {
+      p_feature: 'export',
+      p_units: 1,
+    });
+    if (quotaError) {
+      return new Response(JSON.stringify({ error: 'Limite de exportacoes temporario atingido.' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const payload = await request.json();
     requestId = payload.requestId;
     userId = authData.user.id;

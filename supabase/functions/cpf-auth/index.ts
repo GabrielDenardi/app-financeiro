@@ -84,6 +84,10 @@ Deno.serve(async (request) => {
     return json({ error: 'CPF ou senha invalidos.' }, 401);
   }
 
+  // Credenciais validas nao devem consumir o orcamento de tentativas: sem isso, abrir
+  // o app algumas vezes na mesma janela ja bloqueia o proprio dono da conta.
+  await adminClient.rpc('reset_auth_rate_limit', { p_key: rateKey });
+
   return json({
     session: {
       access_token: data.session.access_token,
