@@ -780,6 +780,34 @@ export function RegisterStateScreen({ navigation }: ScreenProps<'RegisterState'>
   );
 }
 
+type LegalLinkButtonProps = {
+  label: string;
+  url: string;
+  documentName: string;
+  envVar: string;
+  onError: (message: string) => void;
+};
+
+function LegalLinkButton({ label, url, documentName, envVar, onError }: LegalLinkButtonProps) {
+  return (
+    <Pressable
+      onPress={() => {
+        if (!url) {
+          onError(`Defina ${envVar} para abrir ${documentName}.`);
+          return;
+        }
+
+        Linking.openURL(url).catch(() => {
+          onError(`Não foi possível abrir ${documentName}.`);
+        });
+      }}
+      style={({ pressed }) => [styles.linkButton, pressed && styles.pressed]}
+    >
+      <Text style={styles.linkButtonText}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export function RegisterConsentScreen({ navigation }: ScreenProps<'RegisterConsent'>) {
   const { setField } = useAuthFlow();
   const [accepted, setAccepted] = useState(false);
@@ -798,7 +826,7 @@ export function RegisterConsentScreen({ navigation }: ScreenProps<'RegisterConse
   return (
     <AuthScaffold
       title="Falta pouco para concluir"
-      subtitle="Ao enviar, você declara que leu e concorda com as condições de tratamento de dados pessoais."
+      subtitle="Leia os dois documentos antes de continuar. Eles explicam as regras do serviço e o que fazemos com os seus dados."
       progress={progressMap.consent}
       onBack={() => navigation.goBack()}
       footer={<PrimaryButton title="Aceitar e continuar" onPress={handleContinue} />}
@@ -819,26 +847,26 @@ export function RegisterConsentScreen({ navigation }: ScreenProps<'RegisterConse
         ]}
       >
         <View style={[styles.checkbox, accepted && styles.checkboxActive]} />
-        <Text style={styles.checkboxText}>Li e concordo com os termos e condições.</Text>
+        <Text style={styles.checkboxText}>
+          Li e concordo com os termos de uso e com a política de privacidade.
+        </Text>
       </Pressable>
 
-      <Pressable
-        onPress={() => {
-          if (!appEnv.privacyPolicyUrl) {
-            setError(
-              'Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a política de privacidade.',
-            );
-            return;
-          }
+      <LegalLinkButton
+        label="Ler termos de uso"
+        url={appEnv.termsOfUseUrl}
+        documentName="os termos de uso"
+        envVar="EXPO_PUBLIC_TERMS_OF_USE_URL"
+        onError={setError}
+      />
 
-          Linking.openURL(appEnv.privacyPolicyUrl).catch(() => {
-            setError('Não foi possível abrir a política de privacidade.');
-          });
-        }}
-        style={({ pressed }) => [styles.linkButton, pressed && styles.pressed]}
-      >
-        <Text style={styles.linkButtonText}>Ler política de privacidade</Text>
-      </Pressable>
+      <LegalLinkButton
+        label="Ler política de privacidade"
+        url={appEnv.privacyPolicyUrl}
+        documentName="a política de privacidade"
+        envVar="EXPO_PUBLIC_PRIVACY_POLICY_URL"
+        onError={setError}
+      />
 
       {error ? <InlineMessage message={error} /> : null}
     </AuthScaffold>
