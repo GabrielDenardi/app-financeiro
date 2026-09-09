@@ -33,6 +33,7 @@ function sanitizePublicUrl(url: string): string {
 const rawSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? '').trim();
 const rawSupabaseAnonKey = (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '').trim();
 const rawPrivacyPolicyUrl = (process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL ?? '').trim();
+const rawTermsOfUseUrl = (process.env.EXPO_PUBLIC_TERMS_OF_USE_URL ?? '').trim();
 const rawEmailRedirectUrl = (process.env.EXPO_PUBLIC_EMAIL_REDIRECT_URL ?? '').trim();
 const rawRevenueCatGoogleApiKey = (
   process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY ?? ''
@@ -42,6 +43,7 @@ export const appEnv = {
   supabaseUrl: rawSupabaseUrl,
   supabaseAnonKey: rawSupabaseAnonKey,
   privacyPolicyUrl: sanitizePublicUrl(rawPrivacyPolicyUrl),
+  termsOfUseUrl: sanitizePublicUrl(rawTermsOfUseUrl),
   emailRedirectUrl: sanitizePublicUrl(rawEmailRedirectUrl),
   revenueCatGoogleApiKey: rawRevenueCatGoogleApiKey,
 } as const;

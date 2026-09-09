@@ -840,6 +840,22 @@ export function RegisterConsentScreen({ navigation }: ScreenProps<'RegisterConse
         <Text style={styles.linkButtonText}>Ler política de privacidade</Text>
       </Pressable>
 
+      <Pressable
+        onPress={() => {
+          if (!appEnv.termsOfUseUrl) {
+            setError('Defina EXPO_PUBLIC_TERMS_OF_USE_URL para abrir os termos de uso.');
+            return;
+          }
+
+          Linking.openURL(appEnv.termsOfUseUrl).catch(() => {
+            setError('Não foi possível abrir os termos de uso.');
+          });
+        }}
+        style={({ pressed }) => [styles.linkButton, pressed && styles.pressed]}
+      >
+        <Text style={styles.linkButtonText}>Ler termos de uso</Text>
+      </Pressable>
+
       {error ? <InlineMessage message={error} /> : null}
     </AuthScaffold>
   );
