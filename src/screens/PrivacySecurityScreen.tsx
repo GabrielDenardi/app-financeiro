@@ -177,6 +177,17 @@ export function PrivacySecurityScreen({ navigation }: any) {
     });
   };
 
+  const onOpenTerms = () => {
+    if (!appEnv.termsOfUseUrl) {
+      Alert.alert('Link indisponivel', 'Defina EXPO_PUBLIC_TERMS_OF_USE_URL para abrir os termos.');
+      return;
+    }
+
+    Linking.openURL(appEnv.termsOfUseUrl).catch(() => {
+      Alert.alert('Erro', 'Nao foi possivel abrir os termos de uso.');
+    });
+  };
+
   return (
     <PageShell>
       <PageHeader title="Privacidade e Seguranca" onBackPress={() => navigation.goBack()} />
@@ -296,6 +307,9 @@ export function PrivacySecurityScreen({ navigation }: any) {
         </Text>
         <Pressable onPress={onOpenPolicy}>
           <Text style={styles.policyLink}>Ler politica completa</Text>
+        </Pressable>
+        <Pressable onPress={onOpenTerms}>
+          <Text style={styles.policyLink}>Ler termos de uso</Text>
         </Pressable>
       </View>
 
