@@ -60,6 +60,12 @@
         }
       ],
       "expo-asset"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d5c136ec-9980-467a-a3e2-275d83acc2e9"
+      }
+    },
+    "owner": "gabriel.denardi"
   }
 }
