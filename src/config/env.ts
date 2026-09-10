@@ -51,13 +51,25 @@ export const appEnv = {
 export const hasSupabaseEnv =
   appEnv.supabaseUrl.length > 0 && appEnv.supabaseAnonKey.length > 0;
 
-export const hasRevenueCatGoogleEnv =
-  (appEnv.revenueCatGoogleApiKey.startsWith('goog_') ||
-    appEnv.revenueCatGoogleApiKey.startsWith('test_')) &&
-  appEnv.revenueCatGoogleApiKey.length > 'test_'.length;
+function hasPrefixWithBody(value: string, prefix: string): boolean {
+  return value.startsWith(prefix) && value.length > prefix.length;
+}
 
-export const isRevenueCatTestStore =
-  appEnv.revenueCatGoogleApiKey.startsWith('test_');
+export function getRevenueCatKeyStatus(apiKey: string, isDevelopmentBuild: boolean) {
+  const isGooglePlayKey = hasPrefixWithBody(apiKey, 'goog_');
+  const isTestStore = isDevelopmentBuild && hasPrefixWithBody(apiKey, 'test_');
+
+  return {
+    isConfigured: isGooglePlayKey || isTestStore,
+    isTestStore,
+  };
+}
+
+const revenueCatKeyStatus = getRevenueCatKeyStatus(appEnv.revenueCatGoogleApiKey, __DEV__);
+
+export const hasRevenueCatGoogleEnv = revenueCatKeyStatus.isConfigured;
+
+export const isRevenueCatTestStore = revenueCatKeyStatus.isTestStore;
 
 if (rawEmailRedirectUrl && !appEnv.emailRedirectUrl) {
   console.warn(
