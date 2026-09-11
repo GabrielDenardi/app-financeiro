@@ -108,31 +108,31 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>
-            {greeting},{" "}
-            <Text style={styles.greetingName}>{firstName}</Text>
-          </Text>
-          <Text style={styles.subtitle}>{getCurrentMonthLabel()}</Text>
-        </View>
-        <Pressable
-          style={styles.visibilityButton}
-          onPress={() => setShowValues((current) => !current)}
-        >
-          {showValues ? (
-            <Eye color={colors.white} size={18} />
-          ) : (
-            <EyeOff color={colors.white} size={18} />
-          )}
-        </Pressable>
-      </View>
-
-      <View style={styles.scrollWrapper}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>
+              {greeting},{" "}
+              <Text style={styles.greetingName}>{firstName}</Text>
+            </Text>
+            <Text style={styles.subtitle}>{getCurrentMonthLabel()}</Text>
+          </View>
+          <Pressable
+            style={styles.visibilityButton}
+            onPress={() => setShowValues((current) => !current)}
+          >
+            {showValues ? (
+              <Eye color={colors.white} size={18} />
+            ) : (
+              <EyeOff color={colors.white} size={18} />
+            )}
+          </Pressable>
+        </View>
+
+        <View style={styles.content}>
         <BalanceCard
           summary={{
             monthLabel: summary?.monthLabel ?? "Mês atual",
@@ -291,8 +291,8 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
             </View>
           )}
         </Card>
+        </View>
       </ScrollView>
-      </View>
 
       <FloatingActionButton
         style={styles.fab}
@@ -322,18 +322,19 @@ const createStyles = (colors: AppColors, tabBarHeight: number) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      backgroundColor: colors.primary,
       paddingHorizontal: layout.pageHorizontal,
       paddingTop: layout.pageHeaderTop,
       paddingBottom: spacing.xl,
     },
-    scrollWrapper: {
-      flex: 1,
+    scrollContent: {
+      flexGrow: 1,
+    },
+    content: {
+      flexGrow: 1,
       backgroundColor: colors.background,
       borderTopLeftRadius: radius.xl,
       borderTopRightRadius: radius.xl,
-      overflow: "hidden",
-    },
-    content: {
       padding: layout.pageHorizontal,
       gap: layout.pageSectionGap,
       paddingBottom: tabBarHeight + 72,
