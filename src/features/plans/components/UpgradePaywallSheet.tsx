@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { CheckCircle2, Lock } from 'lucide-react-native';
 
@@ -9,6 +9,7 @@ import { formatCurrencyBRL } from '../../../utils/format';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import { BottomSheet } from '../../../components/BottomSheet';
 import { Button } from '../../../components/Button';
+import { useToast } from '../../../components/Toast';
 import { SUBSCRIPTION_PLANS, TRIAL_DURATION_DAYS } from '../plans';
 import { useCurrentPlan, usePaywallStats, useStartTrialMutation } from '../hooks';
 
@@ -33,6 +34,7 @@ export function UpgradePaywallSheet({
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<NavigationProp<AppStackParamList>>();
+  const { showSuccess, showError } = useToast();
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
   const statsQuery = usePaywallStats(user?.id, visible);
@@ -45,15 +47,11 @@ export function UpgradePaywallSheet({
     try {
       await startTrial.mutateAsync();
       onClose();
-      Alert.alert(
-        'Teste gratuito ativado',
-        `Voce tem ${TRIAL_DURATION_DAYS} dias com os recursos do ${intermediate.name}. Aproveite!`,
+      showSuccess(
+        `Teste gratuito ativado! Voce tem ${TRIAL_DURATION_DAYS} dias com os recursos do ${intermediate.name}. Aproveite!`,
       );
     } catch (error) {
-      Alert.alert(
-        'Teste gratuito',
-        error instanceof Error ? error.message : 'Nao foi possivel iniciar o periodo de teste.',
-      );
+      showError(error instanceof Error ? error.message : 'Nao foi possivel iniciar o periodo de teste.');
     }
   };
 

@@ -1,18 +1,20 @@
 import { useMemo } from 'react';
-import { Alert, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
+import { useToast } from '../components/Toast';
 import { supabase } from '../lib/supabase';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 export function SettingsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showError } = useToast();
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      Alert.alert('Erro', 'Não foi possível sair agora. Tente novamente.');
+      showError('Não foi possível sair agora. Tente novamente.');
     }
   };
 

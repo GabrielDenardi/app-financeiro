@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +18,7 @@ import { Search } from 'lucide-react-native';
 import { FloatingActionButton } from '../components/FloatingActionButton';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
+import { useToast } from '../components/Toast';
 import { useBottomTabBarHeight } from '../components/BottomTabBarMock';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
@@ -57,6 +57,7 @@ export default function ListChatScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const styles = useMemo(() => createStyles(colors, tabBarHeight), [colors, tabBarHeight]);
   const navigation = useNavigation<any>();
+  const { showError } = useToast();
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
   const conversationsQuery = useSupportConversations(
@@ -103,8 +104,7 @@ export default function ListChatScreen() {
       setDescription('');
       navigation.navigate('Chat', { chatId: conversationId, chatTitle: title });
     } catch (error) {
-      Alert.alert(
-        'Chat de suporte',
+      showError(
         error instanceof Error ? error.message : 'Não foi possível iniciar a conversa.',
       );
     }

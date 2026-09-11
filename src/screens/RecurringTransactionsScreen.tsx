@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -34,6 +33,7 @@ import { Badge } from '../components/Badge';
 import { Chip } from '../components/Chip';
 import { FieldCard, FieldDivider, FieldRow } from '../components/FormField';
 import { getCategoryIcon } from '../components/TransactionListItem';
+import { useToast } from '../components/Toast';
 import { useAccounts } from '../features/accounts/hooks/useAccounts';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import {
@@ -89,6 +89,7 @@ export default function RecurringTransactionsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
+  const { showSuccess, showError } = useToast();
   const user = useAuthenticatedUser();
   const recurringQuery = useRecurringTransactions(user?.id);
   const accountsQuery = useAccounts(user?.id);
@@ -193,13 +194,13 @@ export default function RecurringTransactionsScreen() {
 
   const handleSave = async () => {
     if (!title || !amount || !accountId) {
-      Alert.alert('Erro', 'Preencha os campos obrigatórios.');
+      showError('Preencha os campos obrigatórios.');
       return;
     }
 
     const dayNumber = Number(day);
     if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > 31) {
-      Alert.alert('Erro', 'Informe um dia do mês entre 1 e 31.');
+      showError('Informe um dia do mês entre 1 e 31.');
       return;
     }
 
@@ -218,12 +219,15 @@ export default function RecurringTransactionsScreen() {
     try {
       if (editingId) {
         await updateMutation.mutateAsync({ id: editingId, ...payload });
+        closeMainModal();
+        showSuccess('Recorrência atualizada.');
       } else {
         await createMutation.mutateAsync(payload);
+        closeMainModal();
+        showSuccess('Recorrência criada.');
       }
-      closeMainModal();
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível salvar a recorrência.');
+      showError(error instanceof Error ? error.message : 'Não foi possível salvar a recorrência.');
     }
   };
 
@@ -242,9 +246,9 @@ export default function RecurringTransactionsScreen() {
         note: item.notes,
         executionMonth: currentMonthDate(),
       });
-      Alert.alert('Confirmado', `${item.title} (${formatCurrencyBRL(item.amount)}) lançado no extrato.`);
+      showSuccess(`${item.title} (${formatCurrencyBRL(item.amount)}) lançado no extrato.`);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível confirmar o lançamento.');
+      showError(error instanceof Error ? error.message : 'Não foi possível confirmar o lançamento.');
     } finally {
       setPendingActionId(null);
     }
@@ -262,11 +266,11 @@ export default function RecurringTransactionsScreen() {
         note: selectedItem.notes,
         executionMonth: currentMonthDate(),
       });
-      Alert.alert('Sucesso', `Lançamento de ${formatCurrencyBRL(normalizeCurrencyInput(adjustmentValue))} confirmado no extrato.`);
+      showSuccess(`Lançamento de ${formatCurrencyBRL(normalizeCurrencyInput(adjustmentValue))} confirmado no extrato.`);
       setConfirmModalVisible(false);
       setSelectedItem(null);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível confirmar o lançamento.');
+      showError(error instanceof Error ? error.message : 'Não foi possível confirmar o lançamento.');
     }
   };
 
@@ -282,8 +286,9 @@ export default function RecurringTransactionsScreen() {
             ruleId: item.id,
             executionMonth: currentMonthDate(),
           });
+          showSuccess('Confirmação desfeita.');
         } catch (error) {
-          Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível desfazer a confirmação.');
+          showError(error instanceof Error ? error.message : 'Não foi possível desfazer a confirmação.');
         } finally {
           setPendingActionId(null);
         }
@@ -295,7 +300,7 @@ export default function RecurringTransactionsScreen() {
     try {
       await updateMutation.mutateAsync({ id: item.id, isActive: !item.isActive });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível atualizar a recorrência.');
+      showError(error instanceof Error ? error.message : 'Não foi possível atualizar a recorrência.');
     }
   };
 
@@ -321,8 +326,9 @@ export default function RecurringTransactionsScreen() {
       onConfirm: async () => {
         try {
           await deleteMutation.mutateAsync(item.id);
+          showSuccess('Recorrência excluída.');
         } catch (error) {
-          Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível remover a recorrência.');
+          showError(error instanceof Error ? error.message : 'Não foi possível remover a recorrência.');
         }
       },
     });

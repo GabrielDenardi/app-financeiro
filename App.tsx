@@ -4,6 +4,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { RevenueCatBootstrap } from "./src/features/billing/RevenueCatBootstrap";
+import { ResultModalProvider } from "./src/components/ResultModal";
+import { ToastProvider } from "./src/components/Toast";
 import { AppThemeProvider, useAppTheme } from "./src/theme";
 
 import * as NavigationBar from "expo-navigation-bar";
@@ -35,7 +37,11 @@ export default function App() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <AppThemeProvider>
-          <AppNavigation />
+          <ToastProvider>
+            <ResultModalProvider>
+              <AppNavigation />
+            </ResultModalProvider>
+          </ToastProvider>
         </AppThemeProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

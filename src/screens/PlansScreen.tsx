@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckCircle2 } from 'lucide-react-native';
 
 import { Card } from '../components/Card';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
+import { useToast } from '../components/Toast';
 import { isRevenueCatTestStore } from '../config/env';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import {
@@ -24,6 +25,7 @@ const PLAN_ORDER = ['free', 'basic', 'intermediate', 'pro'] as const;
 export function PlansScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showSuccess, showError } = useToast();
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
   const startTrial = useStartTrialMutation(user?.id);
@@ -44,13 +46,11 @@ export function PlansScreen({ navigation }: any) {
   const handleStartTrial = async () => {
     try {
       await startTrial.mutateAsync();
-      Alert.alert(
-        'Teste gratuito ativado',
-        `Você tem ${TRIAL_DURATION_DAYS} dias com os recursos do Plano Intermediário. Aproveite!`,
+      showSuccess(
+        `Teste gratuito ativado! Você tem ${TRIAL_DURATION_DAYS} dias com os recursos do Plano Intermediário.`,
       );
     } catch (error) {
-      Alert.alert(
-        'Teste gratuito',
+      showError(
         error instanceof Error ? error.message : 'Não foi possível iniciar o período de teste.',
       );
     }
@@ -64,17 +64,17 @@ export function PlansScreen({ navigation }: any) {
     try {
       const restored = await restorePurchases.mutateAsync();
       await currentPlan.refetch();
-      Alert.alert(
-        'Restaurar compras',
-        restored
-          ? 'Sua assinatura foi restaurada com sucesso.'
-          : isRevenueCatTestStore
+      if (restored) {
+        showSuccess('Sua assinatura foi restaurada com sucesso.');
+      } else {
+        showError(
+          isRevenueCatTestStore
             ? 'Nenhuma assinatura de teste ativa foi encontrada.'
             : 'Nenhuma assinatura ativa foi encontrada nesta conta Google Play.',
-      );
+        );
+      }
     } catch (error) {
-      Alert.alert(
-        'Restaurar compras',
+      showError(
         error instanceof Error ? error.message : 'Não foi possível restaurar suas compras.',
       );
     }
@@ -87,8 +87,7 @@ export function PlansScreen({ navigation }: any) {
 
     if (planId === 'free') {
       if (isRevenueCatTestStore) {
-        Alert.alert(
-          'Assinatura de teste',
+        showError(
           'As assinaturas do RevenueCat Test Store expiram automaticamente. Reabra o app após a expiração para atualizar o Plano Free.',
         );
         return;
@@ -97,8 +96,7 @@ export function PlansScreen({ navigation }: any) {
       try {
         await openGooglePlaySubscriptionManagement();
       } catch (error) {
-        Alert.alert(
-          'Gerenciar assinatura',
+        showError(
           error instanceof Error
             ? error.message
             : 'Não foi possível abrir o gerenciamento da assinatura.',
@@ -108,16 +106,13 @@ export function PlansScreen({ navigation }: any) {
     }
 
     if (!user?.id) {
-      Alert.alert('Planos', 'Entre novamente na sua conta para assinar um plano.');
+      showError('Entre novamente na sua conta para assinar um plano.');
       return;
     }
 
     const selectedPackage = storePackages[planId];
     if (!selectedPackage) {
-      Alert.alert(
-        'Planos',
-        storeError ?? 'Este plano ainda não está disponível na Google Play.',
-      );
+      showError(storeError ?? 'Este plano ainda não está disponível na Google Play.');
       return;
     }
 
@@ -125,21 +120,15 @@ export function PlansScreen({ navigation }: any) {
     try {
       const result = await purchasePlan.mutateAsync(selectedPackage);
       await currentPlan.refetch();
-      Alert.alert(
+      showSuccess(
         result.scheduled
-          ? 'Mudança agendada'
+          ? 'Mudança agendada: seu novo plano entrará em vigor ao final do período atual.'
           : isRevenueCatTestStore
-            ? 'Compra de teste confirmada'
-            : 'Assinatura confirmada',
-        result.scheduled
-          ? 'Seu novo plano entrará em vigor ao final do período atual.'
-          : isRevenueCatTestStore
-            ? 'Seu plano foi ativado no ambiente de teste da RevenueCat.'
-            : 'Seu plano foi ativado pela Google Play.',
+            ? 'Compra de teste confirmada: seu plano foi ativado no ambiente de teste da RevenueCat.'
+            : 'Assinatura confirmada: seu plano foi ativado pela Google Play.',
       );
     } catch (error) {
-      Alert.alert(
-        'Planos',
+      showError(
         error instanceof Error ? error.message : 'Não foi possível iniciar a assinatura.',
       );
     } finally {

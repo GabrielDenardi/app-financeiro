@@ -2,7 +2,6 @@ import { useNavigation } from '@react-navigation/native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -18,7 +17,11 @@ import { BottomSheet } from '../../../components/BottomSheet';
 import { Button } from '../../../components/Button';
 import { Card } from '../../../components/Card';
 import { Chip } from '../../../components/Chip';
+import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { FieldCard, FieldDivider, FieldRow } from '../../../components/FormField';
+import { useResultModal } from '../../../components/ResultModal';
+import { useToast } from '../../../components/Toast';
+import { beginTrustedSystemUI } from '../../../lib/trustedSystemUi';
 import { usePreferences } from '../../preferences/hooks/usePreferences';
 import {
   deleteTransactionAttachment,
@@ -97,6 +100,8 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
+  const { showSuccess, showError } = useToast();
+  const { showResult } = useResultModal();
   const currentUserId = currentUser?.id ?? null;
   const groupDetailsQuery = useGroupDetails(currentUserId, groupId);
   const preferencesQuery = usePreferences(currentUserId);
@@ -122,6 +127,8 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
   const [settlementAmount, setSettlementAmount] = useState('');
   const [settlementMethod, setSettlementMethod] = useState<SettlementPaymentMethod>('PIX');
   const [settlementNote, setSettlementNote] = useState('');
+  const [settlementToConfirm, setSettlementToConfirm] = useState<GroupSettlement | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<GroupMember | null>(null);
 
   const groupData = groupDetailsQuery.data;
   const members = useMemo(
@@ -211,12 +218,13 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
       return;
     }
 
+    beginTrustedSystemUI();
     try {
       await Share.share({
         message: `Entre no grupo "${groupData.group.title}" com o codigo ${groupData.group.shareCode}.`,
       });
     } catch {
-      Alert.alert('Compartilhamento', 'Nao foi possivel compartilhar o codigo agora.');
+      showError('Nao foi possivel compartilhar o codigo agora.');
     }
   };
 
@@ -227,7 +235,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         setSplitReceiptFile(file);
       }
     } catch (error) {
-      Alert.alert('Comprovante', error instanceof Error ? error.message : 'Nao foi possivel abrir a camera.');
+      showError(error instanceof Error ? error.message : 'Nao foi possivel abrir a camera.');
     }
   };
 
@@ -238,7 +246,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         setSplitReceiptFile(file);
       }
     } catch (error) {
-      Alert.alert('Comprovante', error instanceof Error ? error.message : 'Nao foi possivel abrir a galeria.');
+      showError(error instanceof Error ? error.message : 'Nao foi possivel abrir a galeria.');
     }
   };
 
@@ -249,7 +257,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         setSplitReceiptFile(file);
       }
     } catch (error) {
-      Alert.alert('Comprovante', error instanceof Error ? error.message : 'Nao foi possivel abrir o documento.');
+      showError(error instanceof Error ? error.message : 'Nao foi possivel abrir o documento.');
     }
   };
 
@@ -259,22 +267,22 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
     }
 
     if (!splitTitle.trim()) {
-      Alert.alert('Divisao', 'Informe um titulo.');
+      showError('Informe um titulo.');
       return;
     }
 
     if (!splitOwnerUserId) {
-      Alert.alert('Divisao', 'Selecione quem pagou ou recebeu.');
+      showError('Selecione quem pagou ou recebeu.');
       return;
     }
 
     if (splitPreview.error) {
-      Alert.alert('Divisao', splitPreview.error);
+      showError(splitPreview.error);
       return;
     }
 
     if (requireGroupExpenseReceipt && splitKind === 'expense' && !splitReceiptFile) {
-      Alert.alert('Divisao', 'Esta despesa em grupo exige comprovante.');
+      showError('Esta despesa em grupo exige comprovante.');
       return;
     }
 
@@ -309,6 +317,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
       });
       setIsSplitModalVisible(false);
       resetSplitForm();
+      showSuccess('Divisão registrada.');
     } catch (error) {
       if (uploadedAttachment) {
         try {
@@ -318,7 +327,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         }
       }
 
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel registrar a divisao.');
+      showError(error instanceof Error ? error.message : 'Nao foi possivel registrar a divisao.');
     }
   };
 
@@ -337,7 +346,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
     const amount = parseDecimal(settlementAmount);
     if (amount <= 0 || amount > Math.abs(selectedBalance.amount) + 0.009) {
-      Alert.alert('Acerto', 'Informe um valor valido dentro do saldo pendente.');
+      showError('Informe um valor valido dentro do saldo pendente.');
       return;
     }
 
@@ -351,53 +360,56 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
       });
       setIsSettlementModalVisible(false);
       setSelectedBalance(null);
+      showResult({
+        variant: 'success',
+        title: 'Acerto solicitado!',
+        message: 'O membro vai confirmar o recebimento em breve.',
+      });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel solicitar o acerto.');
+      showError(error instanceof Error ? error.message : 'Nao foi possivel solicitar o acerto.');
     }
   };
 
   const handleConfirmSettlement = (settlement: GroupSettlement) => {
-    Alert.alert(
-      'Confirmar acerto',
-      `Confirmar o recebimento de ${formatCurrencyBRL(settlement.amount)}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          onPress: async () => {
-            try {
-              await confirmSettlementMutation.mutateAsync(settlement.id);
-            } catch (error) {
-              Alert.alert(
-                'Erro',
-                error instanceof Error ? error.message : 'Nao foi possivel confirmar o acerto.',
-              );
-            }
-          },
-        },
-      ],
-    );
+    setSettlementToConfirm(settlement);
+  };
+
+  const confirmSettlementConfirmation = async () => {
+    if (!settlementToConfirm) {
+      return;
+    }
+
+    try {
+      await confirmSettlementMutation.mutateAsync(settlementToConfirm.id);
+      setSettlementToConfirm(null);
+      showResult({
+        variant: 'success',
+        title: 'Acerto confirmado!',
+        message: 'O saldo entre vocês foi atualizado.',
+      });
+    } catch (error) {
+      setSettlementToConfirm(null);
+      showError(error instanceof Error ? error.message : 'Nao foi possivel confirmar o acerto.');
+    }
   };
 
   const handleRemoveMember = (member: GroupMember) => {
-    Alert.alert(
-      'Remover membro',
-      `Deseja remover ${member.fullName} do grupo?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Remover',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeMemberMutation.mutateAsync(member.userId);
-            } catch (error) {
-              Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel remover o membro.');
-            }
-          },
-        },
-      ],
-    );
+    setMemberToRemove(member);
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!memberToRemove) {
+      return;
+    }
+
+    try {
+      await removeMemberMutation.mutateAsync(memberToRemove.userId);
+      setMemberToRemove(null);
+      showSuccess('Membro removido.');
+    } catch (error) {
+      setMemberToRemove(null);
+      showError(error instanceof Error ? error.message : 'Nao foi possivel remover o membro.');
+    }
   };
 
   if (groupDetailsQuery.isLoading || !groupData) {
@@ -429,10 +441,12 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Card style={styles.heroCard}>
-          <View style={styles.rowBetween}>
-            <View>
+          <View style={styles.heroCodeRow}>
+            <View style={styles.heroCodeBlock}>
               <Text style={styles.heroMuted}>Codigo</Text>
-              <Text style={styles.heroCode}>{groupData.group.shareCode}</Text>
+              <Text style={styles.heroCode} numberOfLines={1} adjustsFontSizeToFit>
+                {groupData.group.shareCode}
+              </Text>
             </View>
 
             <Button
@@ -822,6 +836,32 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
           ))}
         </View>
       </BottomSheet>
+
+      <ConfirmDialog
+        visible={settlementToConfirm !== null}
+        title="Confirmar acerto"
+        message={
+          settlementToConfirm
+            ? `Confirmar o recebimento de ${formatCurrencyBRL(settlementToConfirm.amount)}?`
+            : ''
+        }
+        confirmLabel="Confirmar"
+        destructive={false}
+        loading={confirmSettlementMutation.isPending}
+        onConfirm={confirmSettlementConfirmation}
+        onCancel={() => setSettlementToConfirm(null)}
+      />
+
+      <ConfirmDialog
+        visible={memberToRemove !== null}
+        title="Remover membro"
+        message={memberToRemove ? `Deseja remover ${memberToRemove.fullName} do grupo?` : ''}
+        confirmLabel="Remover"
+        destructive
+        loading={removeMemberMutation.isPending}
+        onConfirm={confirmRemoveMember}
+        onCancel={() => setMemberToRemove(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -862,6 +902,8 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   positive: { color: colors.success },
   negative: { color: colors.danger },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  heroCodeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: spacing.sm },
+  heroCodeBlock: { flexShrink: 1, minWidth: 0 },
   metricsRow: { flexDirection: 'row', gap: spacing.sm },
   metricCard: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
   metricLabel: { ...typography.caption, color: colors.textSecondary },

@@ -2,7 +2,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
-  Alert,
   type KeyboardTypeOptions,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import { Card } from "../../../components/Card";
 import { PageHeader } from "../../../components/PageHeader";
 import { PageShell } from "../../../components/PageShell";
 import { Button } from "../../../components/Button";
+import { useToast } from "../../../components/Toast";
 import { brazilStates } from "../../auth/constants/locations";
 import {
   formatAddressNumber,
@@ -176,6 +176,7 @@ export function EditProfileScreen({
 }: EditProfileScreenProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showSuccess, showError } = useToast();
   const [form, setForm] = useState<ProfileFormState>(() =>
     createInitialForm(currentUser),
   );
@@ -275,7 +276,7 @@ export function EditProfileScreen({
 
   const handleSave = async () => {
     if (!currentUser) {
-      Alert.alert("Perfil", "Não foi possível identificar o usuário atual.");
+      showError("Não foi possível identificar o usuário atual.");
       return;
     }
 
@@ -292,14 +293,14 @@ export function EditProfileScreen({
 
       setForm(profileToForm(updatedProfile));
       setHydratedProfileId(updatedProfile.id);
+      showSuccess("Perfil atualizado.");
 
       // Navegar direto: Alert com botões é no-op no web e o usuário ficaria preso.
       if (navigation.canGoBack()) {
         navigation.goBack();
       }
     } catch (error) {
-      Alert.alert(
-        "Perfil",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível salvar o perfil agora.",

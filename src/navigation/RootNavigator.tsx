@@ -20,6 +20,7 @@ import {
 } from '../features/preferences/services/biometricService';
 import { registerLoginEvent } from '../features/preferences/services/preferencesService';
 import { supabase } from '../lib/supabase';
+import { isTrustedSystemUiOpen } from '../lib/trustedSystemUi';
 import { type AppColors, useThemeColors } from '../theme';
 import type { AuthSessionState, AuthenticatedUserSummary } from '../types/auth';
 import { AppStack } from './AppStack';
@@ -340,6 +341,12 @@ export function RootNavigator() {
       appStateRef.current = nextState;
 
       if (nextState === 'background') {
+        // Ignora a transição de background causada por uma UI nativa confiável
+        // (share sheet, câmera, seletor de imagem) que o próprio app abriu.
+        if (isTrustedSystemUiOpen()) {
+          return;
+        }
+
         isBiometricLockEnabledLocally()
           .then((enabled) => {
             if (enabled && isMounted) {

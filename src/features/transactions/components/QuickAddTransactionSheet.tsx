@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   StyleSheet,
@@ -20,6 +19,7 @@ import {
 import { BottomSheet } from "../../../components/BottomSheet";
 import { Button } from "../../../components/Button";
 import { Chip } from "../../../components/Chip";
+import { useToast } from "../../../components/Toast";
 import { FieldCard, FieldDivider, FieldRow } from "../../../components/FormField";
 import {
   radius,
@@ -171,6 +171,7 @@ export function QuickAddTransactionSheet({
 }: QuickAddTransactionSheetProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showSuccess, showError } = useToast();
   const createTransactionMutation = useCreateTransactionMutation(currentUserId);
   const [recorderRevision, setRecorderRevision] = useState(0);
   const recorderOptions = useMemo(
@@ -344,10 +345,7 @@ export function QuickAddTransactionSheet({
     file: LocalCaptureFile,
   ) => {
     if (mode === "voice" && !allowVoiceCapture) {
-      Alert.alert(
-        "Plano necessário",
-        "Cadastro por voz não está disponível no seu plano atual.",
-      );
+      showError("Cadastro por voz não está disponível no seu plano atual.");
       return;
     }
 
@@ -365,8 +363,7 @@ export function QuickAddTransactionSheet({
           : await parseTransactionFromOcr(file);
       applyDraft(draft, mode);
     } catch (error) {
-      Alert.alert(
-        "Captura",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível interpretar o arquivo.",
@@ -389,8 +386,7 @@ export function QuickAddTransactionSheet({
         await handleParseFile("ocr", file);
       }
     } catch (error) {
-      Alert.alert(
-        "OCR",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível abrir a câmera.",
@@ -405,8 +401,7 @@ export function QuickAddTransactionSheet({
         await handleParseFile("ocr", file);
       }
     } catch (error) {
-      Alert.alert(
-        "OCR",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível abrir a galeria.",
@@ -421,8 +416,7 @@ export function QuickAddTransactionSheet({
         await handleParseFile("ocr", file);
       }
     } catch (error) {
-      Alert.alert(
-        "OCR",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível abrir o documento.",
@@ -458,17 +452,14 @@ export function QuickAddTransactionSheet({
 
   const handleStartRecording = async () => {
     if (!allowVoiceCapture) {
-      Alert.alert(
-        "Plano necessário",
-        "Cadastro por voz não está disponível no seu plano atual.",
-      );
+      showError("Cadastro por voz não está disponível no seu plano atual.");
       return;
     }
 
     try {
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert("Voz", "Permissão de microfone negada.");
+        showError("Permissão de microfone negada.");
         return;
       }
 
@@ -490,8 +481,7 @@ export function QuickAddTransactionSheet({
       } catch {
         // Best-effort audio session reset after a failed native recorder call.
       }
-      Alert.alert(
-        "Voz",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível iniciar a gravação.",
@@ -520,8 +510,7 @@ export function QuickAddTransactionSheet({
 
       await handleParseFile("voice", file);
     } catch (error) {
-      Alert.alert(
-        "Voz",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível finalizar a gravação.",
@@ -533,29 +522,29 @@ export function QuickAddTransactionSheet({
 
   const handleSave = async () => {
     if (!currentUserId) {
-      Alert.alert("Transação", "Usuário não autenticado.");
+      showError("Usuário não autenticado.");
       return;
     }
 
     if (!accountId) {
-      Alert.alert("Transação", "Selecione uma conta.");
+      showError("Selecione uma conta.");
       return;
     }
 
     const parsedAmount = amountDigits ? Number(amountDigits) / 100 : 0;
     if (parsedAmount <= 0) {
-      Alert.alert("Transação", "Informe um valor válido.");
+      showError("Informe um valor válido.");
       return;
     }
 
     if (!title.trim()) {
-      Alert.alert("Transação", "Informe uma descrição.");
+      showError("Informe uma descrição.");
       return;
     }
 
     const parsedOccurredOn = parseDateDisplay(occurredOnDisplay);
     if (!parsedOccurredOn) {
-      Alert.alert("Transação", "Informe uma data válida no formato DD/MM/AAAA.");
+      showError("Informe uma data válida no formato DD/MM/AAAA.");
       return;
     }
 
@@ -614,6 +603,7 @@ export function QuickAddTransactionSheet({
 
       await createTransactionMutation.mutateAsync(payload);
       await handleClose();
+      showSuccess(type === "income" ? "Receita lançada." : "Despesa lançada.");
     } catch (error) {
       if (uploadedAttachment) {
         try {
@@ -623,8 +613,7 @@ export function QuickAddTransactionSheet({
         }
       }
 
-      Alert.alert(
-        "Transação",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível salvar a transação.",

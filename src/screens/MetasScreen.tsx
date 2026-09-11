@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -26,6 +25,7 @@ import { BottomSheet } from "../components/BottomSheet";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
+import { useToast } from "../components/Toast";
 import { FieldCard, FieldDivider, FieldRow } from "../components/FormField";
 import { useAccounts } from "../features/accounts/hooks/useAccounts";
 import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
@@ -79,6 +79,7 @@ function monthlyNeed(current: number, target: number, due: string | null) {
 export default function MetasScreen() {
   const themeColors = useThemeColors();
   const s = useMemo(() => createStyles(themeColors), [themeColors]);
+  const { showSuccess, showError } = useToast();
   const goalColors = useMemo(
     () => [
       themeColors.success,
@@ -147,7 +148,7 @@ export default function MetasScreen() {
 
   const onCreate = async () => {
     if (!title.trim() || !target) {
-      Alert.alert("Atenção", "Informe nome e valor alvo.");
+      showError("Informe nome e valor alvo.");
       return;
     }
     try {
@@ -160,9 +161,9 @@ export default function MetasScreen() {
         icon,
       });
       closeModal();
+      showSuccess("Meta criada.");
     } catch (error) {
-      Alert.alert(
-        "Erro",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível criar a meta.",
@@ -177,10 +178,10 @@ export default function MetasScreen() {
     try {
       await deleteGoal.mutateAsync(goalToDelete);
       setGoalToDelete(null);
+      showSuccess("Meta excluída.");
     } catch (error) {
       setGoalToDelete(null);
-      Alert.alert(
-        "Erro",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível excluir a meta.",
@@ -190,7 +191,7 @@ export default function MetasScreen() {
 
   const onContribute = async () => {
     if (!goalId || !accountId || normalizeCurrencyInput(amount) <= 0) {
-      Alert.alert("Atenção", "Selecione uma conta e informe um aporte válido.");
+      showError("Selecione uma conta e informe um aporte válido.");
       return;
     }
     try {
@@ -204,9 +205,9 @@ export default function MetasScreen() {
       setAmount("");
       setNote("");
       setGoalId(null);
+      showSuccess("Aporte registrado.");
     } catch (error) {
-      Alert.alert(
-        "Erro",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível registrar o aporte.",
@@ -221,8 +222,7 @@ export default function MetasScreen() {
       setDeadlineOpen(false);
       setGoalId(null);
     } catch (error) {
-      Alert.alert(
-        "Erro",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível atualizar o prazo.",

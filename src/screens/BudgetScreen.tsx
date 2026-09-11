@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -16,6 +15,7 @@ import { BottomSheet } from "../components/BottomSheet";
 import { Button } from "../components/Button";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Chip } from "../components/Chip";
+import { useToast } from "../components/Toast";
 import { FieldCard, FieldRow } from "../components/FormField";
 import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
 import {
@@ -45,6 +45,7 @@ export default function BudgetsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const currentUser = useAuthenticatedUser();
+  const { showSuccess, showError } = useToast();
   const monthDate = formatMonthDate();
   const budgetsQuery = useBudgets(currentUser?.id, monthDate);
   const categoriesQuery = useFinanceCategories(currentUser?.id);
@@ -100,17 +101,18 @@ export default function BudgetsScreen() {
 
   const handleSave = async () => {
     if (!selectedCategoryId) {
-      Alert.alert("Erro", "Selecione uma categoria.");
+      showError("Selecione uma categoria.");
       return;
     }
 
     const parsedAmount = normalizeCurrencyInput(limitAmount);
     if (parsedAmount <= 0) {
-      Alert.alert("Erro", "Informe um valor maior que zero.");
+      showError("Informe um valor maior que zero.");
       return;
     }
 
     try {
+      const isEditing = Boolean(editingId);
       await upsertBudgetMutation.mutateAsync({
         id: editingId ?? undefined,
         categoryId: selectedCategoryId,
@@ -118,9 +120,9 @@ export default function BudgetsScreen() {
         monthDate,
       });
       closeModal();
+      showSuccess(isEditing ? "Orçamento atualizado." : "Orçamento criado.");
     } catch (error) {
-      Alert.alert(
-        "Erro",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível salvar o orçamento.",
@@ -135,10 +137,10 @@ export default function BudgetsScreen() {
     try {
       await deleteBudgetMutation.mutateAsync(budgetToDelete);
       setBudgetToDelete(null);
+      showSuccess("Orçamento excluído.");
     } catch (error) {
       setBudgetToDelete(null);
-      Alert.alert(
-        "Erro",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível excluir o orçamento.",

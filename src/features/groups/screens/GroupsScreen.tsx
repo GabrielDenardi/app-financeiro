@@ -2,7 +2,6 @@ import { useNavigation } from '@react-navigation/native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -18,6 +17,8 @@ import { BottomSheet } from '../../../components/BottomSheet';
 import { Button } from '../../../components/Button';
 import { Card } from '../../../components/Card';
 import { FieldCard, FieldDivider, FieldRow } from '../../../components/FormField';
+import { useToast } from '../../../components/Toast';
+import { beginTrustedSystemUI } from '../../../lib/trustedSystemUi';
 import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import type { AuthenticatedUserSummary } from '../../../types/auth';
 import { formatCurrencyBRL } from '../../../utils/format';
@@ -45,6 +46,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
+  const { showSuccess, showError } = useToast();
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [isJoinModalVisible, setIsJoinModalVisible] = useState(false);
   const [isPaywallVisible, setIsPaywallVisible] = useState(false);
@@ -68,7 +70,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
 
   const handleCreateGroup = async () => {
     if (!groupTitle.trim()) {
-      Alert.alert('Grupo', 'Informe um nome para o grupo.');
+      showError('Informe um nome para o grupo.');
       return;
     }
 
@@ -80,15 +82,16 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
       setGroupTitle('');
       setGroupDescription('');
       setIsCreateModalVisible(false);
+      showSuccess('Grupo criado.');
       navigation.navigate('GroupDetails', { groupId: newGroupId });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível criar o grupo.');
+      showError(error instanceof Error ? error.message : 'Não foi possível criar o grupo.');
     }
   };
 
   const handleJoinGroup = async () => {
     if (!/^[A-F0-9]{16}$/.test(joinCode.trim().toUpperCase())) {
-      Alert.alert('Grupo', 'Informe um código válido com 16 caracteres.');
+      showError('Informe um código válido com 16 caracteres.');
       return;
     }
 
@@ -96,19 +99,21 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
       const targetGroupId = await joinGroupMutation.mutateAsync(joinCode);
       setJoinCode('');
       setIsJoinModalVisible(false);
+      showSuccess('Você entrou no grupo.');
       navigation.navigate('GroupDetails', { groupId: targetGroupId });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível entrar no grupo.');
+      showError(error instanceof Error ? error.message : 'Não foi possível entrar no grupo.');
     }
   };
 
   const handleShareCode = async (title: string, shareCode: string) => {
+    beginTrustedSystemUI();
     try {
       await Share.share({
         message: `Entre no grupo "${title}" com o código ${shareCode}.`,
       });
-    } catch (error) {
-      Alert.alert('Compartilhamento', 'Não foi possível abrir o compartilhamento agora.');
+    } catch {
+      showError('Não foi possível abrir o compartilhamento agora.');
     }
   };
 
@@ -223,7 +228,9 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
             <View style={styles.codeRow}>
               <View style={styles.codePill}>
                 <Copy size={14} color={colors.textSecondary} />
-                <Text style={styles.codeText}>{item.group.shareCode}</Text>
+                <Text style={styles.codeText} numberOfLines={1}>
+                  {item.group.shareCode}
+                </Text>
               </View>
 
               <Button
@@ -474,11 +481,14 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: spacing.md,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
   codePill: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
+    minWidth: 0,
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,

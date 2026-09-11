@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react-native";
 
 import { AddAccountModal } from "../components/AddAccountModal";
+import { useToast } from "../components/Toast";
 import { TransferModal } from "../components/TransferModal";
 import { typeConfig } from "../data/accountsMock";
 import {
@@ -51,6 +51,7 @@ import { formatCurrencyBRL } from "../utils/format";
 export function AccountsScreen({ navigation }: any) {
   const { colors, isDarkMode } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showSuccess, showError } = useToast();
   const currentUser = useAuthenticatedUser();
   const overviewQuery = useAccountsOverview(currentUser?.id);
   const createAccountMutation = useCreateAccountMutation(currentUser?.id);
@@ -78,13 +79,14 @@ export function AccountsScreen({ navigation }: any) {
       if (editingAccount) {
         await updateAccountMutation.mutateAsync({ id: editingAccount.id, ...input });
         setEditingAccount(null);
+        showSuccess("Conta atualizada.");
       } else {
         await createAccountMutation.mutateAsync(input);
+        showSuccess("Conta criada.");
       }
       setAddVisible(false);
     } catch (error) {
-      Alert.alert(
-        "Erro",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível salvar a conta.",
@@ -94,10 +96,7 @@ export function AccountsScreen({ navigation }: any) {
 
   const handleOpenAddAccount = () => {
     if (!canCreateAccount(currentPlan.plan.id, activeAccounts.length)) {
-      Alert.alert(
-        "Limite do plano",
-        getAccountLimitMessage(currentPlan.plan.id),
-      );
+      showError(getAccountLimitMessage(currentPlan.plan.id));
       return;
     }
 
@@ -108,9 +107,9 @@ export function AccountsScreen({ navigation }: any) {
     try {
       await createTransferMutation.mutateAsync(input);
       setTransferVisible(false);
+      showSuccess("Transferência realizada.");
     } catch (error) {
-      Alert.alert(
-        "Erro",
+      showError(
         error instanceof Error ? error.message : "Não foi possível transferir.",
       );
     }

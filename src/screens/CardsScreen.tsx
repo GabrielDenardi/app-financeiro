@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -17,6 +16,8 @@ import { AddCardBillsModal } from '../components/AddCardBillsModal';
 import { AddCardModal } from '../components/AddCardModal';
 import { BottomSheet } from '../components/BottomSheet';
 import { Button } from '../components/Button';
+import { useResultModal } from '../components/ResultModal';
+import { useToast } from '../components/Toast';
 import { useAccounts } from '../features/accounts/hooks/useAccounts';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import {
@@ -61,6 +62,8 @@ function isInvoiceClosed(invoiceMonth: string, closingDay: number): boolean {
 export default function CardsScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showSuccess, showError } = useToast();
+  const { showResult } = useResultModal();
   const currentUser = useAuthenticatedUser();
   const cardsQuery = useCards(currentUser?.id);
   const invoicesQuery = useCardInvoices(currentUser?.id);
@@ -127,8 +130,9 @@ export default function CardsScreen({ navigation }: any) {
     try {
       await createCardMutation.mutateAsync(input);
       setCardModalVisible(false);
+      showResult({ variant: 'success', title: 'Cartão criado!', message: 'Seu novo cartão já está disponível na lista.' });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível criar o cartão.');
+      showError(error instanceof Error ? error.message : 'Não foi possível criar o cartão.');
     }
   };
 
@@ -137,8 +141,9 @@ export default function CardsScreen({ navigation }: any) {
     try {
       await updateCardMutation.mutateAsync({ id: editingCard.id, input });
       setEditingCard(null);
+      showSuccess('Cartão atualizado.');
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível atualizar o cartão.');
+      showError(error instanceof Error ? error.message : 'Não foi possível atualizar o cartão.');
     }
   };
 
@@ -146,8 +151,9 @@ export default function CardsScreen({ navigation }: any) {
     try {
       await recordChargeMutation.mutateAsync(input);
       setChargeModalVisible(false);
+      showSuccess('Compra lançada.');
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível lançar a compra.');
+      showError(error instanceof Error ? error.message : 'Não foi possível lançar a compra.');
     }
   };
 
@@ -156,8 +162,9 @@ export default function CardsScreen({ navigation }: any) {
     setPayingKey(key);
     try {
       await payInvoiceMutation.mutateAsync({ cardId, invoiceMonth, accountId, amount });
+      showResult({ variant: 'success', title: 'Fatura paga!', message: 'O pagamento foi registrado com sucesso.' });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível pagar a fatura.');
+      showError(error instanceof Error ? error.message : 'Não foi possível pagar a fatura.');
     } finally {
       setPayingKey(null);
     }
@@ -165,7 +172,7 @@ export default function CardsScreen({ navigation }: any) {
 
   const handlePayPress = (cardId: string, invoiceMonth: string, totalAmount: number) => {
     if (!activeAccounts.length) {
-      Alert.alert('Conta necessária', 'Cadastre uma conta para pagar faturas.');
+      showError('Cadastre uma conta para pagar faturas.');
       return;
     }
     setPendingPayment({ cardId, invoiceMonth, totalAmount });
@@ -183,7 +190,7 @@ export default function CardsScreen({ navigation }: any) {
     } else if (paymentMode === 'custom') {
       const parsed = normalizeCurrencyInput(customAmountText);
       if (!Number.isFinite(parsed) || parsed <= 0) {
-        Alert.alert('Valor inválido', 'Digite um valor maior que zero.');
+        showError('Digite um valor maior que zero.');
         return;
       }
       amount = parsed;

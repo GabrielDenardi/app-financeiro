@@ -1,7 +1,6 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Linking,
   Pressable,
   StyleSheet,
@@ -18,6 +17,8 @@ import { PageShell } from '../components/PageShell';
 import { BottomSheet } from '../components/BottomSheet';
 import { Button } from '../components/Button';
 import { FieldCard, FieldDivider, FieldRow } from '../components/FormField';
+import { useResultModal } from '../components/ResultModal';
+import { useToast } from '../components/Toast';
 import { appEnv } from '../config/env';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
@@ -43,6 +44,8 @@ import { radius, spacing, typography, type AppColors, useThemeColors } from '../
 export function PrivacySecurityScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showSuccess, showError } = useToast();
+  const { showResult } = useResultModal();
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
   const preferencesQuery = usePreferences(user?.id);
@@ -83,7 +86,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
     try {
       await updatePref.mutateAsync({ [key]: value });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar a preferencia.');
+      showError(error instanceof Error ? error.message : 'Nao foi possivel atualizar a preferencia.');
     } finally {
       setBusyPrefKey(null);
     }
@@ -93,7 +96,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
     setBusyPrefKey('biometricEnabled');
     try {
       if (value && !(await canUseBiometricLock())) {
-        Alert.alert('Biometria indisponivel', 'O dispositivo nao possui biometria configurada.');
+        showError('O dispositivo nao possui biometria configurada.');
         return;
       }
 
@@ -109,7 +112,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
       await updatePref.mutateAsync({ biometricEnabled: value });
       await setBiometricLockEnabled(value);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar a biometria.');
+      showError(error instanceof Error ? error.message : 'Nao foi possivel atualizar a biometria.');
     } finally {
       setBusyPrefKey(null);
     }
@@ -128,9 +131,10 @@ export function PrivacySecurityScreen({ navigation }: any) {
       const factor = mfaFactorsQuery.data?.[0];
       if (factor) {
         await disableTotp.mutateAsync(factor.id);
+        showSuccess('Autenticação em duas etapas desativada.');
       }
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar o MFA.');
+      showError(error instanceof Error ? error.message : 'Nao foi possivel atualizar o MFA.');
     }
   };
 
@@ -144,8 +148,9 @@ export function PrivacySecurityScreen({ navigation }: any) {
       setMfaOpen(false);
       setEnrollment(null);
       setMfaCode('');
+      showSuccess('Autenticação em duas etapas ativada.');
     } catch (error) {
-      Alert.alert('Codigo invalido', error instanceof Error ? error.message : 'Nao foi possivel validar o TOTP.');
+      showError(error instanceof Error ? error.message : 'Nao foi possivel validar o TOTP.');
     }
   };
 
@@ -158,14 +163,18 @@ export function PrivacySecurityScreen({ navigation }: any) {
     try {
       const url = await exportData.mutateAsync();
       if (!url) {
-        Alert.alert('Exportacao solicitada', 'A requisicao foi registrada, mas o link ainda nao ficou disponivel.');
+        showResult({
+          variant: 'success',
+          title: 'Exportação solicitada!',
+          message: 'A requisição foi registrada, mas o link ainda não ficou disponível.',
+        });
         return;
       }
 
       await Linking.openURL(url);
-      Alert.alert('Exportacao pronta', 'O download foi iniciado.');
+      showResult({ variant: 'success', title: 'Exportação pronta!', message: 'O download foi iniciado.' });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel solicitar a exportacao.');
+      showError(error instanceof Error ? error.message : 'Nao foi possivel solicitar a exportacao.');
     }
   };
 
@@ -175,31 +184,35 @@ export function PrivacySecurityScreen({ navigation }: any) {
       setDeleteOpen(false);
       setReason('');
       setPassword('');
-      Alert.alert('Conta excluida', 'Sua conta foi removida e a sessao atual foi encerrada.');
+      showResult({
+        variant: 'success',
+        title: 'Conta excluída',
+        message: 'Sua conta foi removida e a sessão atual foi encerrada.',
+      });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel solicitar a exclusao.');
+      showError(error instanceof Error ? error.message : 'Nao foi possivel solicitar a exclusao.');
     }
   };
 
   const onOpenPolicy = () => {
     if (!appEnv.privacyPolicyUrl) {
-      Alert.alert('Link indisponivel', 'Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a politica.');
+      showError('Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a politica.');
       return;
     }
 
     Linking.openURL(appEnv.privacyPolicyUrl).catch(() => {
-      Alert.alert('Erro', 'Nao foi possivel abrir a politica de privacidade.');
+      showError('Nao foi possivel abrir a politica de privacidade.');
     });
   };
 
   const onOpenTerms = () => {
     if (!appEnv.termsOfUseUrl) {
-      Alert.alert('Link indisponivel', 'Defina EXPO_PUBLIC_TERMS_OF_USE_URL para abrir os termos.');
+      showError('Defina EXPO_PUBLIC_TERMS_OF_USE_URL para abrir os termos.');
       return;
     }
 
     Linking.openURL(appEnv.termsOfUseUrl).catch(() => {
-      Alert.alert('Erro', 'Nao foi possivel abrir os termos de uso.');
+      showError('Nao foi possivel abrir os termos de uso.');
     });
   };
 
