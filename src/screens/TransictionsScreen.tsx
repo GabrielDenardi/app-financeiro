@@ -123,132 +123,136 @@ export function TransactionsScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.searchRow}>
-        <View style={styles.searchContainer}>
-          <Search size={18} color={colors.textSecondary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar..."
-            placeholderTextColor={colors.textSecondary}
-            value={searchText}
-            onChangeText={setSearchText}
-            accessibilityLabel="Buscar transações"
-          />
-          {searchText ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Limpar busca" onPress={() => setSearchText('')}>
-              <X size={16} color={colors.textSecondary} />
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
-
-      <View style={styles.monthRow}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Mês anterior"
-          disabled={allPeriod}
-          onPress={() => shiftMonth(-1)}
-          style={[styles.monthArrow, allPeriod && styles.monthArrowDisabled]}
-        >
-          <ChevronLeft size={18} color={allPeriod ? colors.textSecondary : colors.textPrimary} />
-        </Pressable>
-        <Text style={styles.monthLabel}>{allPeriod ? 'Todo o período' : monthTitle}</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Próximo mês"
-          disabled={allPeriod}
-          onPress={() => shiftMonth(1)}
-          style={[styles.monthArrow, allPeriod && styles.monthArrowDisabled]}
-        >
-          <ChevronRight size={18} color={allPeriod ? colors.textSecondary : colors.textPrimary} />
-        </Pressable>
-        <Chip
-          label="Todos"
-          selected={allPeriod}
-          onPress={() => setAllPeriod((current) => !current)}
-          style={styles.allPeriodChip}
-        />
-      </View>
-
-      {showFilters ? (
-        <View style={styles.advancedFilters}>
-          {accounts.length > 0 ? (
-            <>
-              <Text style={styles.filterLabel}>Conta</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.horizontalScroll}
-              >
-                <Chip
-                  label="Todas"
-                  selected={activeAccountId === null}
-                  onPress={() => setActiveAccountId(null)}
-                />
-                {accounts.map((account) => (
-                  <Chip
-                    key={account.id}
-                    label={account.name}
-                    selected={activeAccountId === account.id}
-                    onPress={() => setActiveAccountId(account.id)}
-                  />
-                ))}
-              </ScrollView>
-            </>
-          ) : null}
-
-          <Text style={styles.filterLabel}>Método de pagamento</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalScroll}
-          >
-            {METHODS.map((method) => (
-              <Chip
-                key={method}
-                label={method}
-                selected={activeMethod === method}
-                onPress={() => setActiveMethod(method)}
-              />
-            ))}
-          </ScrollView>
-
-          <Text style={styles.filterLabel}>Tipo</Text>
-          <View style={styles.chipRow}>
-            <Chip label="Tudo" selected={activeType === 'all'} onPress={() => setActiveType('all')} />
-            <Chip label="Entradas" selected={activeType === 'income'} onPress={() => setActiveType('income')} />
-            <Chip label="Saídas" selected={activeType === 'expense'} onPress={() => setActiveType('expense')} />
-          </View>
-        </View>
-      ) : null}
-
-      <View style={styles.summaryCard}>
-        <SummaryItem label="Receitas" value={formatCurrencyBRL(totals.income)} color={colors.success} styles={styles} />
-        <View style={styles.divider} />
-        <SummaryItem label="Despesas" value={formatCurrencyBRL(totals.expense)} color={colors.danger} styles={styles} />
-        <View style={styles.divider} />
-        <SummaryItem
-          label="Saldo"
-          value={formatCurrencyBRL(totals.income - totals.expense)}
-          color={totals.income - totals.expense >= 0 ? colors.textPrimary : colors.danger}
-          styles={styles}
-        />
-      </View>
-      {activeAccountId !== null ? (
-        <Text style={styles.filteredTotalsHint}>
-          Movimentações da conta selecionada (inclui transferências e pagamentos de fatura)
-        </Text>
-      ) : hasActiveFilters ? (
-        <Text style={styles.filteredTotalsHint}>Totais dos resultados filtrados</Text>
-      ) : null}
-
       <SectionList
+        style={styles.list}
         sections={sectionsQuery.data ?? []}
         keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled={false}
         contentContainerStyle={styles.listContent}
         refreshing={sectionsQuery.isRefetching}
         onRefresh={() => sectionsQuery.refetch()}
+        ListHeaderComponent={
+          <View style={styles.listHeader}>
+            <View style={styles.searchRow}>
+              <View style={styles.searchContainer}>
+                <Search size={18} color={colors.textSecondary} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Buscar..."
+                  placeholderTextColor={colors.textSecondary}
+                  value={searchText}
+                  onChangeText={setSearchText}
+                  accessibilityLabel="Buscar transações"
+                />
+                {searchText ? (
+                  <Pressable accessibilityRole="button" accessibilityLabel="Limpar busca" onPress={() => setSearchText('')}>
+                    <X size={16} color={colors.textSecondary} />
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+
+            <View style={styles.monthRow}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Mês anterior"
+                disabled={allPeriod}
+                onPress={() => shiftMonth(-1)}
+                style={[styles.monthArrow, allPeriod && styles.monthArrowDisabled]}
+              >
+                <ChevronLeft size={18} color={allPeriod ? colors.textSecondary : colors.textPrimary} />
+              </Pressable>
+              <Text style={styles.monthLabel}>{allPeriod ? 'Todo o período' : monthTitle}</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Próximo mês"
+                disabled={allPeriod}
+                onPress={() => shiftMonth(1)}
+                style={[styles.monthArrow, allPeriod && styles.monthArrowDisabled]}
+              >
+                <ChevronRight size={18} color={allPeriod ? colors.textSecondary : colors.textPrimary} />
+              </Pressable>
+              <Chip
+                label="Todos"
+                selected={allPeriod}
+                onPress={() => setAllPeriod((current) => !current)}
+                style={styles.allPeriodChip}
+              />
+            </View>
+
+            {showFilters ? (
+              <View style={styles.advancedFilters}>
+                {accounts.length > 0 ? (
+                  <>
+                    <Text style={styles.filterLabel}>Conta</Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.horizontalScroll}
+                    >
+                      <Chip
+                        label="Todas"
+                        selected={activeAccountId === null}
+                        onPress={() => setActiveAccountId(null)}
+                      />
+                      {accounts.map((account) => (
+                        <Chip
+                          key={account.id}
+                          label={account.name}
+                          selected={activeAccountId === account.id}
+                          onPress={() => setActiveAccountId(account.id)}
+                        />
+                      ))}
+                    </ScrollView>
+                  </>
+                ) : null}
+
+                <Text style={styles.filterLabel}>Método de pagamento</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalScroll}
+                >
+                  {METHODS.map((method) => (
+                    <Chip
+                      key={method}
+                      label={method}
+                      selected={activeMethod === method}
+                      onPress={() => setActiveMethod(method)}
+                    />
+                  ))}
+                </ScrollView>
+
+                <Text style={styles.filterLabel}>Tipo</Text>
+                <View style={styles.chipRow}>
+                  <Chip label="Tudo" selected={activeType === 'all'} onPress={() => setActiveType('all')} />
+                  <Chip label="Entradas" selected={activeType === 'income'} onPress={() => setActiveType('income')} />
+                  <Chip label="Saídas" selected={activeType === 'expense'} onPress={() => setActiveType('expense')} />
+                </View>
+              </View>
+            ) : null}
+
+            <View style={styles.summaryCard}>
+              <SummaryItem label="Receitas" value={formatCurrencyBRL(totals.income)} color={colors.success} styles={styles} />
+              <View style={styles.divider} />
+              <SummaryItem label="Despesas" value={formatCurrencyBRL(totals.expense)} color={colors.danger} styles={styles} />
+              <View style={styles.divider} />
+              <SummaryItem
+                label="Saldo"
+                value={formatCurrencyBRL(totals.income - totals.expense)}
+                color={totals.income - totals.expense >= 0 ? colors.textPrimary : colors.danger}
+                styles={styles}
+              />
+            </View>
+            {activeAccountId !== null ? (
+              <Text style={styles.filteredTotalsHint}>
+                Movimentações da conta selecionada (inclui transferências e pagamentos de fatura)
+              </Text>
+            ) : hasActiveFilters ? (
+              <Text style={styles.filteredTotalsHint}>Totais dos resultados filtrados</Text>
+            ) : null}
+          </View>
+        }
         renderSectionHeader={({ section }) => <Text style={styles.sectionTitle}>{section.date}</Text>}
         renderItem={({ item, index, section }) => (
           <Pressable
@@ -469,9 +473,13 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     backgroundColor: colors.border,
     alignSelf: 'center',
   },
+  list: {
+    flex: 1,
+  },
+  listHeader: {
+    paddingBottom: spacing.lg,
+  },
   listContent: {
-    paddingHorizontal: layout.pageHorizontal,
-    paddingTop: spacing.lg,
     paddingBottom: BOTTOM_TAB_BAR_HEIGHT + 72,
   },
   sectionTitle: {
@@ -480,6 +488,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.sm,
     marginBottom: spacing.sm,
+    marginHorizontal: layout.pageHorizontal,
   },
   transactionCard: {
     backgroundColor: colors.surface,
@@ -488,6 +497,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     borderColor: colors.border,
     overflow: 'hidden',
     marginBottom: spacing.sm,
+    marginHorizontal: layout.pageHorizontal,
   },
   emptyContainer: {
     alignItems: 'center',

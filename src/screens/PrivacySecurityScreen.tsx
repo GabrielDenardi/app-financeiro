@@ -66,18 +66,31 @@ export function PrivacySecurityScreen({ navigation }: any) {
   const prefs = preferencesQuery.data;
   const mfaBusy = enrollTotp.isPending || verifyTotp.isPending || disableTotp.isPending;
 
+  type SimplePrefKey =
+    | 'biometricEnabled'
+    | 'hideValuesHome'
+    | 'loginAlertsEnabled'
+    | 'shareAnonymousStats'
+    | 'requireGroupExpenseReceipt';
+
+  const [busyPrefKey, setBusyPrefKey] = useState<SimplePrefKey | null>(null);
+
   const onTogglePref = async (
     key: 'hideValuesHome' | 'loginAlertsEnabled' | 'shareAnonymousStats' | 'requireGroupExpenseReceipt',
     value: boolean,
   ) => {
+    setBusyPrefKey(key);
     try {
       await updatePref.mutateAsync({ [key]: value });
     } catch (error) {
       Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar a preferencia.');
+    } finally {
+      setBusyPrefKey(null);
     }
   };
 
   const onToggleBiometric = async (value: boolean) => {
+    setBusyPrefKey('biometricEnabled');
     try {
       if (value && !(await canUseBiometricLock())) {
         Alert.alert('Biometria indisponivel', 'O dispositivo nao possui biometria configurada.');
@@ -97,6 +110,8 @@ export function PrivacySecurityScreen({ navigation }: any) {
       await setBiometricLockEnabled(value);
     } catch (error) {
       Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar a biometria.');
+    } finally {
+      setBusyPrefKey(null);
     }
   };
 
@@ -225,7 +240,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
               label="Bloqueio por biometria"
               desc="Exige biometria ou o PIN do aparelho ao abrir o app."
               value={prefs.biometricEnabled}
-              loading={updatePref.isPending}
+              loading={busyPrefKey === 'biometricEnabled'}
               onChange={onToggleBiometric}
               styles={styles}
             />
@@ -233,7 +248,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
               label="Alertas de login"
               desc="Notificar sobre novos acessos."
               value={prefs.loginAlertsEnabled}
-              loading={updatePref.isPending}
+              loading={busyPrefKey === 'loginAlertsEnabled'}
               onChange={(value) => onTogglePref('loginAlertsEnabled', value)}
               styles={styles}
             />
@@ -244,7 +259,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
               label="Ocultar valores na tela inicial"
               desc="Protege seus dados em publico."
               value={prefs.hideValuesHome}
-              loading={updatePref.isPending}
+              loading={busyPrefKey === 'hideValuesHome'}
               onChange={(value) => onTogglePref('hideValuesHome', value)}
               styles={styles}
             />
@@ -252,7 +267,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
               label="Compartilhar estatisticas anonimas"
               desc="Ajuda a melhorar o app."
               value={prefs.shareAnonymousStats}
-              loading={updatePref.isPending}
+              loading={busyPrefKey === 'shareAnonymousStats'}
               onChange={(value) => onTogglePref('shareAnonymousStats', value)}
               styles={styles}
             />
@@ -260,7 +275,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
               label="Exigir comprovante em despesas de grupo"
               desc="Quando ativo, novos lancamentos de despesa em grupo exigem NF ou notinha."
               value={prefs.requireGroupExpenseReceipt}
-              loading={updatePref.isPending}
+              loading={busyPrefKey === 'requireGroupExpenseReceipt'}
               onChange={(value) => onTogglePref('requireGroupExpenseReceipt', value)}
               styles={styles}
             />
@@ -443,16 +458,16 @@ function PrefRow({
         <Text style={styles.prefTitle}>{label}</Text>
         <Text style={styles.prefDesc}>{desc}</Text>
       </View>
-      {loading ? (
-        <ActivityIndicator />
-      ) : (
+      <View style={styles.prefControl}>
+        {loading ? <ActivityIndicator size="small" style={styles.prefSpinner} /> : null}
         <Switch
           value={value}
           onValueChange={onChange}
+          disabled={loading}
           trackColor={{ false: colors.border, true: `${colors.primary}66` }}
           thumbColor={value ? colors.primaryLight : colors.white}
         />
-      )}
+      </View>
     </View>
   );
 }
@@ -491,6 +506,14 @@ const createStyles = (colors: AppColors) =>
     },
     prefText: {
       flex: 1,
+    },
+    prefControl: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    prefSpinner: {
+      marginRight: 2,
     },
     prefTitle: {
       ...typography.body,

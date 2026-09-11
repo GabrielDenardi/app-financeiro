@@ -2,7 +2,9 @@ import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -639,7 +641,10 @@ export default function RecurringTransactionsScreen() {
 
       {/* Diálogo de confirmação de valor variável */}
       <Modal visible={confirmModalVisible} animationType="fade" transparent onRequestClose={() => setConfirmModalVisible(false)}>
-        <View style={styles.miniModalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.miniModalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.miniModalContent}>
             <CheckCircle2 size={40} color={colors.primary} style={styles.miniIcon} />
             <Text style={styles.miniModalTitle}>Confirmar {selectedItem?.title}</Text>
@@ -668,7 +673,7 @@ export default function RecurringTransactionsScreen() {
               />
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Diálogo de confirmação de ações destrutivas (desfazer/excluir) */}
