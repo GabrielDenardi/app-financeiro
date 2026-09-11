@@ -19,7 +19,7 @@ import { Search } from 'lucide-react-native';
 import { FloatingActionButton } from '../components/FloatingActionButton';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
-import { BOTTOM_TAB_BAR_HEIGHT } from '../components/BottomTabBarMock';
+import { useBottomTabBarHeight } from '../components/BottomTabBarMock';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
 import { useCurrentPlan } from '../features/plans/hooks';
@@ -54,7 +54,8 @@ function statusBadge(status: SupportConversationStatus) {
 
 export default function ListChatScreen() {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const tabBarHeight = useBottomTabBarHeight();
+  const styles = useMemo(() => createStyles(colors, tabBarHeight), [colors, tabBarHeight]);
   const navigation = useNavigation<any>();
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
@@ -297,7 +298,7 @@ export default function ListChatScreen() {
   );
 }
 
-const createStyles = (colors: AppColors) =>
+const createStyles = (colors: AppColors, tabBarHeight: number) =>
   StyleSheet.create({
     paywallCard: {
       backgroundColor: colors.surface,
@@ -353,7 +354,7 @@ const createStyles = (colors: AppColors) =>
     },
     listContent: {
       gap: spacing.sm,
-      paddingBottom: BOTTOM_TAB_BAR_HEIGHT + 72,
+      paddingBottom: tabBarHeight + 72,
     },
     conversationCard: {
       flexDirection: 'row',

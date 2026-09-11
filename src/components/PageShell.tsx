@@ -2,7 +2,7 @@ import { type PropsWithChildren, type ReactElement, useMemo } from 'react';
 import type { RefreshControlProps, StyleProp, ViewStyle } from 'react-native';
 import { SafeAreaView, ScrollView, StyleSheet, View } from 'react-native';
 
-import { BOTTOM_TAB_BAR_HEIGHT } from './BottomTabBarMock';
+import { useBottomTabBarHeight } from './BottomTabBarMock';
 import { layout, spacing, type AppColors, useThemeColors } from '../theme';
 
 type PageShellProps = PropsWithChildren<{
@@ -25,7 +25,8 @@ export function PageShell({
   refreshControl,
 }: PageShellProps) {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const tabBarHeight = useBottomTabBarHeight();
+  const styles = useMemo(() => createStyles(colors, tabBarHeight), [colors, tabBarHeight]);
   const baseContentStyle = [
     styles.content,
     withTabBarInset && styles.contentWithTabBarInset,
@@ -53,7 +54,7 @@ export function PageShell({
   );
 }
 
-const createStyles = (colors: AppColors) =>
+const createStyles = (colors: AppColors, tabBarHeight: number) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
@@ -65,6 +66,6 @@ const createStyles = (colors: AppColors) =>
       gap: layout.pageSectionGap,
     },
     contentWithTabBarInset: {
-      paddingBottom: BOTTOM_TAB_BAR_HEIGHT + 72,
+      paddingBottom: tabBarHeight + 72,
     },
   });

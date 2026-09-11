@@ -12,7 +12,7 @@ import { Eye, EyeOff, Landmark, Target, Users } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 
 import { BalanceCard } from "../components/BalanceCard";
-import { BOTTOM_TAB_BAR_HEIGHT } from "../components/BottomTabBarMock";
+import { useBottomTabBarHeight } from "../components/BottomTabBarMock";
 import { Card } from "../components/Card";
 import { FloatingActionButton } from "../components/FloatingActionButton";
 import { MonthlyBarChart } from "../components/MonthlyBarChart";
@@ -73,7 +73,8 @@ function formatVisibleCurrency(value: number, visible: boolean) {
 
 export function HomeScreen({ currentUser }: HomeScreenProps) {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const tabBarHeight = useBottomTabBarHeight();
+  const styles = useMemo(() => createStyles(colors, tabBarHeight), [colors, tabBarHeight]);
   const navigation = useNavigation<any>();
   const profileQuery = useProfile(currentUser?.id);
   const dashboardQuery = useHomeDashboard(currentUser?.id);
@@ -311,7 +312,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
   );
 }
 
-const createStyles = (colors: AppColors) =>
+const createStyles = (colors: AppColors, tabBarHeight: number) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
@@ -335,7 +336,7 @@ const createStyles = (colors: AppColors) =>
     content: {
       padding: layout.pageHorizontal,
       gap: layout.pageSectionGap,
-      paddingBottom: BOTTOM_TAB_BAR_HEIGHT + 72,
+      paddingBottom: tabBarHeight + 72,
     },
     greeting: {
       ...typography.h1,
@@ -470,6 +471,6 @@ const createStyles = (colors: AppColors) =>
     fab: {
       position: "absolute",
       right: spacing.lg,
-      bottom: BOTTOM_TAB_BAR_HEIGHT - spacing.lg,
+      bottom: tabBarHeight - spacing.lg,
     },
   });

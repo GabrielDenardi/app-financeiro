@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react-native';
 
-import { BOTTOM_TAB_BAR_HEIGHT } from '../components/BottomTabBarMock';
+import { useBottomTabBarHeight } from '../components/BottomTabBarMock';
 import { Chip } from '../components/Chip';
 import { FloatingActionButton } from '../components/FloatingActionButton';
 import { TransactionListItem } from '../components/TransactionListItem';
@@ -36,7 +36,8 @@ const EXCLUDED_SUMMARY_SOURCES = new Set(['transfer', 'group_settlement', 'goal_
 
 export function TransactionsScreen() {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const tabBarHeight = useBottomTabBarHeight();
+  const styles = useMemo(() => createStyles(colors, tabBarHeight), [colors, tabBarHeight]);
   const currentUser = useAuthenticatedUser();
   const [searchText, setSearchText] = useState('');
   const [activeType, setActiveType] = useState<'all' | 'income' | 'expense'>('all');
@@ -327,7 +328,7 @@ function SummaryItem({
   );
 }
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
+const createStyles = (colors: AppColors, tabBarHeight: number) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
@@ -480,7 +481,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   listContent: {
-    paddingBottom: BOTTOM_TAB_BAR_HEIGHT + 72,
+    paddingBottom: tabBarHeight + 72,
   },
   sectionTitle: {
     ...typography.h3,
@@ -511,7 +512,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   fab: {
     position: 'absolute',
     right: spacing.lg,
-    bottom: BOTTOM_TAB_BAR_HEIGHT - spacing.lg,
+    bottom: tabBarHeight - spacing.lg,
   },
   retryButton: {
     paddingHorizontal: spacing.lg,

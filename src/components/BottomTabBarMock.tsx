@@ -2,14 +2,26 @@ import React, { useMemo } from 'react';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { spacing, typography, type AppColors, useThemeColors } from '../theme';
 
+/** Altura do conteúdo do tab bar, sem contar a área da barra de navegação do sistema. */
 export const BOTTOM_TAB_BAR_HEIGHT = 78;
+
+/**
+ * Altura total ocupada pelo tab bar na tela, incluindo o respiro para a barra
+ * de navegação do sistema (Android) que agora fica sempre visível abaixo dele.
+ */
+export function useBottomTabBarHeight() {
+  const insets = useSafeAreaInsets();
+  return BOTTOM_TAB_BAR_HEIGHT + insets.bottom;
+}
 
 export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBarProps) {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.bottom), [colors, insets.bottom]);
 
   return (
     <View style={styles.container}>
@@ -94,9 +106,9 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
   );
 }
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
+const createStyles = (colors: AppColors, bottomInset: number) => StyleSheet.create({
   container: {
-    height: BOTTOM_TAB_BAR_HEIGHT,
+    height: BOTTOM_TAB_BAR_HEIGHT + bottomInset,
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
@@ -105,7 +117,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.sm,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.md + bottomInset,
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.03,
