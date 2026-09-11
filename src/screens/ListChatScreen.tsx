@@ -14,12 +14,10 @@ import { BottomSheet } from '../components/BottomSheet';
 import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
 import { FieldCard, FieldDivider, FieldRow } from '../components/FormField';
-import { Search } from 'lucide-react-native';
-import { FloatingActionButton } from '../components/FloatingActionButton';
+import { Plus, Search } from 'lucide-react-native';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
 import { useToast } from '../components/Toast';
-import { useBottomTabBarHeight } from '../components/BottomTabBarMock';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
 import { useCurrentPlan } from '../features/plans/hooks';
@@ -54,8 +52,7 @@ function statusBadge(status: SupportConversationStatus) {
 
 export default function ListChatScreen() {
   const colors = useThemeColors();
-  const tabBarHeight = useBottomTabBarHeight();
-  const styles = useMemo(() => createStyles(colors, tabBarHeight), [colors, tabBarHeight]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const { showError } = useToast();
   const user = useAuthenticatedUser();
@@ -111,11 +108,23 @@ export default function ListChatScreen() {
   };
 
   return (
-    <PageShell scroll={false}>
+    <PageShell
+      scroll={false}
+      onBackPress={() => navigation.goBack()}
+      footer={
+        currentPlan.entitlements.supportChat ? (
+          <Button
+            label="Criar"
+            fullWidth
+            icon={<Plus size={18} color={colors.white} />}
+            onPress={() => setSheetVisible(true)}
+          />
+        ) : undefined
+      }
+    >
       <PageHeader
         title="Chat de Suporte"
         subtitle="Assistente automático 24h."
-        onBackPress={() => navigation.goBack()}
       />
 
       {!currentPlan.entitlements.supportChat ? (
@@ -233,11 +242,6 @@ export default function ListChatScreen() {
             )}
           </ScrollView>
 
-          <FloatingActionButton
-            style={styles.fab}
-            onPress={() => setSheetVisible(true)}
-          />
-
           <BottomSheet
             visible={sheetVisible}
             onClose={() => setSheetVisible(false)}
@@ -298,7 +302,7 @@ export default function ListChatScreen() {
   );
 }
 
-const createStyles = (colors: AppColors, tabBarHeight: number) =>
+const createStyles = (colors: AppColors) =>
   StyleSheet.create({
     paywallCard: {
       backgroundColor: colors.surface,
@@ -354,7 +358,7 @@ const createStyles = (colors: AppColors, tabBarHeight: number) =>
     },
     listContent: {
       gap: spacing.sm,
-      paddingBottom: tabBarHeight + 72,
+      paddingBottom: spacing.xl,
     },
     conversationCard: {
       flexDirection: 'row',
@@ -447,11 +451,6 @@ const createStyles = (colors: AppColors, tabBarHeight: number) =>
       ...typography.caption,
       color: colors.textSecondary,
       textAlign: 'center',
-    },
-    fab: {
-      position: 'absolute',
-      right: layout.pageHorizontal,
-      bottom: spacing.xl,
     },
     sheetContent: {
       gap: spacing.sm,

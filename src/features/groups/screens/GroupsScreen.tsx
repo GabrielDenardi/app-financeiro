@@ -119,18 +119,18 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <View style={styles.topBar}>
         <Pressable onPress={() => navigation.goBack()} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
           <ArrowLeft size={20} color={colors.textPrimary} />
         </Pressable>
+      </View>
 
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerCopy}>
           <Text style={styles.headerTitle}>Grupos</Text>
           <Text style={styles.headerSubtitle}>Compartilhe despesas, receitas e acertos.</Text>
         </View>
-      </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Card style={styles.heroCard}>
           <Text style={styles.heroTitle}>Controle financeiro em conjunto</Text>
           <Text style={styles.heroDescription}>
@@ -330,30 +330,29 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: layout.pageHorizontal,
+  topBar: {
+    backgroundColor: colors.surface,
     paddingTop: layout.pageHeaderTop,
     paddingBottom: spacing.md,
+    paddingHorizontal: layout.pageHorizontal,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+  },
+  scroll: {
+    flex: 1,
   },
   pressed: {
     opacity: 0.85,
   },
   headerCopy: {
-    flex: 1,
     gap: spacing.xs,
+    paddingTop: spacing.lg,
   },
   headerTitle: {
     ...typography.h1,

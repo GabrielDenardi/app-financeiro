@@ -108,22 +108,6 @@ export function TransactionsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Transações</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Filtros"
-          accessibilityState={{ expanded: showFilters }}
-          style={[styles.filterToggle, showFilters && styles.filterToggleActive]}
-          onPress={() => setShowFilters((current) => !current)}
-        >
-          <SlidersHorizontal
-            size={18}
-            color={showFilters ? colors.background : colors.textPrimary}
-          />
-        </Pressable>
-      </View>
-
       <SectionList
         style={styles.list}
         sections={sectionsQuery.data ?? []}
@@ -134,6 +118,20 @@ export function TransactionsScreen() {
         onRefresh={() => sectionsQuery.refetch()}
         ListHeaderComponent={
           <View style={styles.listHeader}>
+            <View style={styles.headerRow}>
+              <Text style={styles.headerTitle}>Transações</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Filtros"
+                accessibilityState={{ expanded: showFilters }}
+                style={[styles.filterToggle, showFilters && styles.filterToggleActive]}
+                onPress={() => setShowFilters((current) => !current)}
+              >
+                <SlidersHorizontal size={18} color={showFilters ? colors.background : colors.textPrimary} />
+                {hasActiveFilters && !showFilters ? <View style={styles.filterDot} /> : null}
+              </Pressable>
+            </View>
+
             <View style={styles.searchRow}>
               <View style={styles.searchContainer}>
                 <Search size={18} color={colors.textSecondary} />
@@ -333,18 +331,18 @@ const createStyles = (colors: AppColors, tabBarHeight: number) => StyleSheet.cre
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: layout.pageHorizontal,
     paddingTop: layout.pageHeaderTop,
+    marginBottom: spacing.md,
     gap: spacing.md,
   },
-  title: {
+  headerTitle: {
     ...typography.h1,
     color: colors.textPrimary,
-    flex: 1,
   },
   filterToggle: {
     width: 40,
@@ -360,13 +358,24 @@ const createStyles = (colors: AppColors, tabBarHeight: number) => StyleSheet.cre
     backgroundColor: colors.primaryLight,
     borderColor: colors.primaryLight,
   },
+  filterDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: colors.primaryLight,
+  },
   searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: layout.pageHorizontal,
     gap: spacing.sm,
-    marginTop: spacing.md,
     marginBottom: spacing.md,
   },
   searchContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,

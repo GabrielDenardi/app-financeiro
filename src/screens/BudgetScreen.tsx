@@ -150,15 +150,14 @@ export default function BudgetsScreen() {
 
   return (
     <>
-      <PageShell withTabBarInset>
+      <PageShell onBackPress={showBackButton ? () => navigation.goBack() : undefined}>
         <PageHeader
           title="Orçamentos"
           subtitle={monthLabel(monthDate)}
           variant="primary"
-          onBackPress={showBackButton ? () => navigation.goBack() : undefined}
           action={
             <Button
-              label="Novo"
+              label="Criar"
               size="sm"
               icon={<Plus size={16} color={colors.white} />}
               onPress={() => setModalVisible(true)}

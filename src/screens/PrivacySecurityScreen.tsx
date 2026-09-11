@@ -217,8 +217,8 @@ export function PrivacySecurityScreen({ navigation }: any) {
   };
 
   return (
-    <PageShell>
-      <PageHeader title="Privacidade e Seguranca" onBackPress={() => navigation.goBack()} />
+    <PageShell onBackPress={() => navigation.goBack()}>
+      <PageHeader title="Privacidade e Seguranca" />
 
       {preferencesQuery.isLoading && !prefs ? (
         <Card style={styles.cardCenter}>

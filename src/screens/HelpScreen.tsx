@@ -40,6 +40,7 @@ import {
   radius,
   spacing,
   typography,
+  useAppTheme,
   useThemeColors,
 } from "../theme";
 
@@ -77,25 +78,28 @@ function ArticleDetail({
 
   return (
     <View style={styles.container}>
-      <View style={styles.detailHeader}>
+      <View style={styles.topBar}>
         <Pressable
           onPress={onBack}
           style={({ pressed }) => [
-            styles.detailBackButton,
+            styles.backButton,
             pressed && styles.pressed,
           ]}
         >
           <ArrowLeft size={20} color={colors.textPrimary} />
         </Pressable>
-        <Text style={styles.detailHeaderTitle} numberOfLines={1}>
-          {article.title}
-        </Text>
-        <View style={styles.levelBadge}>
-          <Text style={styles.levelBadgeText}>{article.level}</Text>
-        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.detailScrollContent}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.detailScrollContent}>
+        <View style={styles.detailTitleRow}>
+          <Text style={styles.detailHeaderTitle} numberOfLines={1}>
+            {article.title}
+          </Text>
+          <View style={styles.levelBadge}>
+            <Text style={styles.levelBadgeText}>{article.level}</Text>
+          </View>
+        </View>
+
         <View style={styles.detailCard}>
           <View style={styles.stepHeader}>
             <BookOpen size={16} color={colors.white} />
@@ -165,6 +169,7 @@ function ArticleDetail({
 
 export function HelpScreen({ navigation }: any) {
   const colors = useThemeColors();
+  const { isDarkMode } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollRef = useRef<ScrollView>(null);
   const [searchText, setSearchText] = useState("");
@@ -204,9 +209,25 @@ export function HelpScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      <StatusBar
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+        backgroundColor={colors.surface}
+      />
+
+      <View style={styles.topBar}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => navigation?.goBack()}
+        >
+          <ArrowLeft size={20} color={colors.textPrimary} />
+        </Pressable>
+      </View>
 
       <ScrollView
+        style={styles.scroll}
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.screenScrollContent}
@@ -214,15 +235,6 @@ export function HelpScreen({ navigation }: any) {
         <View style={styles.heroHeader}>
           <SafeAreaView>
             <View style={styles.heroTop}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.backButton,
-                  pressed && styles.pressed,
-                ]}
-                onPress={() => navigation?.goBack()}
-              >
-                <ArrowLeft size={24} color={colors.white} />
-              </Pressable>
               <View>
                 <Text style={styles.heroTitle}>Central de Ajuda</Text>
                 <Text style={styles.heroSubtitle}>Como podemos te ajudar?</Text>
@@ -540,12 +552,25 @@ const createStyles = (colors: AppColors) =>
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: layout.pageHorizontal,
-      marginTop: layout.pageHeaderTop,
+      marginTop: spacing.lg,
       gap: spacing.md,
     },
+    scroll: {
+      flex: 1,
+    },
+    topBar: {
+      backgroundColor: colors.surface,
+      paddingTop: layout.pageHeaderTop,
+      paddingBottom: spacing.md,
+      paddingHorizontal: layout.pageHorizontal,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
     backButton: {
-      padding: spacing.sm,
-      borderRadius: radius.pill,
+      width: 40,
+      height: 40,
+      alignItems: "center",
+      justifyContent: "center",
     },
     heroTitle: {
       ...typography.h1,
@@ -806,26 +831,10 @@ const createStyles = (colors: AppColors) =>
     },
 
     // Article detail
-    detailHeader: {
+    detailTitleRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: layout.pageHorizontal,
-      paddingTop: layout.pageHeaderTop,
-      paddingBottom: spacing.md,
-      backgroundColor: colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
       gap: spacing.md,
-    },
-    detailBackButton: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.pill,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.background,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     detailHeaderTitle: {
       flex: 1,
@@ -845,7 +854,7 @@ const createStyles = (colors: AppColors) =>
     },
     detailScrollContent: {
       paddingHorizontal: layout.pageHorizontal,
-      paddingTop: spacing.xl,
+      paddingTop: spacing.lg,
       paddingBottom: spacing.xxl,
       gap: spacing.lg,
     },

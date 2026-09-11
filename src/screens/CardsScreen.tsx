@@ -202,19 +202,20 @@ export default function CardsScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Meus Cartões</Text>
-        <Button
-          label="Novo"
-          size="sm"
-          icon={<Plus size={16} color={colors.white} />}
-          onPress={() => setCardModalVisible(true)}
-        />
-      </View>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* ── Header ── */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Meus Cartões</Text>
+          <Button
+            label="Criar"
+            size="sm"
+            icon={<Plus size={16} color={colors.white} />}
+            onPress={() => setCardModalVisible(true)}
+          />
+        </View>
 
-      {/* ── Resumo fixo ── */}
-      <View style={styles.summaryCard}>
+        {/* ── Resumo ── */}
+        <View style={styles.summaryCard}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Em aberto</Text>
             <Text style={[styles.summaryValue, { color: totalOpenAmount > 0 ? colors.danger : colors.textPrimary }]}>
@@ -230,7 +231,6 @@ export default function CardsScreen({ navigation }: any) {
           </View>
         </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* ── Main Content ── */}
         <View style={styles.mainContent}>
           {urgentAlerts.length > 0 && (
@@ -662,6 +662,9 @@ const createStyles = (colors: AppColors) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    scroll: {
+      flex: 1,
     },
     scrollContent: {
       paddingBottom: spacing.xxl + spacing.sm,

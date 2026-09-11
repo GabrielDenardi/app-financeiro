@@ -4,7 +4,6 @@ import {
   Pressable,
   SafeAreaView,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -22,6 +21,7 @@ import {
 } from "lucide-react-native";
 
 import { AddAccountModal } from "../components/AddAccountModal";
+import { Button } from "../components/Button";
 import { useToast } from "../components/Toast";
 import { TransferModal } from "../components/TransferModal";
 import { typeConfig } from "../data/accountsMock";
@@ -49,7 +49,7 @@ import {
 import { formatCurrencyBRL } from "../utils/format";
 
 export function AccountsScreen({ navigation }: any) {
-  const { colors, isDarkMode } = useAppTheme();
+  const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { showSuccess, showError } = useToast();
   const currentUser = useAuthenticatedUser();
@@ -117,44 +117,30 @@ export function AccountsScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle={isDarkMode ? "light-content" : "dark-content"}
-        backgroundColor={colors.background}
-      />
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topBar}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <ArrowLeft color={colors.textPrimary} size={20} />
+          </Pressable>
+        </View>
 
-      <View style={styles.headerBackground}>
-        <SafeAreaView>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.headerContent}>
-            <Pressable
-              onPress={() => navigation.goBack()}
-              style={styles.headerIconButton}
-            >
-              <ArrowLeft color={colors.white} size={22} />
-            </Pressable>
-
             <Text style={styles.headerTitle}>Contas</Text>
-
-            <View style={styles.headerActions}>
-              <Pressable
-                style={styles.actionButtonGhost}
-                onPress={() => setTransferVisible(true)}
-              >
-                <Repeat color={colors.white} size={14} />
-                <Text style={styles.headerActionText}>Transferir</Text>
-              </Pressable>
-              <Pressable
-                style={styles.actionButtonSolid}
-                onPress={handleOpenAddAccount}
-              >
-                <Plus color={colors.white} size={14} />
-                <Text style={styles.headerActionText}>Novo</Text>
-              </Pressable>
-            </View>
           </View>
 
           <View style={styles.totalCard}>
             {overviewQuery.isLoading ? (
-              <ActivityIndicator color={colors.white} />
+              <ActivityIndicator color={colors.primary} />
             ) : (
               <>
                 <View style={styles.totalRow}>
@@ -163,9 +149,9 @@ export function AccountsScreen({ navigation }: any) {
                     onPress={() => setShowBalances((current) => !current)}
                   >
                     {showBalances ? (
-                      <Eye color={colors.white} size={18} opacity={0.7} />
+                      <Eye color={colors.textSecondary} size={18} />
                     ) : (
-                      <EyeOff color={colors.white} size={18} opacity={0.7} />
+                      <EyeOff color={colors.textSecondary} size={18} />
                     )}
                   </Pressable>
                 </View>
@@ -201,15 +187,9 @@ export function AccountsScreen({ navigation }: any) {
               </>
             )}
           </View>
-        </SafeAreaView>
-      </View>
 
-      <ScrollView
-        style={styles.scrollContent}
-        contentContainerStyle={styles.scrollPadding}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.summaryCard}>
+          <View style={styles.restContent}>
+          <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryBox}>
               <View style={styles.summaryLabelRow}>
@@ -323,8 +303,25 @@ export function AccountsScreen({ navigation }: any) {
             </Text>
           </View>
         )}
+          </View>
+        </ScrollView>
 
-      </ScrollView>
+        <View style={styles.footerBar}>
+          <Button
+            label="Transferir"
+            variant="secondary"
+            fullWidth
+            icon={<Repeat size={16} color={colors.textPrimary} />}
+            onPress={() => setTransferVisible(true)}
+          />
+          <Button
+            label="Criar"
+            fullWidth
+            icon={<Plus size={16} color={colors.white} />}
+            onPress={handleOpenAddAccount}
+          />
+        </View>
+      </SafeAreaView>
 
       <AddAccountModal
         visible={addVisible}
@@ -354,66 +351,60 @@ const createStyles = (colors: AppColors) =>
       flex: 1,
       backgroundColor: colors.background,
     },
-    headerBackground: {
-      backgroundColor: colors.primary,
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    topBar: {
+      backgroundColor: colors.surface,
+      paddingTop: layout.pageHeaderTop,
+      paddingBottom: spacing.md,
       paddingHorizontal: layout.pageHorizontal,
-      paddingBottom: 70,
-      borderBottomLeftRadius: radius.lg * 2,
-      borderBottomRightRadius: radius.lg * 2,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      width: 40,
+      height: 40,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    scroll: {
+      flex: 1,
+    },
+    footerBar: {
+      flexDirection: "row",
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingHorizontal: layout.pageHorizontal,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.lg,
     },
     headerContent: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: spacing.sm,
-      paddingTop: layout.pageHeaderTop,
+      paddingHorizontal: layout.pageHorizontal,
+      paddingTop: spacing.lg,
       paddingBottom: spacing.md,
-    },
-    headerIconButton: {
-      padding: spacing.sm,
-      marginLeft: -spacing.sm,
     },
     headerTitle: {
       ...typography.h1,
-      color: colors.white,
+      color: colors.textPrimary,
       flex: 1,
       flexShrink: 1,
     },
-    headerActions: {
-      flexDirection: "row",
-      gap: spacing.xs,
-      alignItems: "center",
-    },
-    actionButtonGhost: {
-      minHeight: 40,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.sm,
-      backgroundColor: colors.primaryLight,
-      borderRadius: radius.md,
-      flexDirection: "row",
-      gap: spacing.xs,
-      alignItems: "center",
-    },
-    actionButtonSolid: {
-      minHeight: 40,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.sm,
-      backgroundColor: colors.success,
-      borderRadius: radius.md,
-      flexDirection: "row",
-      gap: spacing.xs,
-      alignItems: "center",
-    },
-    headerActionText: {
-      ...typography.caption,
-      color: colors.white,
-      fontWeight: "700",
-    },
     totalCard: {
-      backgroundColor: colors.whiteAlpha08,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
       padding: spacing.lg,
       borderRadius: radius.lg,
-      marginTop: spacing.sm,
+      marginHorizontal: layout.pageHorizontal,
+      marginBottom: spacing.xl,
       minHeight: 158,
       justifyContent: "center",
     },
@@ -424,12 +415,12 @@ const createStyles = (colors: AppColors) =>
     },
     totalLabel: {
       ...typography.caption,
-      color: colors.whiteAlpha65,
+      color: colors.textSecondary,
       fontWeight: "600",
     },
     totalValue: {
       ...typography.h1,
-      color: colors.white,
+      color: colors.textPrimary,
       fontSize: 32,
       marginTop: spacing.xs,
     },
@@ -438,31 +429,33 @@ const createStyles = (colors: AppColors) =>
       marginTop: spacing.lg,
       paddingTop: spacing.md,
       borderTopWidth: 1,
-      borderTopColor: colors.whiteAlpha08,
+      borderTopColor: colors.border,
     },
     statItem: {
       flex: 1,
     },
     statDivider: {
       width: 1,
-      backgroundColor: colors.whiteAlpha08,
+      backgroundColor: colors.border,
       marginHorizontal: spacing.md,
     },
     statLabel: {
       ...typography.caption,
-      color: colors.whiteAlpha50,
+      color: colors.textSecondary,
     },
     statValue: {
       ...typography.body,
-      color: colors.white,
+      color: colors.textPrimary,
       fontWeight: "700",
       marginTop: spacing.xs,
     },
     scrollContent: {
-      flex: 1,
-      marginTop: -50,
+      flexGrow: 1,
+      backgroundColor: colors.background,
     },
-    scrollPadding: {
+    restContent: {
+      flexGrow: 1,
+      backgroundColor: colors.background,
       paddingHorizontal: layout.pageHorizontal,
       paddingBottom: spacing.xxl,
     },

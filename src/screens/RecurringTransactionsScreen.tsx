@@ -337,6 +337,7 @@ export default function RecurringTransactionsScreen() {
   return (
     <>
       <PageShell
+        onBackPress={() => navigation.goBack()}
         refreshControl={
           <RefreshControl
             refreshing={recurringQuery.isRefetching}
@@ -348,7 +349,6 @@ export default function RecurringTransactionsScreen() {
         <PageHeader
           title="Transações Recorrentes"
           subtitle="Gerencie suas contas fixas"
-          onBackPress={() => navigation.goBack()}
         />
 
         <Card style={styles.summaryCard}>

@@ -88,8 +88,8 @@ export default function ImportScreen({ navigation }: any) {
   };
 
   return (
-    <PageShell>
-      <PageHeader title="Importar Dados" onBackPress={() => navigation.goBack()} />
+    <PageShell onBackPress={() => navigation.goBack()}>
+      <PageHeader title="Importar Dados" />
 
       {!currentPlan.entitlements.dataImportExport ? (
         <Card style={styles.card}>

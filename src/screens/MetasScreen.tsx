@@ -232,23 +232,24 @@ export default function MetasScreen() {
 
   return (
     <>
-      <PageShell withTabBarInset>
+      <PageShell
+        onBackPress={() => navigation.goBack()}
+        footer={
+          <Button
+            label="Criar"
+            fullWidth
+            icon={<Plus size={18} color={themeColors.white} />}
+            onPress={() => {
+              resetCreate();
+              setCreateOpen(true);
+            }}
+          />
+        }
+      >
         <PageHeader
           title="Metas Financeiras"
           subtitle={`${activeCount} ativa(s)`}
           variant="primary"
-          onBackPress={() => navigation.goBack()}
-          action={
-            <Button
-              label="Nova Meta"
-              size="sm"
-              icon={<Plus size={16} color={themeColors.white} />}
-              onPress={() => {
-                resetCreate();
-                setCreateOpen(true);
-              }}
-            />
-          }
         />
 
         <View style={s.tabs}>

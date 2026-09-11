@@ -424,22 +424,24 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+      <View style={styles.topBar}>
+        <Pressable onPress={() => navigation.goBack()} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
           <ArrowLeft size={20} color={colors.textPrimary} />
-        </Pressable>
-
-        <View style={styles.headerCopy}>
-          <Text style={styles.headerTitle}>{groupData.group.title}</Text>
-          <Text style={styles.headerSubtitle}>{groupData.group.description || 'Sem descricao.'}</Text>
-        </View>
-
-        <Pressable onPress={handleShareCode} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
-          <Share2 size={20} color={colors.textPrimary} />
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <View style={styles.headerCopy}>
+            <Text style={styles.headerTitle}>{groupData.group.title}</Text>
+            <Text style={styles.headerSubtitle}>{groupData.group.description || 'Sem descricao.'}</Text>
+          </View>
+
+          <Pressable onPress={handleShareCode} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
+            <Share2 size={20} color={colors.textPrimary} />
+          </Pressable>
+        </View>
+
         <Card style={styles.heroCard}>
           <View style={styles.heroCodeRow}>
             <View style={styles.heroCodeBlock}>
@@ -888,7 +890,17 @@ function MetricCard({
 const createStyles = (colors: AppColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: layout.pageHorizontal, paddingTop: layout.pageHeaderTop, paddingBottom: spacing.md },
+  topBar: {
+    backgroundColor: colors.surface,
+    paddingTop: layout.pageHeaderTop,
+    paddingBottom: spacing.md,
+    paddingHorizontal: layout.pageHorizontal,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  scroll: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: spacing.lg },
   headerCopy: { flex: 1, gap: spacing.xs },
   headerTitle: { ...typography.h1, color: colors.textPrimary },
   headerSubtitle: { ...typography.body, color: colors.textSecondary },

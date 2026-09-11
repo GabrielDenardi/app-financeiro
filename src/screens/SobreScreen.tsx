@@ -27,6 +27,7 @@ import {
   spacing,
   typography,
   type AppColors,
+  useAppTheme,
   useThemeColors,
 } from "../theme";
 
@@ -41,6 +42,7 @@ function iconNameFromKey(key: string): keyof typeof FontAwesome5.glyphMap {
 
 export default function SobreScreen({ navigation }: any) {
   const colors = useThemeColors();
+  const { isDarkMode } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [rating, setRating] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
@@ -55,7 +57,23 @@ export default function SobreScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      <StatusBar
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+        backgroundColor={colors.surface}
+      />
+
+      <View style={styles.topBar}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => navigation.goBack()}
+        >
+          <ArrowLeft size={20} color={colors.textPrimary} />
+        </Pressable>
+      </View>
+
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -67,16 +85,6 @@ export default function SobreScreen({ navigation }: any) {
           end={{ x: 1, y: 1 }}
           style={styles.header}
         >
-          <Pressable
-            style={({ pressed }) => [
-              styles.backButton,
-              pressed && styles.pressed,
-            ]}
-            onPress={() => navigation.goBack()}
-          >
-            <ArrowLeft size={24} color={colors.white} />
-          </Pressable>
-
           <Image source={brandMark} style={styles.logoContainer} resizeMode="contain" />
           <Text style={styles.appName}>{about?.appName ?? "nitin"}</Text>
           <Text style={styles.appTagline}>Seu dinheiro, sob controle.</Text>
@@ -234,22 +242,26 @@ const createStyles = (colors: AppColors) =>
 
     // Header
     header: {
-      paddingTop: layout.pageHeaderTop,
+      paddingTop: spacing.xl,
       paddingBottom: spacing.xxl + spacing.xl,
       paddingHorizontal: layout.pageHorizontal,
       alignItems: "center",
       borderBottomLeftRadius: radius.lg + spacing.md,
       borderBottomRightRadius: radius.lg + spacing.md,
     },
+    topBar: {
+      backgroundColor: colors.surface,
+      paddingTop: layout.pageHeaderTop,
+      paddingBottom: spacing.md,
+      paddingHorizontal: layout.pageHorizontal,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
     backButton: {
-      alignSelf: "flex-start",
       width: 40,
       height: 40,
-      borderRadius: radius.pill,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: colors.whiteAlpha15,
-      marginBottom: spacing.xl,
     },
     logoContainer: {
       width: 88,

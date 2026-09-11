@@ -137,8 +137,8 @@ export function PlansScreen({ navigation }: any) {
   };
 
   return (
-    <PageShell>
-      <PageHeader title="Planos" subtitle="Compare limites e recursos." onBackPress={() => navigation.goBack()} />
+    <PageShell onBackPress={() => navigation.goBack()}>
+      <PageHeader title="Planos" subtitle="Compare limites e recursos." />
 
       <Card style={styles.currentCard}>
         <Text style={styles.currentLabel}>

@@ -317,11 +317,8 @@ export function EditProfileScreen({
   }
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Editar Perfil"
-        onBackPress={() => navigation.goBack()}
-      />
+    <PageShell onBackPress={() => navigation.goBack()}>
+      <PageHeader title="Editar Perfil" />
 
       <View style={styles.avatarWrap}>
         <View style={styles.avatar}>

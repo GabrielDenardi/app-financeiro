@@ -58,8 +58,8 @@ export default function IncomeTaxScreen({ navigation }: any) {
 
   if (!allowed) {
     return (
-      <PageShell>
-        <PageHeader title="Imposto de Renda" onBackPress={() => navigation.goBack()} />
+      <PageShell onBackPress={() => navigation.goBack()}>
+        <PageHeader title="Imposto de Renda" />
         <Card style={styles.card}>
           <View style={styles.icon}>
             <FileText color={colors.textSecondary} size={28} />
@@ -87,6 +87,7 @@ export default function IncomeTaxScreen({ navigation }: any) {
 
   return (
     <PageShell
+      onBackPress={() => navigation.goBack()}
       refreshControl={
         <RefreshControl
           refreshing={reportQuery.isRefetching}
@@ -95,7 +96,7 @@ export default function IncomeTaxScreen({ navigation }: any) {
         />
       }
     >
-      <PageHeader title="Imposto de Renda" onBackPress={() => navigation.goBack()} />
+      <PageHeader title="Imposto de Renda" />
 
       <Pressable
         accessibilityRole="button"

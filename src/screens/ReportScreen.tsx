@@ -86,8 +86,8 @@ export default function ReportsScreen({ navigation }: any) {
   };
 
   return (
-    <PageShell>
-      <PageHeader title="Relatórios" onBackPress={() => navigation.goBack()} />
+    <PageShell onBackPress={() => navigation.goBack()}>
+      <PageHeader title="Relatórios" />
 
       <Pressable style={styles.selector} onPress={() => { setSheetMode(mode); setOpen(true); }}>
         <Calendar size={16} color={colors.textSecondary} />
