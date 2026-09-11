@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { ArrowLeft, Copy, KeyRound, Plus, Users } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge } from '../../../components/Badge';
 import { BottomSheet } from '../../../components/BottomSheet';
@@ -44,7 +45,8 @@ function formatSignedAmount(value: number) {
 
 export function GroupsScreen({ currentUser }: GroupsScreenProps) {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const navigation = useNavigation<any>();
   const { showSuccess, showError } = useToast();
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
@@ -260,7 +262,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
           <>
             <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
             <Button
-              label="Criar grupo"
+              label="Criar"
               fullWidth
               loading={createGroupMutation.isPending}
               onPress={handleCreateGroup}
@@ -325,22 +327,22 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
   );
 }
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
+const createStyles = (colors: AppColors, topInset: number) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   topBar: {
     backgroundColor: colors.surface,
-    paddingTop: layout.pageHeaderTop,
-    paddingBottom: spacing.md,
+    paddingTop: topInset + spacing.xs,
+    paddingBottom: spacing.xs,
     paddingHorizontal: layout.pageHorizontal,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },

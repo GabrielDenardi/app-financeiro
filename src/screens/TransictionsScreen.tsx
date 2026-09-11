@@ -521,7 +521,9 @@ const createStyles = (colors: AppColors, tabBarHeight: number) => StyleSheet.cre
   fab: {
     position: 'absolute',
     right: spacing.lg,
-    bottom: tabBarHeight - spacing.lg,
+    bottom: tabBarHeight - 48,
+    zIndex: 20,
+    elevation: 20,
   },
   retryButton: {
     paddingHorizontal: spacing.lg,

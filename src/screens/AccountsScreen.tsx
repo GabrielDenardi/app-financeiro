@@ -19,6 +19,7 @@ import {
   Plus,
   Repeat,
 } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AddAccountModal } from "../components/AddAccountModal";
 import { Button } from "../components/Button";
@@ -50,7 +51,8 @@ import { formatCurrencyBRL } from "../utils/format";
 
 export function AccountsScreen({ navigation }: any) {
   const { colors } = useAppTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.top, insets.bottom), [colors, insets.top, insets.bottom]);
   const { showSuccess, showError } = useToast();
   const currentUser = useAuthenticatedUser();
   const overviewQuery = useAccountsOverview(currentUser?.id);
@@ -345,7 +347,7 @@ export function AccountsScreen({ navigation }: any) {
   );
 }
 
-const createStyles = (colors: AppColors) =>
+const createStyles = (colors: AppColors, topInset: number, bottomInset: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -357,15 +359,15 @@ const createStyles = (colors: AppColors) =>
     },
     topBar: {
       backgroundColor: colors.surface,
-      paddingTop: layout.pageHeaderTop,
-      paddingBottom: spacing.md,
+      paddingTop: topInset + spacing.xs,
+      paddingBottom: spacing.xs,
       paddingHorizontal: layout.pageHorizontal,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
     backButton: {
-      width: 40,
-      height: 40,
+      width: 36,
+      height: 36,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -380,7 +382,7 @@ const createStyles = (colors: AppColors) =>
       borderTopColor: colors.border,
       paddingHorizontal: layout.pageHorizontal,
       paddingTop: spacing.md,
-      paddingBottom: spacing.lg,
+      paddingBottom: bottomInset + spacing.md,
     },
     headerContent: {
       flexDirection: "row",

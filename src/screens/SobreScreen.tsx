@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   ExternalLink,
 } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const brandMark = require("../../assets/brand/nitin-app-icon-1024.png");
 
@@ -43,7 +44,8 @@ function iconNameFromKey(key: string): keyof typeof FontAwesome5.glyphMap {
 export default function SobreScreen({ navigation }: any) {
   const colors = useThemeColors();
   const { isDarkMode } = useAppTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const [rating, setRating] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const aboutQuery = useAboutContent();
@@ -223,7 +225,7 @@ export default function SobreScreen({ navigation }: any) {
   );
 }
 
-const createStyles = (colors: AppColors) =>
+const createStyles = (colors: AppColors, topInset: number) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
@@ -251,15 +253,15 @@ const createStyles = (colors: AppColors) =>
     },
     topBar: {
       backgroundColor: colors.surface,
-      paddingTop: layout.pageHeaderTop,
-      paddingBottom: spacing.md,
+      paddingTop: topInset + spacing.xs,
+      paddingBottom: spacing.xs,
       paddingHorizontal: layout.pageHorizontal,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
     backButton: {
-      width: 40,
-      height: 40,
+      width: 36,
+      height: 36,
       alignItems: "center",
       justifyContent: "center",
     },

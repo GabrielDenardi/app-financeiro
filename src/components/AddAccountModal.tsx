@@ -114,7 +114,7 @@ export function AddAccountModal({
         <>
           <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
           <Button
-            label={isEditing ? "Salvar" : "Criar Conta"}
+            label={isEditing ? "Salvar" : "Criar"}
             fullWidth
             onPress={handleSubmit}
             disabled={!name.trim()}

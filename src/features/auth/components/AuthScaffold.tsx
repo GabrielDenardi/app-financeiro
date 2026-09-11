@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { authTheme } from '../../../theme/authTheme';
 
@@ -32,6 +33,7 @@ export function AuthScaffold({
   footer,
   scrollable = true,
 }: AuthScaffoldProps) {
+  const insets = useSafeAreaInsets();
   const body = scrollable ? (
     <ScrollView
       keyboardShouldPersistTaps="handled"
@@ -76,7 +78,9 @@ export function AuthScaffold({
 
         <View style={styles.contentArea}>{body}</View>
 
-        {footer ? <View style={styles.footer}>{footer}</View> : null}
+        {footer ? (
+          <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>{footer}</View>
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

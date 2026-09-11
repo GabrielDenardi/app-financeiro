@@ -623,11 +623,6 @@ export function QuickAddTransactionSheet({
 
   const renderModeStep = () => (
     <View style={styles.contentBlock}>
-      <Text style={styles.sheetTitle}>Como você quer preencher?</Text>
-      <Text style={styles.sheetSubtitle}>
-        Escolha o modo de captura. A revisão final acontece antes de salvar.
-      </Text>
-
       <View style={styles.modeList}>
         <Pressable style={styles.modeCard} onPress={handleManualStart}>
           <Text style={styles.modeTitle}>Manual</Text>
@@ -702,14 +697,11 @@ export function QuickAddTransactionSheet({
   const renderReviewStep = () => (
     <View style={styles.contentBlock}>
       <View style={styles.rowBetween}>
-        <View style={styles.rowBetweenCopy}>
-          <Text style={styles.sheetTitle}>Revisar lançamento</Text>
-          <Text style={styles.sheetSubtitle}>
-            {captureMode === "manual"
-              ? "Confira os dados antes de salvar."
-              : "O rascunho foi preenchido automaticamente e pode ser ajustado."}
-          </Text>
-        </View>
+        <Text style={[styles.rowBetweenCopy, styles.sheetSubtitle]}>
+          {captureMode === "manual"
+            ? "Confira os dados antes de salvar."
+            : "O rascunho foi preenchido automaticamente e pode ser ajustado."}
+        </Text>
         <Button label="Voltar" variant="ghost" size="sm" onPress={() => setStep("mode")} />
       </View>
 
@@ -851,6 +843,12 @@ export function QuickAddTransactionSheet({
     <BottomSheet
       visible={visible}
       onClose={handleClose}
+      title={step === "mode" ? "Nova transação" : "Revisar lançamento"}
+      subtitle={
+        step === "mode"
+          ? "Escolha o modo de captura. A revisão final acontece antes de salvar."
+          : undefined
+      }
       footer={(close) => (
         <>
           <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
@@ -884,10 +882,6 @@ const createStyles = (colors: AppColors) =>
     },
     rowBetweenCopy: {
       flex: 1,
-    },
-    sheetTitle: {
-      ...typography.h2,
-      color: colors.textPrimary,
     },
     sheetSubtitle: {
       ...typography.caption,

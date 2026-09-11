@@ -412,7 +412,7 @@ export default function MetasScreen() {
           <>
             <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
             <Button
-              label="Criar Meta"
+              label="Criar"
               fullWidth
               onPress={onCreate}
               loading={createGoal.isPending}
@@ -570,14 +570,14 @@ export default function MetasScreen() {
         footer={() => (
           <>
             <Button
-              label="Limpar prazo"
+              label="Limpar"
               variant="secondary"
               fullWidth
               onPress={() => onUpdateDeadline(null)}
               disabled={updateGoal.isPending}
             />
             <Button
-              label="Salvar Prazo"
+              label="Salvar"
               fullWidth
               onPress={() => onUpdateDeadline(tempDue)}
               loading={updateGoal.isPending}

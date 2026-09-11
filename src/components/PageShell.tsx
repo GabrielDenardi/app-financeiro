@@ -45,7 +45,10 @@ export function PageShell({
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const styles = useMemo(() => createStyles(colors, tabBarHeight, insets.bottom), [colors, tabBarHeight, insets.bottom]);
+  const styles = useMemo(
+    () => createStyles(colors, tabBarHeight, insets.bottom, insets.top),
+    [colors, tabBarHeight, insets.bottom, insets.top],
+  );
   const baseContentStyle = [
     styles.content,
     onBackPress ? styles.contentWithTopBar : styles.contentWithoutTopBar,
@@ -88,7 +91,7 @@ export function PageShell({
   );
 }
 
-const createStyles = (colors: AppColors, tabBarHeight: number, bottomInset: number) =>
+const createStyles = (colors: AppColors, tabBarHeight: number, bottomInset: number, topInset: number) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
@@ -115,15 +118,15 @@ const createStyles = (colors: AppColors, tabBarHeight: number, bottomInset: numb
     },
     topBar: {
       backgroundColor: colors.surface,
-      paddingTop: layout.pageHeaderTop,
-      paddingBottom: spacing.md,
+      paddingTop: topInset + spacing.xs,
+      paddingBottom: spacing.xs,
       paddingHorizontal: layout.pageHorizontal,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
     backButton: {
-      width: 40,
-      height: 40,
+      width: 36,
+      height: 36,
       alignItems: 'center',
       justifyContent: 'center',
     },

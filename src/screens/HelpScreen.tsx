@@ -34,6 +34,8 @@ import {
   useHelpCategories,
 } from "../features/help/hooks/useHelp";
 import type { HelpArticle } from "../features/help/types";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import {
   type AppColors,
   layout,
@@ -73,7 +75,8 @@ function ArticleDetail({
   onNotHelpful: () => void;
 }) {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const [feedback, setFeedback] = useState<"idle" | "helpful">("idle");
 
   return (
@@ -170,7 +173,8 @@ function ArticleDetail({
 export function HelpScreen({ navigation }: any) {
   const colors = useThemeColors();
   const { isDarkMode } = useAppTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const scrollRef = useRef<ScrollView>(null);
   const [searchText, setSearchText] = useState("");
   const [selectedCategoryCode, setSelectedCategoryCode] = useState<
@@ -522,7 +526,7 @@ export function HelpScreen({ navigation }: any) {
   );
 }
 
-const createStyles = (colors: AppColors) =>
+const createStyles = (colors: AppColors, topInset: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -560,15 +564,15 @@ const createStyles = (colors: AppColors) =>
     },
     topBar: {
       backgroundColor: colors.surface,
-      paddingTop: layout.pageHeaderTop,
-      paddingBottom: spacing.md,
+      paddingTop: topInset + spacing.xs,
+      paddingBottom: spacing.xs,
       paddingHorizontal: layout.pageHorizontal,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
     backButton: {
-      width: 40,
-      height: 40,
+      width: 36,
+      height: 36,
       alignItems: "center",
       justifyContent: "center",
     },

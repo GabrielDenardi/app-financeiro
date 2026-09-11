@@ -395,7 +395,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
           <>
             <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
             <Button
-              label="Confirmar exclusão"
+              label="Excluir"
               variant="danger"
               fullWidth
               onPress={onDelete}

@@ -536,7 +536,7 @@ export default function RecurringTransactionsScreen() {
         footer={(close) => (
           <>
             <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
-            <Button label="Salvar" fullWidth onPress={handleSave} />
+            <Button label={editingId ? 'Salvar' : 'Criar'} fullWidth onPress={handleSave} />
           </>
         )}
       >
@@ -649,7 +649,7 @@ export default function RecurringTransactionsScreen() {
       <Modal visible={confirmModalVisible} animationType="fade" transparent onRequestClose={() => setConfirmModalVisible(false)}>
         <KeyboardAvoidingView
           style={styles.miniModalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <View style={styles.miniModalContent}>
             <CheckCircle2 size={40} color={colors.primary} style={styles.miniIcon} />

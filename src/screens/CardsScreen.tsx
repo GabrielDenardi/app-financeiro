@@ -642,7 +642,7 @@ export default function CardsScreen({ navigation }: any) {
         onSubmit={handleEditCard}
         initialValues={editingCard ?? undefined}
         title="Editar Cartão"
-        submitLabel="Salvar alterações"
+        submitLabel="Salvar"
       />
 
       <AddCardBillsModal

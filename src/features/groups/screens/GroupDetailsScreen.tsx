@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { ArrowLeft, Camera, FileText, Image as ImageIcon, Plus, Share2, Trash2, X } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge } from '../../../components/Badge';
 import { BottomSheet } from '../../../components/BottomSheet';
@@ -22,6 +23,7 @@ import { FieldCard, FieldDivider, FieldRow } from '../../../components/FormField
 import { useResultModal } from '../../../components/ResultModal';
 import { useToast } from '../../../components/Toast';
 import { beginTrustedSystemUI } from '../../../lib/trustedSystemUi';
+import { formatCurrencyInput, formatPercentInput, normalizeCurrencyInput } from '../../finance/utils';
 import { usePreferences } from '../../preferences/hooks/usePreferences';
 import {
   deleteTransactionAttachment,
@@ -98,7 +100,8 @@ function sortMembers(members: GroupMember[]) {
 
 export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenProps) {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const navigation = useNavigation<any>();
   const { showSuccess, showError } = useToast();
   const { showResult } = useResultModal();
@@ -160,7 +163,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
   };
 
   const splitPreview = useMemo(() => {
-    const totalAmount = parseDecimal(splitTotal);
+    const totalAmount = normalizeCurrencyInput(splitTotal);
 
     if (totalAmount <= 0 || selectedMemberIds.length === 0) {
       return { shares: [], error: '' };
@@ -189,7 +192,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
           totalAmount,
           selectedMemberIds.map((userId) => ({
             userId,
-            amount: parseDecimal(customAmountByUserId[userId] ?? ''),
+            amount: normalizeCurrencyInput(customAmountByUserId[userId] ?? ''),
           })),
         ),
         error: '',
@@ -309,7 +312,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         description: splitDescription.trim(),
         kind: splitKind,
         splitMode,
-        totalAmount: parseDecimal(splitTotal),
+        totalAmount: normalizeCurrencyInput(splitTotal),
         ownerUserId: splitOwnerUserId,
         occurredAt: new Date().toISOString(),
         attachmentId: uploadedAttachment?.id ?? null,
@@ -344,7 +347,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
       return;
     }
 
-    const amount = parseDecimal(settlementAmount);
+    const amount = normalizeCurrencyInput(settlementAmount);
     if (amount <= 0 || amount > Math.abs(selectedBalance.amount) + 0.009) {
       showError('Informe um valor valido dentro do saldo pendente.');
       return;
@@ -641,7 +644,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
           <>
             <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
             <Button
-              label="Salvar divisao"
+              label="Salvar"
               fullWidth
               loading={createSplitMutation.isPending}
               onPress={handleSaveSplit}
@@ -665,7 +668,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
             prefix="R$"
             placeholder="0,00"
             value={splitTotal}
-            onChangeText={setSplitTotal}
+            onChangeText={(value) => setSplitTotal(formatCurrencyInput(value))}
             keyboardType="decimal-pad"
           />
         </FieldCard>
@@ -764,8 +767,8 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                   }
                   onChangeText={(value) =>
                     splitMode === 'percentage'
-                      ? setPercentageByUserId((current) => ({ ...current, [userId]: value }))
-                      : setCustomAmountByUserId((current) => ({ ...current, [userId]: value }))
+                      ? setPercentageByUserId((current) => ({ ...current, [userId]: formatPercentInput(value) }))
+                      : setCustomAmountByUserId((current) => ({ ...current, [userId]: formatCurrencyInput(value) }))
                   }
                   keyboardType="decimal-pad"
                 />
@@ -813,7 +816,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
             prefix="R$"
             placeholder="0,00"
             value={settlementAmount}
-            onChangeText={setSettlementAmount}
+            onChangeText={(value) => setSettlementAmount(formatCurrencyInput(value))}
             keyboardType="decimal-pad"
           />
           <FieldDivider />
@@ -887,18 +890,18 @@ function MetricCard({
   );
 }
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
+const createStyles = (colors: AppColors, topInset: number) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   topBar: {
     backgroundColor: colors.surface,
-    paddingTop: layout.pageHeaderTop,
-    paddingBottom: spacing.md,
+    paddingTop: topInset + spacing.xs,
+    paddingBottom: spacing.xs,
     paddingHorizontal: layout.pageHorizontal,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  backButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: spacing.lg },
   headerCopy: { flex: 1, gap: spacing.xs },

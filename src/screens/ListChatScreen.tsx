@@ -245,6 +245,8 @@ export default function ListChatScreen() {
           <BottomSheet
             visible={sheetVisible}
             onClose={() => setSheetVisible(false)}
+            title="Nova conversa"
+            subtitle="Descreva o que precisa e o assistente vai te ajudar."
             footer={(close) => (
               <>
                 <Button
@@ -254,11 +256,7 @@ export default function ListChatScreen() {
                   onPress={close}
                 />
                 <Button
-                  label={
-                    createConversationMutation.isPending
-                      ? 'Iniciando...'
-                      : 'Iniciar conversa'
-                  }
+                  label="Criar"
                   fullWidth
                   disabled={
                     !title.trim() ||
@@ -272,11 +270,6 @@ export default function ListChatScreen() {
             )}
           >
             <View style={styles.sheetContent}>
-              <Text style={styles.sheetTitle}>Nova conversa</Text>
-              <Text style={styles.sheetSubtitle}>
-                Descreva o que precisa e o assistente vai te ajudar.
-              </Text>
-
               <FieldCard>
                 <FieldRow
                   label="Assunto"
@@ -454,13 +447,5 @@ const createStyles = (colors: AppColors) =>
     },
     sheetContent: {
       gap: spacing.sm,
-    },
-    sheetTitle: {
-      ...typography.h2,
-      color: colors.textPrimary,
-    },
-    sheetSubtitle: {
-      ...typography.body,
-      color: colors.textSecondary,
     },
   });
