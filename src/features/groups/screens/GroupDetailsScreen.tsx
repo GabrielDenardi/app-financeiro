@@ -66,7 +66,7 @@ type DetailsTab = 'balances' | 'splits' | 'settlements' | 'members';
 
 const TABS: Array<{ key: DetailsTab; label: string }> = [
   { key: 'balances', label: 'Saldos' },
-  { key: 'splits', label: 'Divisoes' },
+  { key: 'splits', label: 'Divisões' },
   { key: 'settlements', label: 'Acertos' },
   { key: 'members', label: 'Membros' },
 ];
@@ -74,7 +74,7 @@ const TABS: Array<{ key: DetailsTab; label: string }> = [
 const PAYMENT_METHODS: Array<{ value: SettlementPaymentMethod; label: string }> = [
   { value: 'PIX', label: 'PIX' },
   { value: 'Dinheiro', label: 'Dinheiro' },
-  { value: 'Transferencia', label: 'Transferencia' },
+  { value: 'Transferencia', label: 'Transferência' },
 ];
 
 function parseDecimal(value: string) {
@@ -200,7 +200,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
     } catch (error) {
       return {
         shares: [],
-        error: error instanceof Error ? error.message : 'Nao foi possivel calcular a divisao.',
+        error: error instanceof Error ? error.message : 'Não foi possível calcular a divisão.',
       };
     }
   }, [customAmountByUserId, percentageByUserId, selectedMemberIds, splitMode, splitTotal]);
@@ -224,10 +224,10 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
     beginTrustedSystemUI();
     try {
       await Share.share({
-        message: `Entre no grupo "${groupData.group.title}" com o codigo ${groupData.group.shareCode}.`,
+        message: `Entre no grupo "${groupData.group.title}" com o código ${groupData.group.shareCode}.`,
       });
     } catch {
-      showError('Nao foi possivel compartilhar o codigo agora.');
+      showError('Não foi possível compartilhar o código agora.');
     }
   };
 
@@ -238,7 +238,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         setSplitReceiptFile(file);
       }
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Nao foi possivel abrir a camera.');
+      showError(error instanceof Error ? error.message : 'Não foi possível abrir a câmera.');
     }
   };
 
@@ -249,7 +249,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         setSplitReceiptFile(file);
       }
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Nao foi possivel abrir a galeria.');
+      showError(error instanceof Error ? error.message : 'Não foi possível abrir a galeria.');
     }
   };
 
@@ -260,7 +260,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         setSplitReceiptFile(file);
       }
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Nao foi possivel abrir o documento.');
+      showError(error instanceof Error ? error.message : 'Não foi possível abrir o documento.');
     }
   };
 
@@ -270,7 +270,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
     }
 
     if (!splitTitle.trim()) {
-      showError('Informe um titulo.');
+      showError('Informe um título.');
       return;
     }
 
@@ -330,7 +330,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         }
       }
 
-      showError(error instanceof Error ? error.message : 'Nao foi possivel registrar a divisao.');
+      showError(error instanceof Error ? error.message : 'Não foi possível registrar a divisão.');
     }
   };
 
@@ -349,7 +349,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
     const amount = normalizeCurrencyInput(settlementAmount);
     if (amount <= 0 || amount > Math.abs(selectedBalance.amount) + 0.009) {
-      showError('Informe um valor valido dentro do saldo pendente.');
+      showError('Informe um valor válido dentro do saldo pendente.');
       return;
     }
 
@@ -369,7 +369,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         message: 'O membro vai confirmar o recebimento em breve.',
       });
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Nao foi possivel solicitar o acerto.');
+      showError(error instanceof Error ? error.message : 'Não foi possível solicitar o acerto.');
     }
   };
 
@@ -392,7 +392,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
       });
     } catch (error) {
       setSettlementToConfirm(null);
-      showError(error instanceof Error ? error.message : 'Nao foi possivel confirmar o acerto.');
+      showError(error instanceof Error ? error.message : 'Não foi possível confirmar o acerto.');
     }
   };
 
@@ -411,7 +411,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
       showSuccess('Membro removido.');
     } catch (error) {
       setMemberToRemove(null);
-      showError(error instanceof Error ? error.message : 'Nao foi possivel remover o membro.');
+      showError(error instanceof Error ? error.message : 'Não foi possível remover o membro.');
     }
   };
 
@@ -437,7 +437,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         <View style={styles.header}>
           <View style={styles.headerCopy}>
             <Text style={styles.headerTitle}>{groupData.group.title}</Text>
-            <Text style={styles.headerSubtitle}>{groupData.group.description || 'Sem descricao.'}</Text>
+            <Text style={styles.headerSubtitle}>{groupData.group.description || 'Sem descrição.'}</Text>
           </View>
 
           <Pressable onPress={handleShareCode} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
@@ -448,14 +448,14 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         <Card style={styles.heroCard}>
           <View style={styles.heroCodeRow}>
             <View style={styles.heroCodeBlock}>
-              <Text style={styles.heroMuted}>Codigo</Text>
+              <Text style={styles.heroMuted}>Código</Text>
               <Text style={styles.heroCode} numberOfLines={1} adjustsFontSizeToFit>
                 {groupData.group.shareCode}
               </Text>
             </View>
 
             <Button
-              label="Nova divisao"
+              label="Nova divisão"
               size="sm"
               icon={<Plus size={16} color={colors.white} />}
               onPress={handleOpenSplitModal}
@@ -489,9 +489,9 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
         {activeTab === 'balances' ? (
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Saldos entre voce e os outros membros</Text>
+            <Text style={styles.sectionTitle}>Saldos entre você e os outros membros</Text>
             <Text style={styles.sectionDescription}>
-              Positivo indica credito. Negativo indica que voce deve para o membro.
+              Positivo indica crédito. Negativo indica que você deve para o membro.
             </Text>
 
             {groupData.balances.map((balance) => (
@@ -541,7 +541,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
             {groupData.splits.length === 0 ? (
               <Card style={styles.sectionCard}>
-                <Text style={styles.emptyText}>Nenhuma divisao registrada.</Text>
+                <Text style={styles.emptyText}>Nenhuma divisão registrada.</Text>
               </Card>
             ) : null}
           </>
@@ -582,7 +582,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                       onPress={() => handleConfirmSettlement(settlement)}
                     />
                   ) : isOutgoing && settlement.status === 'pending' ? (
-                    <Text style={styles.awaitingText}>Aguardando confirmacao do recebedor.</Text>
+                    <Text style={styles.awaitingText}>Aguardando confirmação do recebedor.</Text>
                   ) : null}
                 </Card>
               );
@@ -611,7 +611,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                   </View>
 
                   <View style={styles.listCopy}>
-                    <Text style={styles.listTitle}>{member.userId === currentUserId ? 'Voce' : member.fullName}</Text>
+                    <Text style={styles.listTitle}>{member.userId === currentUserId ? 'Você' : member.fullName}</Text>
                     <Text style={styles.sectionDescription}>
                       {member.role === 'admin' ? 'Administrador' : 'Membro'}
                     </Text>
@@ -637,7 +637,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
       <BottomSheet
         visible={isSplitModalVisible}
         onClose={() => setIsSplitModalVisible(false)}
-        title="Registrar divisao"
+        title="Registrar divisão"
         subtitle="Divida uma despesa ou receita entre os membros."
         contentContainerStyle={styles.sheetContent}
         footer={(close) => (
@@ -653,10 +653,10 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         )}
       >
         <FieldCard>
-          <FieldRow label="Titulo" placeholder="Ex: Mercado" value={splitTitle} onChangeText={setSplitTitle} />
+          <FieldRow label="Título" placeholder="Ex: Mercado" value={splitTitle} onChangeText={setSplitTitle} />
           <FieldDivider />
           <FieldRow
-            label="Descricao"
+            label="Descrição"
             placeholder="Opcional"
             value={splitDescription}
             onChangeText={setSplitDescription}
@@ -697,7 +697,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
           ))}
         </View>
 
-        <Text style={styles.fieldLabel}>Modo de divisao</Text>
+        <Text style={styles.fieldLabel}>Modo de divisão</Text>
         <View style={styles.wrapRow}>
           <Chip label="Igual" selected={splitMode === 'equal'} onPress={() => setSplitMode('equal')} />
           <Chip label="Por porcentagem" selected={splitMode === 'percentage'} onPress={() => setSplitMode('percentage')} />
@@ -719,7 +719,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         <Text style={styles.fieldLabel}>Comprovante</Text>
         <Text style={styles.receiptHelper}>
           {requireGroupExpenseReceipt && splitKind === 'expense'
-            ? 'Obrigatorio para despesas neste usuario.'
+            ? 'Obrigatório para despesas neste usuário.'
             : 'Opcional. Anexe uma NF ou notinha para comprovar a despesa.'}
         </Text>
         <View style={styles.wrapRow}>
@@ -821,7 +821,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
           />
           <FieldDivider />
           <FieldRow
-            label="Observacao"
+            label="Observação"
             placeholder="Opcional"
             value={settlementNote}
             onChangeText={setSettlementNote}

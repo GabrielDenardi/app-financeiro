@@ -136,7 +136,7 @@ function validateProfileForm(form: ProfileFormState): FormErrors {
   }
 
   if (cepDigits.length > 0 && cepDigits.length !== 8) {
-    errors.cep = "Digite um CEP válido com 8 digitos.";
+    errors.cep = "Digite um CEP válido com 8 dígitos.";
   }
 
   if (state && !BRAZIL_STATES.has(state)) {
@@ -234,7 +234,7 @@ export function EditProfileScreen({
     if (cepDigits.length !== 8) {
       setErrors((current) => ({
         ...current,
-        cep: "Digite um CEP válido com 8 digitos.",
+        cep: "Digite um CEP válido com 8 dígitos.",
       }));
       setCepMessage(null);
       return;

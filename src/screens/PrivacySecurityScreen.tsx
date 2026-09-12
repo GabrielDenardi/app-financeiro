@@ -86,7 +86,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
     try {
       await updatePref.mutateAsync({ [key]: value });
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Nao foi possivel atualizar a preferencia.');
+      showError(error instanceof Error ? error.message : 'Não foi possível atualizar a preferência.');
     } finally {
       setBusyPrefKey(null);
     }
@@ -96,7 +96,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
     setBusyPrefKey('biometricEnabled');
     try {
       if (value && !(await canUseBiometricLock())) {
-        showError('O dispositivo nao possui biometria configurada.');
+        showError('O dispositivo não possui biometria configurada.');
         return;
       }
 
@@ -112,7 +112,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
       await updatePref.mutateAsync({ biometricEnabled: value });
       await setBiometricLockEnabled(value);
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Nao foi possivel atualizar a biometria.');
+      showError(error instanceof Error ? error.message : 'Não foi possível atualizar a biometria.');
     } finally {
       setBusyPrefKey(null);
     }
@@ -134,7 +134,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
         showSuccess('Autenticação em duas etapas desativada.');
       }
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Nao foi possivel atualizar o MFA.');
+      showError(error instanceof Error ? error.message : 'Não foi possível atualizar o MFA.');
     }
   };
 
@@ -150,7 +150,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
       setMfaCode('');
       showSuccess('Autenticação em duas etapas ativada.');
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Nao foi possivel validar o TOTP.');
+      showError(error instanceof Error ? error.message : 'Não foi possível validar o TOTP.');
     }
   };
 
@@ -174,7 +174,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
       await Linking.openURL(url);
       showResult({ variant: 'success', title: 'Exportação pronta!', message: 'O download foi iniciado.' });
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Nao foi possivel solicitar a exportacao.');
+      showError(error instanceof Error ? error.message : 'Não foi possível solicitar a exportação.');
     }
   };
 
@@ -190,18 +190,18 @@ export function PrivacySecurityScreen({ navigation }: any) {
         message: 'Sua conta foi removida e a sessão atual foi encerrada.',
       });
     } catch (error) {
-      showError(error instanceof Error ? error.message : 'Nao foi possivel solicitar a exclusao.');
+      showError(error instanceof Error ? error.message : 'Não foi possível solicitar a exclusão.');
     }
   };
 
   const onOpenPolicy = () => {
     if (!appEnv.privacyPolicyUrl) {
-      showError('Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a politica.');
+      showError('Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a política.');
       return;
     }
 
     Linking.openURL(appEnv.privacyPolicyUrl).catch(() => {
-      showError('Nao foi possivel abrir a politica de privacidade.');
+      showError('Não foi possível abrir a política de privacidade.');
     });
   };
 
@@ -212,13 +212,13 @@ export function PrivacySecurityScreen({ navigation }: any) {
     }
 
     Linking.openURL(appEnv.termsOfUseUrl).catch(() => {
-      showError('Nao foi possivel abrir os termos de uso.');
+      showError('Não foi possível abrir os termos de uso.');
     });
   };
 
   return (
     <PageShell onBackPress={() => navigation.goBack()}>
-      <PageHeader title="Privacidade e Seguranca" />
+      <PageHeader title="Privacidade e Segurança" />
 
       {preferencesQuery.isLoading && !prefs ? (
         <Card style={styles.cardCenter}>
@@ -227,7 +227,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
       ) : null}
       {preferencesQuery.isError ? (
         <Card style={styles.cardCenter}>
-          <Text style={styles.desc}>Nao foi possivel carregar suas preferencias.</Text>
+          <Text style={styles.desc}>Não foi possível carregar suas preferências.</Text>
           <Pressable style={styles.linkBtn} onPress={() => preferencesQuery.refetch()}>
             <Text style={styles.linkBtnText}>Tentar novamente</Text>
           </Pressable>
@@ -237,13 +237,13 @@ export function PrivacySecurityScreen({ navigation }: any) {
       {prefs ? (
         <>
           <Section
-            title="Seguranca"
+            title="Segurança"
             icon={<ShieldCheck size={18} color={colors.textPrimary} />}
             styles={styles}
           >
             <PrefRow
-              label="Autenticacao em duas etapas"
-              desc="Adiciona uma camada extra de seguranca."
+              label="Autenticação em duas etapas"
+              desc="Adiciona uma camada extra de segurança."
               value={prefs.twoFactorEnabled}
               loading={mfaBusy}
               onChange={onToggleTwoFactor}
@@ -270,14 +270,14 @@ export function PrivacySecurityScreen({ navigation }: any) {
           <Section title="Privacidade" icon={<Lock size={18} color={colors.textPrimary} />} styles={styles}>
             <PrefRow
               label="Ocultar valores na tela inicial"
-              desc="Protege seus dados em publico."
+              desc="Protege seus dados em público."
               value={prefs.hideValuesHome}
               loading={busyPrefKey === 'hideValuesHome'}
               onChange={(value) => onTogglePref('hideValuesHome', value)}
               styles={styles}
             />
             <PrefRow
-              label="Compartilhar estatisticas anonimas"
+              label="Compartilhar estatísticas anônimas"
               desc="Ajuda a melhorar o app."
               value={prefs.shareAnonymousStats}
               loading={busyPrefKey === 'shareAnonymousStats'}
@@ -286,7 +286,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
             />
             <PrefRow
               label="Exigir comprovante em despesas de grupo"
-              desc="Quando ativo, novos lancamentos de despesa em grupo exigem NF ou notinha."
+              desc="Quando ativo, novos lançamentos de despesa em grupo exigem NF ou notinha."
               value={prefs.requireGroupExpenseReceipt}
               loading={busyPrefKey === 'requireGroupExpenseReceipt'}
               onChange={(value) => onTogglePref('requireGroupExpenseReceipt', value)}
@@ -313,7 +313,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
       <Card style={styles.card}>
         <Text style={styles.sectionTitle}>Acessos recentes</Text>
         {loginEventsQuery.isLoading ? <ActivityIndicator color={colors.primaryLight} /> : null}
-        {loginEventsQuery.isError ? <Text style={styles.desc}>Nao foi possivel carregar os acessos.</Text> : null}
+        {loginEventsQuery.isError ? <Text style={styles.desc}>Não foi possível carregar os acessos.</Text> : null}
         {!loginEventsQuery.isLoading && !loginEventsQuery.isError && !(loginEventsQuery.data?.length) ? (
           <Text style={styles.desc}>Nenhum evento registrado ainda.</Text>
         ) : null}
@@ -328,13 +328,13 @@ export function PrivacySecurityScreen({ navigation }: any) {
       </Card>
 
       <View style={styles.policy}>
-        <Text style={styles.policyTitle}>Politica de Privacidade</Text>
+        <Text style={styles.policyTitle}>Política de Privacidade</Text>
         <Text style={styles.policyText}>
-          Levamos sua privacidade a serio. Seus dados financeiros sao protegidos, voce pode exporta-los a qualquer momento
-          e o controle das preferencias fica sempre com sua conta.
+          Levamos sua privacidade a sério. Seus dados financeiros são protegidos, você pode exportá-los a qualquer momento
+          e o controle das preferências fica sempre com sua conta.
         </Text>
         <Pressable onPress={onOpenPolicy}>
-          <Text style={styles.policyLink}>Ler politica completa</Text>
+          <Text style={styles.policyLink}>Ler política completa</Text>
         </Pressable>
         <Pressable onPress={onOpenTerms}>
           <Text style={styles.policyLink}>Ler termos de uso</Text>
@@ -345,7 +345,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
         visible={paywallOpen}
         onClose={() => setPaywallOpen(false)}
         featureTitle="Exportar dados"
-        description="Baixe uma copia completa dos seus dados financeiros — recurso do Plano Pro."
+        description="Baixe uma cópia completa dos seus dados financeiros — recurso do Plano Pro."
       />
 
       <BottomSheet

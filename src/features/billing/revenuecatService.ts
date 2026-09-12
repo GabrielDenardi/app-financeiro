@@ -26,12 +26,12 @@ export type RevenueCatPlanPackage = {
 
 function assertAndroidBillingAvailable() {
   if (Platform.OS !== 'android') {
-    throw new Error('As assinaturas estao disponiveis apenas no aplicativo Android.');
+    throw new Error('As assinaturas estão disponíveis apenas no aplicativo Android.');
   }
 
   if (!hasRevenueCatGoogleEnv) {
     throw new Error(
-      'A chave publica do RevenueCat para Google Play ainda nao foi configurada.',
+      'A chave pública do RevenueCat para Google Play ainda não foi configurada.',
     );
   }
 }
@@ -150,7 +150,7 @@ export async function purchaseRevenueCatPlan(
     }
 
     throw new Error(
-      purchasesError.message || 'Nao foi possivel concluir a assinatura pela Google Play.',
+      purchasesError.message || 'Não foi possível concluir a assinatura pela Google Play.',
     );
   }
 }
@@ -181,7 +181,7 @@ export async function openGooglePlaySubscriptionManagement(): Promise<void> {
     'https://play.google.com/store/account/subscriptions',
   );
   if (!supported) {
-    throw new Error('Nao foi possivel abrir o gerenciamento da Google Play.');
+    throw new Error('Não foi possível abrir o gerenciamento da Google Play.');
   }
 
   await Linking.openURL('https://play.google.com/store/account/subscriptions');

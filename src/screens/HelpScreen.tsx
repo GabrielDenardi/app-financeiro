@@ -42,7 +42,6 @@ import {
   radius,
   spacing,
   typography,
-  useAppTheme,
   useThemeColors,
 } from "../theme";
 
@@ -172,7 +171,6 @@ function ArticleDetail({
 
 export function HelpScreen({ navigation }: any) {
   const colors = useThemeColors();
-  const { isDarkMode } = useAppTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const scrollRef = useRef<ScrollView>(null);
@@ -213,12 +211,9 @@ export function HelpScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle={isDarkMode ? "light-content" : "dark-content"}
-        backgroundColor={colors.surface}
-      />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
-      <View style={styles.topBar}>
+      <View style={styles.topBarOnHero}>
         <Pressable
           style={({ pressed }) => [
             styles.backButton,
@@ -226,7 +221,7 @@ export function HelpScreen({ navigation }: any) {
           ]}
           onPress={() => navigation?.goBack()}
         >
-          <ArrowLeft size={20} color={colors.textPrimary} />
+          <ArrowLeft size={20} color={colors.white} />
         </Pressable>
       </View>
 
@@ -569,6 +564,14 @@ const createStyles = (colors: AppColors, topInset: number) =>
       paddingHorizontal: layout.pageHorizontal,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+    },
+    // Fica sobre o heroHeader azul (tela principal) — sem borda, mesma cor
+    // do gradiente logo abaixo, pra não cortar a continuidade visual.
+    topBarOnHero: {
+      backgroundColor: colors.primary,
+      paddingTop: topInset + spacing.xs,
+      paddingBottom: spacing.xs,
+      paddingHorizontal: layout.pageHorizontal,
     },
     backButton: {
       width: 36,

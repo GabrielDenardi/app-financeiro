@@ -99,7 +99,7 @@ export default function ImportScreen({ navigation }: any) {
           <Text style={styles.cardTitle}>Recurso do Plano Pro</Text>
           <Text style={styles.cardSub}>{getUpgradeMessage('Importacao de dados')}</Text>
           <Pressable style={styles.primary} onPress={() => setPaywallOpen(true)}>
-            <Text style={styles.primaryText}>Ver opcoes de desbloqueio</Text>
+            <Text style={styles.primaryText}>Ver opções de desbloqueio</Text>
           </Pressable>
         </Card>
       ) : (
@@ -202,7 +202,7 @@ export default function ImportScreen({ navigation }: any) {
         visible={paywallOpen}
         onClose={() => setPaywallOpen(false)}
         featureTitle="Importacao de dados"
-        description="Importe extratos em CSV ou Excel e traga seu historico financeiro de uma vez — recurso do Plano Pro."
+        description="Importe extratos em CSV ou Excel e traga seu histórico financeiro de uma vez — recurso do Plano Pro."
       />
     </PageShell>
   );

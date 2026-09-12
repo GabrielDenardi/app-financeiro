@@ -8,7 +8,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, SubscriptionPlan> = 
   free: {
     id: 'free',
     name: 'Plano Free',
-    priceLabel: 'Gratis',
+    priceLabel: 'Grátis',
     accountLimit: 1,
     features: {
       fullReports: false,
@@ -25,7 +25,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, SubscriptionPlan> = 
   },
   basic: {
     id: 'basic',
-    name: 'Plano Basico',
+    name: 'Plano Básico',
     priceLabel: 'R$ 7,99',
     accountLimit: 1,
     features: {
@@ -37,13 +37,13 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, SubscriptionPlan> = 
     },
     benefits: [
       '1 conta financeira',
-      'Relatorios parciais',
+      'Relatórios parciais',
       'Entrar em grupos existentes',
     ],
   },
   intermediate: {
     id: 'intermediate',
-    name: 'Plano Intermediario',
+    name: 'Plano Intermediário',
     priceLabel: 'R$ 12,99',
     accountLimit: 2,
     features: {
@@ -55,7 +55,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, SubscriptionPlan> = 
     },
     benefits: [
       '2 contas financeiras',
-      'Relatorios completos',
+      'Relatórios completos',
       'Criar e entrar em grupos',
       'Cadastro de despesas por voz',
     ],
@@ -76,8 +76,8 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, SubscriptionPlan> = 
       '4 contas financeiras',
       'Tudo dos outros planos',
       'Chat de suporte interno',
-      'Importacao e exportacao de dados',
-      'Exportacao para o Imposto de Renda',
+      'Importação e exportação de dados',
+      'Exportação para o Imposto de Renda',
     ],
   },
 };
@@ -150,9 +150,9 @@ export function canCreateAccount(
 
 export function getAccountLimitMessage(planId: string | null | undefined) {
   const plan = getPlan(planId);
-  return `Seu ${plan.name} permite ate ${plan.accountLimit} conta(s) financeira(s). Veja os planos para aumentar esse limite.`;
+  return `Seu ${plan.name} permite até ${plan.accountLimit} conta(s) financeira(s). Veja os planos para aumentar esse limite.`;
 }
 
 export function getUpgradeMessage(featureName: string) {
-  return `${featureName} nao esta disponivel no seu plano atual. Veja os planos para liberar esse recurso.`;
+  return `${featureName} não está disponível no seu plano atual. Veja os planos para liberar esse recurso.`;
 }

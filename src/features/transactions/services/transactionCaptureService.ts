@@ -56,7 +56,7 @@ async function getFunctionErrorMessage(error: unknown, response?: Response) {
   const fallback =
     error instanceof Error && error.message
       ? error.message
-      : 'Nao foi possivel processar o arquivo enviado.';
+      : 'Não foi possível processar o arquivo enviado.';
 
   const errorContext =
     typeof error === 'object' && error && 'context' in error
@@ -131,7 +131,7 @@ function mapAttachmentRow(row: {
 export async function pickImageFromCamera(): Promise<LocalCaptureFile | null> {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
   if (!permission.granted) {
-    throw new Error('Permissao da camera negada.');
+    throw new Error('Permissão da câmera negada.');
   }
 
   const result = await ImagePicker.launchCameraAsync({
@@ -156,7 +156,7 @@ export async function pickImageFromCamera(): Promise<LocalCaptureFile | null> {
 export async function pickImageFromLibrary(): Promise<LocalCaptureFile | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
-    throw new Error('Permissao da galeria negada.');
+    throw new Error('Permissão da galeria negada.');
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -219,7 +219,7 @@ export async function uploadTransactionAttachment({
     throw new Error('O arquivo excede o limite máximo de 10 MB.');
   }
   if (fileBytes.byteLength !== validatedFile.size) {
-    throw new Error('O tamanho real do arquivo nao corresponde aos metadados informados.');
+    throw new Error('O tamanho real do arquivo não corresponde aos metadados informados.');
   }
 
   const { error: uploadError } = await supabase.storage
@@ -301,7 +301,7 @@ export async function parseTransactionFromOcr(file: LocalCaptureFile): Promise<C
 
   const draft = (data as { draft?: CapturedTransactionDraft }).draft;
   if (!draft) {
-    throw new Error('Nao foi possivel interpretar o documento enviado.');
+    throw new Error('Não foi possível interpretar o documento enviado.');
   }
 
   return draft;
@@ -342,7 +342,7 @@ export async function parseTransactionFromVoice(file: LocalCaptureFile): Promise
 
   const draft = (data as { draft?: CapturedTransactionDraft }).draft;
   if (!draft) {
-    throw new Error('Nao foi possivel interpretar o audio enviado.');
+    throw new Error('Não foi possível interpretar o áudio enviado.');
   }
 
   return draft;

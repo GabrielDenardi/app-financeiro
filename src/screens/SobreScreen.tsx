@@ -11,7 +11,6 @@ import {
   View,
 } from "react-native";
 import { FontAwesome5 } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -28,7 +27,6 @@ import {
   spacing,
   typography,
   type AppColors,
-  useAppTheme,
   useThemeColors,
 } from "../theme";
 
@@ -43,7 +41,6 @@ function iconNameFromKey(key: string): keyof typeof FontAwesome5.glyphMap {
 
 export default function SobreScreen({ navigation }: any) {
   const colors = useThemeColors();
-  const { isDarkMode } = useAppTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const [rating, setRating] = useState(0);
@@ -59,10 +56,7 @@ export default function SobreScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar
-        barStyle={isDarkMode ? "light-content" : "dark-content"}
-        backgroundColor={colors.surface}
-      />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
       <View style={styles.topBar}>
         <Pressable
@@ -72,7 +66,7 @@ export default function SobreScreen({ navigation }: any) {
           ]}
           onPress={() => navigation.goBack()}
         >
-          <ArrowLeft size={20} color={colors.textPrimary} />
+          <ArrowLeft size={20} color={colors.white} />
         </Pressable>
       </View>
 
@@ -81,12 +75,7 @@ export default function SobreScreen({ navigation }: any) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={[colors.primary, colors.primaryLight]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.header}
-        >
+        <View style={styles.header}>
           <Image source={brandMark} style={styles.logoContainer} resizeMode="contain" />
           <Text style={styles.appName}>{about?.appName ?? "nitin"}</Text>
           <Text style={styles.appTagline}>Seu dinheiro, sob controle.</Text>
@@ -95,7 +84,7 @@ export default function SobreScreen({ navigation }: any) {
               Versão {about?.version ?? "1.0.0"}
             </Text>
           </View>
-        </LinearGradient>
+        </View>
 
         <View style={styles.body}>
           {aboutQuery.isLoading ? (
@@ -231,6 +220,12 @@ const createStyles = (colors: AppColors, topInset: number) =>
       flex: 1,
       backgroundColor: colors.primary,
     },
+    topBar: {
+      backgroundColor: colors.primary,
+      paddingTop: topInset + spacing.xs,
+      paddingBottom: spacing.xs,
+      paddingHorizontal: layout.pageHorizontal,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -244,20 +239,13 @@ const createStyles = (colors: AppColors, topInset: number) =>
 
     // Header
     header: {
+      backgroundColor: colors.primary,
       paddingTop: spacing.xl,
       paddingBottom: spacing.xxl + spacing.xl,
       paddingHorizontal: layout.pageHorizontal,
       alignItems: "center",
       borderBottomLeftRadius: radius.lg + spacing.md,
       borderBottomRightRadius: radius.lg + spacing.md,
-    },
-    topBar: {
-      backgroundColor: colors.surface,
-      paddingTop: topInset + spacing.xs,
-      paddingBottom: spacing.xs,
-      paddingHorizontal: layout.pageHorizontal,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
     },
     backButton: {
       width: 36,

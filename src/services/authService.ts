@@ -85,7 +85,7 @@ function mapRecoveryError(errorMessage: string): AuthServiceError {
   if (text.includes('error sending recovery email')) {
     return new AuthServiceError(
       'unknown',
-      'Nao foi possivel enviar o e-mail de redefinicao agora. Se a conta ainda nao foi confirmada, reenvie primeiro o e-mail de confirmacao.',
+      'Não foi possível enviar o e-mail de redefinição agora. Se a conta ainda não foi confirmada, reenvie primeiro o e-mail de confirmação.',
     );
   }
 

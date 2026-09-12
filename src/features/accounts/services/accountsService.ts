@@ -147,7 +147,7 @@ export async function createAccount(input: CreateAccountInput): Promise<string> 
   ]);
 
   if (countError || profileError) {
-    throw new Error(countError?.message ?? profileError?.message ?? 'Nao foi possivel validar seu plano.');
+    throw new Error(countError?.message ?? profileError?.message ?? 'Não foi possível validar seu plano.');
   }
 
   const profileRow = profileData as ProfilePlanRow | null;
