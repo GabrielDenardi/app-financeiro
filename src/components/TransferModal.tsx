@@ -7,6 +7,7 @@ import type {
   CreateTransferInput,
 } from "../features/accounts/types";
 import { formatCurrencyInput, normalizeCurrencyInput } from "../features/finance/utils";
+import { useMaskedCursor } from "../hooks/useMaskedCursor";
 import { radius, spacing, typography, type AppColors, useThemeColors } from "../theme";
 import { BottomSheet } from "./BottomSheet";
 import { Button } from "./Button";
@@ -34,6 +35,7 @@ export function TransferModal({
     [accounts],
   );
   const [amount, setAmount] = useState("");
+  const amountCursor = useMaskedCursor(amount);
   const [fromAccountId, setFromAccountId] = useState("");
   const [toAccountId, setToAccountId] = useState("");
 
@@ -173,6 +175,7 @@ export function TransferModal({
             style={styles.amountInput}
             value={amount}
             onChangeText={(value) => setAmount(formatCurrencyInput(value))}
+            {...amountCursor}
           />
         </View>
       </View>

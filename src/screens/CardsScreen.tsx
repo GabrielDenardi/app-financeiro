@@ -32,6 +32,7 @@ import {
 import type { CardInvoiceSummary, CreditCard } from '../features/cards/types';
 import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
 import { formatCurrencyInput, normalizeCurrencyInput } from '../features/finance/utils';
+import { useMaskedCursor } from '../hooks/useMaskedCursor';
 import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import {
   formatCurrencyBRL,
@@ -81,6 +82,7 @@ export default function CardsScreen({ navigation }: any) {
   const [pendingPayment, setPendingPayment] = useState<{ cardId: string; invoiceMonth: string; totalAmount: number } | null>(null);
   const [paymentMode, setPaymentMode] = useState<'full' | 'minimum' | 'custom'>('full');
   const [customAmountText, setCustomAmountText] = useState('');
+  const customAmountCursor = useMaskedCursor(customAmountText);
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [payingKey, setPayingKey] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<{ cardId: string; invoiceMonth: string } | null>(null);
@@ -509,6 +511,7 @@ export default function CardsScreen({ navigation }: any) {
               placeholder="0,00"
               placeholderTextColor={colors.textSecondary}
               autoFocus
+              {...customAmountCursor}
             />
           </View>
         )}

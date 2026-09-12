@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
   Pressable,
@@ -47,12 +48,21 @@ import {
   type AppColors,
   useAppTheme,
 } from "../theme";
-import { formatCurrencyBRL } from "../utils/format";
+import {
+  formatCompactCurrencyBRL,
+  formatCurrencyBRL,
+  isCompactCurrencyBRL,
+} from "../utils/format";
+
+const COMPACT_HINT_STORAGE_KEY = "app-financeiro:accounts-compact-hint-seen";
 
 export function AccountsScreen({ navigation }: any) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(colors, insets.top, insets.bottom), [colors, insets.top, insets.bottom]);
+  const styles = useMemo(
+    () => createStyles(colors, insets.top, insets.bottom),
+    [colors, insets.top, insets.bottom],
+  );
   const { showSuccess, showError } = useToast();
   const currentUser = useAuthenticatedUser();
   const overviewQuery = useAccountsOverview(currentUser?.id);
@@ -63,10 +73,45 @@ export function AccountsScreen({ navigation }: any) {
 
   const [showBalances, setShowBalances] = useState(true);
   const [addVisible, setAddVisible] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<AccountBalanceSnapshot | null>(null);
+  const [editingAccount, setEditingAccount] =
+    useState<AccountBalanceSnapshot | null>(null);
   const [transferVisible, setTransferVisible] = useState(false);
+  const [pressedStat, setPressedStat] = useState<
+    "assets" | "liabilities" | null
+  >(null);
+  const [compactHintDismissed, setCompactHintDismissed] = useState(true);
 
   const overview = overviewQuery.data;
+
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem(COMPACT_HINT_STORAGE_KEY).then((value) => {
+      if (active && value !== "1") {
+        setCompactHintDismissed(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const dismissCompactHint = () => {
+    setCompactHintDismissed(true);
+    AsyncStorage.setItem(COMPACT_HINT_STORAGE_KEY, "1").catch(() => {});
+  };
+
+  const hasCompactStatValue =
+    isCompactCurrencyBRL(overview?.totalAssets ?? 0) ||
+    isCompactCurrencyBRL(overview?.totalLiabilities ?? 0);
+  const showCompactHint =
+    showBalances && hasCompactStatValue && !compactHintDismissed;
+
+  useEffect(() => {
+    if (!showCompactHint) return;
+    const timer = setTimeout(dismissCompactHint, 5000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCompactHint]);
   const activeAccounts = useMemo(
     () => overview?.accounts.filter((account) => account.isActive) ?? [],
     [overview?.accounts],
@@ -76,10 +121,17 @@ export function AccountsScreen({ navigation }: any) {
     return showBalances ? formatCurrencyBRL(value) : "R$ ••••••";
   };
 
+  const formatMaybeHiddenCompact = (value: number) => {
+    return showBalances ? formatCompactCurrencyBRL(value) : "R$ ••••••";
+  };
+
   const handleSubmitAccount = async (input: any) => {
     try {
       if (editingAccount) {
-        await updateAccountMutation.mutateAsync({ id: editingAccount.id, ...input });
+        await updateAccountMutation.mutateAsync({
+          id: editingAccount.id,
+          ...input,
+        });
         setEditingAccount(null);
         showSuccess("Conta atualizada.");
       } else {
@@ -162,21 +214,89 @@ export function AccountsScreen({ navigation }: any) {
                 </Text>
 
                 <View style={styles.statsGrid}>
-                  <View style={styles.statItem}>
+                  <Pressable
+                    style={styles.statItem}
+                    onPress={() => {
+                      dismissCompactHint();
+                      setPressedStat((current) =>
+                        current === "assets" ? null : "assets",
+                      );
+                    }}
+                  >
                     <Text style={styles.statLabel}>Ativos</Text>
-                    <Text style={styles.statValue}>
-                      {formatMaybeHidden(overview?.totalAssets ?? 0)}
+                    <Text
+                      style={[
+                        styles.statValue,
+                        isCompactCurrencyBRL(overview?.totalAssets ?? 0) &&
+                          showBalances &&
+                          styles.statValueHintable,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {formatMaybeHiddenCompact(overview?.totalAssets ?? 0)}
                     </Text>
-                  </View>
+                    {pressedStat === "assets" &&
+                      showBalances &&
+                      isCompactCurrencyBRL(overview?.totalAssets ?? 0) && (
+                        <View
+                          style={[
+                            styles.fullValueTooltip,
+                            styles.fullValueTooltipLeft,
+                          ]}
+                          pointerEvents="none"
+                        >
+                          <Text
+                            style={styles.fullValueTooltipText}
+                            numberOfLines={1}
+                          >
+                            {formatCurrencyBRL(overview?.totalAssets ?? 0)}
+                          </Text>
+                        </View>
+                      )}
+                  </Pressable>
                   <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
+                  <Pressable
+                    style={styles.statItem}
+                    onPress={() => {
+                      dismissCompactHint();
+                      setPressedStat((current) =>
+                        current === "liabilities" ? null : "liabilities",
+                      );
+                    }}
+                  >
                     <Text style={styles.statLabel}>Dívidas</Text>
-                    <Text style={styles.statValue}>
-                      {showBalances
-                        ? formatCurrencyBRL(overview?.totalLiabilities ?? 0)
-                        : "R$ ••••"}
+                    <Text
+                      style={[
+                        styles.statValue,
+                        isCompactCurrencyBRL(overview?.totalLiabilities ?? 0) &&
+                          showBalances &&
+                          styles.statValueHintable,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {formatMaybeHiddenCompact(
+                        overview?.totalLiabilities ?? 0,
+                      )}
                     </Text>
-                  </View>
+                    {pressedStat === "liabilities" &&
+                      showBalances &&
+                      isCompactCurrencyBRL(overview?.totalLiabilities ?? 0) && (
+                        <View
+                          style={[
+                            styles.fullValueTooltip,
+                            styles.fullValueTooltipRight,
+                          ]}
+                          pointerEvents="none"
+                        >
+                          <Text
+                            style={styles.fullValueTooltipText}
+                            numberOfLines={1}
+                          >
+                            {formatCurrencyBRL(overview?.totalLiabilities ?? 0)}
+                          </Text>
+                        </View>
+                      )}
+                  </Pressable>
                   <View style={styles.statDivider} />
                   <View style={styles.statItem}>
                     <Text style={styles.statLabel}>Contas</Text>
@@ -186,125 +306,139 @@ export function AccountsScreen({ navigation }: any) {
                     </Text>
                   </View>
                 </View>
+
+                {showCompactHint && (
+                  <Pressable
+                    style={styles.compactHint}
+                    onPress={dismissCompactHint}
+                  >
+                    <Text style={styles.compactHintText}>
+                      Segure no valor para ver o número completo
+                    </Text>
+                  </Pressable>
+                )}
               </>
             )}
           </View>
 
           <View style={styles.restContent}>
-          <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryBox}>
-              <View style={styles.summaryLabelRow}>
-                <ArrowUpRight size={14} color={colors.success} />
-                <Text style={styles.summarySmallLabel}>Entradas</Text>
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryBox}>
+                  <View style={styles.summaryLabelRow}>
+                    <ArrowUpRight size={14} color={colors.success} />
+                    <Text style={styles.summarySmallLabel}>Entradas</Text>
+                  </View>
+                  <Text style={[styles.summaryAmount, styles.incomeText]}>
+                    {formatMaybeHidden(overview?.monthlyIncome ?? 0)}
+                  </Text>
+                </View>
+
+                <View style={styles.verticalDivider} />
+
+                <View style={styles.summaryBox}>
+                  <View style={styles.summaryLabelRow}>
+                    <ArrowDownRight size={14} color={colors.danger} />
+                    <Text style={styles.summarySmallLabel}>Saídas</Text>
+                  </View>
+                  <Text style={[styles.summaryAmount, styles.expenseText]}>
+                    {formatMaybeHidden(overview?.monthlyExpense ?? 0)}
+                  </Text>
+                </View>
               </View>
-              <Text style={[styles.summaryAmount, styles.incomeText]}>
-                {formatMaybeHidden(overview?.monthlyIncome ?? 0)}
-              </Text>
+
+              <View style={styles.progressBg}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${
+                        overview?.monthlyIncome
+                          ? Math.min(
+                              ((overview.monthlyExpense ?? 0) /
+                                overview.monthlyIncome) *
+                                100,
+                              100,
+                            )
+                          : 0
+                      }%`,
+                    },
+                  ]}
+                />
+              </View>
             </View>
 
-            <View style={styles.verticalDivider} />
+            <Text style={styles.sectionTitle}>Suas Contas</Text>
 
-            <View style={styles.summaryBox}>
-              <View style={styles.summaryLabelRow}>
-                <ArrowDownRight size={14} color={colors.danger} />
-                <Text style={styles.summarySmallLabel}>Saídas</Text>
+            {overviewQuery.isLoading ? (
+              <View style={styles.loadingWrap}>
+                <ActivityIndicator />
               </View>
-              <Text style={[styles.summaryAmount, styles.expenseText]}>
-                {formatMaybeHidden(overview?.monthlyExpense ?? 0)}
-              </Text>
-            </View>
-          </View>
+            ) : activeAccounts.length ? (
+              activeAccounts.map((account) => {
+                const config = typeConfig[account.type];
 
-          <View style={styles.progressBg}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${
-                    overview?.monthlyIncome
-                      ? Math.min(
-                          ((overview.monthlyExpense ?? 0) /
-                            overview.monthlyIncome) *
-                            100,
-                          100,
-                        )
-                      : 0
-                  }%`,
-                },
-              ]}
-            />
-          </View>
-        </View>
+                return (
+                  <View key={account.id} style={styles.accountCard}>
+                    <View style={styles.accountMainInfo}>
+                      <View style={styles.accountTypeRow}>
+                        <View
+                          style={[
+                            styles.typeIconContainer,
+                            { backgroundColor: config.light },
+                          ]}
+                        >
+                          <config.icon size={12} color={colors.primary} />
+                        </View>
+                        <Text style={styles.accountTypeLabel}>
+                          {config.label}
+                        </Text>
+                      </View>
 
-        <Text style={styles.sectionTitle}>Suas Contas</Text>
+                      <Text style={styles.accountName}>{account.name}</Text>
 
-        {overviewQuery.isLoading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator />
-          </View>
-        ) : activeAccounts.length ? (
-          activeAccounts.map((account) => {
-            const config = typeConfig[account.type];
-
-            return (
-              <View key={account.id} style={styles.accountCard}>
-                <View style={styles.accountMainInfo}>
-                  <View style={styles.accountTypeRow}>
-                    <View
-                      style={[
-                        styles.typeIconContainer,
-                        { backgroundColor: config.light },
-                      ]}
-                    >
-                      <config.icon size={12} color={colors.primary} />
+                      <View style={styles.institutionRow}>
+                        <Landmark size={12} color={colors.textSecondary} />
+                        <Text style={styles.institutionText}>
+                          {account.institution || "Instituição não informada"}
+                        </Text>
+                      </View>
                     </View>
-                    <Text style={styles.accountTypeLabel}>{config.label}</Text>
-                  </View>
 
-                  <Text style={styles.accountName}>{account.name}</Text>
-
-                  <View style={styles.institutionRow}>
-                    <Landmark size={12} color={colors.textSecondary} />
-                    <Text style={styles.institutionText}>
-                      {account.institution || "Instituição não informada"}
-                    </Text>
+                    <View style={styles.accountBalanceWrapper}>
+                      <View style={styles.balanceTextContainer}>
+                        <Text style={styles.balanceLabel}>Saldo</Text>
+                        <Text style={styles.balanceValue}>
+                          {showBalances
+                            ? formatCurrencyBRL(account.currentBalance)
+                            : "••••"}
+                        </Text>
+                      </View>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Editar conta ${account.name}`}
+                        hitSlop={spacing.sm}
+                        style={styles.editAccountBtn}
+                        onPress={() => {
+                          setEditingAccount(account);
+                          setAddVisible(true);
+                        }}
+                      >
+                        <Pencil size={16} color={colors.textSecondary} />
+                      </Pressable>
+                    </View>
                   </View>
-                </View>
-
-                <View style={styles.accountBalanceWrapper}>
-                  <View style={styles.balanceTextContainer}>
-                    <Text style={styles.balanceLabel}>Saldo</Text>
-                    <Text style={styles.balanceValue}>
-                      {showBalances
-                        ? formatCurrencyBRL(account.currentBalance)
-                        : "••••"}
-                    </Text>
-                  </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Editar conta ${account.name}`}
-                    hitSlop={spacing.sm}
-                    style={styles.editAccountBtn}
-                    onPress={() => {
-                      setEditingAccount(account);
-                      setAddVisible(true);
-                    }}
-                  >
-                    <Pencil size={16} color={colors.textSecondary} />
-                  </Pressable>
-                </View>
+                );
+              })
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyTitle}>Nenhuma conta cadastrada</Text>
+                <Text style={styles.emptyText}>
+                  Crie a primeira conta para ver o patrimônio real do
+                  aplicativo.
+                </Text>
               </View>
-            );
-          })
-        ) : (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Nenhuma conta cadastrada</Text>
-            <Text style={styles.emptyText}>
-              Crie a primeira conta para ver o patrimônio real do aplicativo.
-            </Text>
-          </View>
-        )}
+            )}
           </View>
         </ScrollView>
 
@@ -328,7 +462,9 @@ export function AccountsScreen({ navigation }: any) {
       <AddAccountModal
         visible={addVisible}
         account={editingAccount}
-        submitting={createAccountMutation.isPending || updateAccountMutation.isPending}
+        submitting={
+          createAccountMutation.isPending || updateAccountMutation.isPending
+        }
         onClose={() => {
           setAddVisible(false);
           setEditingAccount(null);
@@ -347,7 +483,11 @@ export function AccountsScreen({ navigation }: any) {
   );
 }
 
-const createStyles = (colors: AppColors, topInset: number, bottomInset: number) =>
+const createStyles = (
+  colors: AppColors,
+  topInset: number,
+  bottomInset: number,
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -435,6 +575,35 @@ const createStyles = (colors: AppColors, topInset: number, bottomInset: number) 
     },
     statItem: {
       flex: 1,
+      position: "relative",
+    },
+    fullValueTooltip: {
+      position: "absolute",
+      bottom: "100%",
+      marginBottom: spacing.xs,
+      width: 130,
+      alignItems: "center",
+      backgroundColor: colors.textPrimary,
+      borderRadius: radius.sm,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 6,
+      zIndex: 20,
+    },
+    fullValueTooltipLeft: {
+      left: 0,
+    },
+    fullValueTooltipRight: {
+      right: 0,
+    },
+    fullValueTooltipText: {
+      ...typography.caption,
+      color: colors.surface,
+      fontWeight: "700",
     },
     statDivider: {
       width: 1,
@@ -450,6 +619,23 @@ const createStyles = (colors: AppColors, topInset: number, bottomInset: number) 
       color: colors.textPrimary,
       fontWeight: "700",
       marginTop: spacing.xs,
+    },
+    statValueHintable: {
+      textDecorationLine: "underline",
+      textDecorationStyle: "dotted",
+      textDecorationColor: colors.textSecondary,
+    },
+    compactHint: {
+      marginTop: spacing.md,
+      alignSelf: "flex-start",
+      backgroundColor: colors.mutedSurface,
+      borderRadius: radius.sm,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+    },
+    compactHintText: {
+      ...typography.caption,
+      color: colors.textSecondary,
     },
     scrollContent: {
       flexGrow: 1,

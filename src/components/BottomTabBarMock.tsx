@@ -1,10 +1,10 @@
-import React, { useMemo } from 'react';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useMemo } from "react";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { spacing, typography, type AppColors, useThemeColors } from '../theme';
+import { spacing, typography, type AppColors, useThemeColors } from "../theme";
 
 /** Altura do conteúdo do tab bar, sem contar a área da barra de navegação do sistema. */
 export const BOTTOM_TAB_BAR_HEIGHT = 78;
@@ -18,10 +18,17 @@ export function useBottomTabBarHeight() {
   return BOTTOM_TAB_BAR_HEIGHT + insets.bottom;
 }
 
-export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBarProps) {
+export function BottomTabBarMock({
+  state,
+  descriptors,
+  navigation,
+}: BottomTabBarProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(colors, insets.bottom), [colors, insets.bottom]);
+  const styles = useMemo(
+    () => createStyles(colors, insets.bottom),
+    [colors, insets.bottom],
+  );
 
   return (
     <View style={styles.container}>
@@ -36,32 +43,30 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
         };
 
         // Mudamos para 'any' para aceitar nomes de ambas as bibliotecas
-        let iconName: any = 'ellipse';
+        let iconName: any = "ellipse";
 
-        if (route.name === 'Home') {
-          iconName = isFocused ? 'home' : 'home-outline';
-        } else if (route.name === 'Transactions') {
-          iconName = isFocused
-            ? 'swap-horizontal'
-            : 'swap-horizontal-outline';
-        } else if (route.name === 'Cards') {
-          iconName = isFocused ? 'card' : 'card-outline';
-        } else if (route.name === 'Budget') {
+        if (route.name === "Home") {
+          iconName = isFocused ? "home" : "home-outline";
+        } else if (route.name === "Transactions") {
+          iconName = isFocused ? "swap-horizontal" : "swap-horizontal-outline";
+        } else if (route.name === "Cards") {
+          iconName = isFocused ? "card" : "card-outline";
+        } else if (route.name === "Budget") {
           // Nomes exclusivos do MaterialCommunityIcons
-          iconName = isFocused ? 'piggy-bank' : 'piggy-bank-outline';
-        } else if (route.name === 'More') {
-          iconName = isFocused ? 'grid' : 'grid-outline';
+          iconName = isFocused ? "piggy-bank" : "piggy-bank-outline";
+        } else if (route.name === "More") {
+          iconName = isFocused ? "grid" : "grid-outline";
         }
 
         const tabLabel =
-          route.name === 'Transactions'
-            ? 'Transações'
-            : route.name === 'Cards'
-              ? 'Cartões'
-              : route.name === 'More'
-                ? 'Mais'
-                : route.name === 'Budget'
-                  ? 'Orçamento'
+          route.name === "Transactions"
+            ? "Transações"
+            : route.name === "Cards"
+              ? "Cartões"
+              : route.name === "More"
+                ? "Mais"
+                : route.name === "Budget"
+                  ? "Orçamento"
                   : route.name;
 
         return (
@@ -75,7 +80,7 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
             ]}
           >
             <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
-              {route.name === 'Budget' ? (
+              {route.name === "Budget" ? (
                 <MaterialCommunityIcons
                   name={iconName}
                   size={isFocused ? 22 : 20}
@@ -91,10 +96,7 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
             </View>
 
             <Text
-              style={[
-                styles.tabLabel,
-                isFocused && styles.tabLabelActive,
-              ]}
+              style={[styles.tabLabel, isFocused && styles.tabLabelActive]}
               numberOfLines={1}
             >
               {tabLabel}
@@ -106,58 +108,59 @@ export function BottomTabBarMock({ state, descriptors, navigation }: BottomTabBa
   );
 }
 
-const createStyles = (colors: AppColors, bottomInset: number) => StyleSheet.create({
-  container: {
-    height: BOTTOM_TAB_BAR_HEIGHT + bottomInset,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.sm,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md + bottomInset,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  tabButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    borderRadius: 14,
-    paddingVertical: spacing.xs,
-  },
-  tabButtonActive: {
-    backgroundColor: `${colors.primaryLight}14`,
-  },
-  iconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconWrapActive: {
-    backgroundColor: colors.mutedSurface,
-    borderWidth: 1,
-    borderColor: `${colors.primaryLight}40`,
-  },
-  pressed: {
-    opacity: 0.75,
-  },
-  tabLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '500',
-    fontSize: 10,
-  },
-  tabLabelActive: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
-});
+const createStyles = (colors: AppColors, bottomInset: number) =>
+  StyleSheet.create({
+    container: {
+      height: BOTTOM_TAB_BAR_HEIGHT + bottomInset,
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.sm,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.md + bottomInset,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.03,
+      shadowRadius: 6,
+      elevation: 6,
+    },
+    tabButton: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.xs,
+      borderRadius: 14,
+      paddingVertical: spacing.xs,
+    },
+    tabButtonActive: {
+      backgroundColor: `${colors.primaryLight}14`,
+    },
+    iconWrap: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    iconWrapActive: {
+      backgroundColor: colors.mutedSurface,
+      borderWidth: 1,
+      borderColor: `${colors.primaryLight}40`,
+    },
+    pressed: {
+      opacity: 0.75,
+    },
+    tabLabel: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      fontWeight: "500",
+      fontSize: 10,
+    },
+    tabLabelActive: {
+      color: colors.primary,
+      fontWeight: "700",
+    },
+  });

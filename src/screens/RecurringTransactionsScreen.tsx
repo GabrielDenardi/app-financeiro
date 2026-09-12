@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import {
@@ -48,6 +49,7 @@ import type { RecurringTransaction } from '../features/recurring/types';
 import type { PaymentMethod } from '../features/transactions/types';
 import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
 import { formatCurrencyInput, formatMonthDate, localIsoDate, normalizeCurrencyInput } from '../features/finance/utils';
+import { useMaskedCursor } from '../hooks/useMaskedCursor';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { formatCurrencyBRL, getRelativeDueDateInfo } from '../utils/format';
 
@@ -118,6 +120,7 @@ export default function RecurringTransactionsScreen() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [adjustmentValue, setAdjustmentValue] = useState('');
+  const adjustmentValueCursor = useMaskedCursor(adjustmentValue);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   // Confirmação em modal próprio: Alert.alert com botões não funciona no web.
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -345,6 +348,14 @@ export default function RecurringTransactionsScreen() {
             tintColor={colors.primary}
           />
         }
+        footer={
+          <Button
+            label="Adicionar Transação"
+            icon={<Plus size={20} color={colors.white} />}
+            onPress={handleOpenCreate}
+            fullWidth
+          />
+        }
       >
         <PageHeader
           title="Transações Recorrentes"
@@ -353,24 +364,35 @@ export default function RecurringTransactionsScreen() {
 
         <Card style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>Resumo Mensal Previsto</Text>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Receitas</Text>
-              <Text style={[styles.summaryValue, { color: colors.success }]}>{formatCurrencyBRL(summary.income)}</Text>
+          <View style={styles.summaryStack}>
+            <View style={styles.summaryLine}>
+              <Text style={styles.summaryLineLabel}>Receitas</Text>
+              <Text
+                style={[styles.summaryLineValue, { color: colors.success }]}
+                numberOfLines={1}
+              >
+                {formatCurrencyBRL(summary.income)}
+              </Text>
             </View>
-            <View style={styles.vDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Despesas</Text>
-              <Text style={[styles.summaryValue, { color: colors.danger }]}>{formatCurrencyBRL(summary.expense)}</Text>
+            <View style={styles.summaryLine}>
+              <Text style={styles.summaryLineLabel}>Despesas</Text>
+              <Text
+                style={[styles.summaryLineValue, { color: colors.danger }]}
+                numberOfLines={1}
+              >
+                {formatCurrencyBRL(summary.expense)}
+              </Text>
             </View>
-            <View style={styles.vDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Saldo</Text>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryLine}>
+              <Text style={[styles.summaryLineLabel, styles.summaryTotalLabel]}>Saldo</Text>
               <Text
                 style={[
-                  styles.summaryValue,
+                  styles.summaryLineValue,
+                  styles.summaryTotalValue,
                   { color: summary.income - summary.expense >= 0 ? colors.textPrimary : colors.danger },
                 ]}
+                numberOfLines={1}
               >
                 {formatCurrencyBRL(summary.income - summary.expense)}
               </Text>
@@ -381,15 +403,6 @@ export default function RecurringTransactionsScreen() {
               {summary.confirmedCount} de {summary.activeCount} confirmada{summary.activeCount !== 1 ? 's' : ''} este mês
             </Text>
           ) : null}
-        </Card>
-
-        <Card style={styles.buttonCard}>
-          <Button
-            label="Adicionar Transação"
-            icon={<Plus size={20} color={colors.white} />}
-            onPress={handleOpenCreate}
-            fullWidth
-          />
         </Card>
 
         {recurringQuery.isLoading ? <Card style={styles.card}><ActivityIndicator /></Card> : null}
@@ -413,15 +426,19 @@ export default function RecurringTransactionsScreen() {
                   {getCategoryIcon(item.categoryLabel, item.categoryColor)}
                 </View>
                 <View style={styles.cardBody}>
-                  <View style={styles.titleRow}>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    {item.isVariable ? (
-                      <Badge label="VARIÁVEL" tone="neutral" />
-                    ) : null}
-                    {dueInfo?.isOverdue ? (
-                      <Badge label={dueInfo.label} tone="danger" />
-                    ) : null}
-                  </View>
+                  <Text style={styles.cardTitle} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  {item.isVariable || dueInfo?.isOverdue ? (
+                    <View style={styles.badgeRow}>
+                      {item.isVariable ? (
+                        <Badge label="VARIÁVEL" tone="neutral" />
+                      ) : null}
+                      {dueInfo?.isOverdue ? (
+                        <Badge label={dueInfo.label} tone="danger" />
+                      ) : null}
+                    </View>
+                  ) : null}
                   <Text style={styles.cardSubtitle}>
                     Mensal - Dia {item.dayOfMonth} - {item.accountName}
                   </Text>
@@ -536,7 +553,12 @@ export default function RecurringTransactionsScreen() {
         footer={(close) => (
           <>
             <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
-            <Button label={editingId ? 'Salvar' : 'Criar'} fullWidth onPress={handleSave} />
+            <Button
+              label={editingId ? 'Salvar' : 'Criar'}
+              fullWidth
+              onPress={handleSave}
+              loading={createMutation.isPending || updateMutation.isPending}
+            />
           </>
         )}
       >
@@ -658,14 +680,15 @@ export default function RecurringTransactionsScreen() {
 
             <View style={styles.miniInputContainer}>
               <Text style={styles.currencyPrefix}>R$</Text>
-              <FieldRow
-                label=""
+              <TextInput
                 placeholder="0,00"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="numeric"
                 value={adjustmentValue}
                 onChangeText={(v) => setAdjustmentValue(formatCurrencyInput(v))}
                 autoFocus
-                inputStyle={styles.miniInput}
+                style={styles.miniInput}
+                {...adjustmentValueCursor}
               />
             </View>
 
@@ -725,33 +748,42 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
       fontWeight: '600',
     },
-    summaryRow: {
+    summaryStack: {
+      gap: spacing.sm,
+    },
+    summaryLine: {
       flexDirection: 'row',
-      justifyContent: 'space-around',
-    },
-    summaryItem: {
       alignItems: 'center',
-      flex: 1,
+      justifyContent: 'space-between',
+      gap: spacing.md,
     },
-    summaryLabel: {
-      ...typography.caption,
+    summaryLineLabel: {
+      ...typography.body,
       color: colors.textSecondary,
     },
-    summaryValue: {
+    summaryLineValue: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: '700',
+      flexShrink: 1,
+      textAlign: 'right',
+    },
+    summaryTotalLabel: {
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    summaryTotalValue: {
       ...typography.h2,
-      marginTop: spacing.xs,
+    },
+    summaryDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: spacing.xs,
     },
     summaryProgress: {
       ...typography.caption,
       color: colors.textSecondary,
       textAlign: 'center',
-    },
-    vDivider: {
-      width: 1,
-      backgroundColor: colors.border,
-    },
-    buttonCard: {
-      padding: spacing.sm,
     },
     card: {
       gap: spacing.md,
@@ -775,10 +807,12 @@ const createStyles = (colors: AppColors) =>
       marginLeft: spacing.md,
       gap: 2,
     },
-    titleRow: {
+    badgeRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      flexWrap: 'wrap',
       gap: spacing.xs,
+      marginTop: 2,
     },
     cardTitle: {
       ...typography.body,
@@ -954,6 +988,7 @@ const createStyles = (colors: AppColors) =>
     miniInputContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       borderBottomWidth: 2,
       borderBottomColor: colors.primary,
       paddingBottom: spacing.sm,
@@ -968,7 +1003,8 @@ const createStyles = (colors: AppColors) =>
     miniInput: {
       fontSize: 32,
       fontWeight: '700',
-      flex: 1,
+      color: colors.textPrimary,
+      minWidth: 80,
     },
     miniModalActions: {
       flexDirection: 'row',

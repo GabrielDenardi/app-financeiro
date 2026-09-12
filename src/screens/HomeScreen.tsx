@@ -74,7 +74,10 @@ function formatVisibleCurrency(value: number, visible: boolean) {
 export function HomeScreen({ currentUser }: HomeScreenProps) {
   const colors = useThemeColors();
   const tabBarHeight = useBottomTabBarHeight();
-  const styles = useMemo(() => createStyles(colors, tabBarHeight), [colors, tabBarHeight]);
+  const styles = useMemo(
+    () => createStyles(colors, tabBarHeight),
+    [colors, tabBarHeight],
+  );
   const navigation = useNavigation<any>();
   const profileQuery = useProfile(currentUser?.id);
   const dashboardQuery = useHomeDashboard(currentUser?.id);
@@ -115,8 +118,7 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>
-              {greeting},{" "}
-              <Text style={styles.greetingName}>{firstName}</Text>
+              {greeting}, <Text style={styles.greetingName}>{firstName}</Text>
             </Text>
             <Text style={styles.subtitle}>{getCurrentMonthLabel()}</Text>
           </View>
@@ -133,164 +135,168 @@ export function HomeScreen({ currentUser }: HomeScreenProps) {
         </View>
 
         <View style={styles.content}>
-        <BalanceCard
-          summary={{
-            monthLabel: summary?.monthLabel ?? "Mês atual",
-            balance: summary?.balance ?? 0,
-            income: summary?.income ?? 0,
-            expense: summary?.expense ?? 0,
-            updatedAtLabel:
-              summary?.updatedAtLabel ?? "Atualizado em tempo real",
-          }}
-          hideAmounts={!showValues}
-        />
-
-        <View style={styles.summaryRow}>
-          <SummaryStatCard
-            label="Entradas"
-            amount={summary?.income ?? 0}
-            type="income"
-            style={styles.summaryStatCard}
+          <BalanceCard
+            summary={{
+              monthLabel: summary?.monthLabel ?? "Mês atual",
+              balance: summary?.balance ?? 0,
+              income: summary?.income ?? 0,
+              expense: summary?.expense ?? 0,
+              updatedAtLabel:
+                summary?.updatedAtLabel ?? "Atualizado em tempo real",
+            }}
             hideAmounts={!showValues}
           />
-          <SummaryStatCard
-            label="Saídas"
-            amount={summary?.expense ?? 0}
-            type="expense"
-            style={styles.summaryStatCard}
-            hideAmounts={!showValues}
-          />
-        </View>
 
-        <View style={styles.kpiRow}>
-          <Pressable
-            style={styles.kpiCard}
-            onPress={() => navigation.getParent()?.navigate("Goals")}
-          >
-            <Target color={colors.primary} size={18} />
-            <Text style={styles.kpiValue}>{summary?.goalsCount ?? 0}</Text>
-            <Text style={styles.kpiLabel}>Metas</Text>
-          </Pressable>
-          <Pressable
-            style={styles.kpiCard}
-            onPress={() => navigation.getParent()?.navigate("Groups")}
-          >
-            <Users color={colors.primary} size={18} />
-            <Text style={styles.kpiValue}>{summary?.groupsCount ?? 0}</Text>
-            <Text style={styles.kpiLabel}>Grupos</Text>
-          </Pressable>
-          <Pressable
-            style={styles.kpiCard}
-            onPress={() => navigation.navigate("Accounts")}
-          >
-            <Landmark color={colors.primary} size={18} />
-            <Text style={styles.kpiValue}>
-              {summary?.accountsCount ?? accounts.length}
-            </Text>
-            <Text style={styles.kpiLabel}>Contas</Text>
-          </Pressable>
-        </View>
-
-        {primaryAccount ? (
-          <Card style={styles.accountHeroCard}>
-            <SectionHeader
-              title="Conta principal"
-              actionLabel="Ver contas"
-              onActionPress={() => navigation.navigate("Accounts")}
+          <View style={styles.summaryRow}>
+            <SummaryStatCard
+              label="Entradas"
+              amount={summary?.income ?? 0}
+              type="income"
+              style={styles.summaryStatCard}
+              hideAmounts={!showValues}
             />
-            <View style={styles.accountRow}>
-              <View>
-                <Text style={styles.accountName}>{primaryAccount.name}</Text>
-                <Text style={styles.accountMeta}>
-                  {primaryAccount.institution || "Instituição não informada"}
-                </Text>
-              </View>
-              <Text style={styles.accountAmount}>
-                {formatVisibleCurrency(
-                  primaryAccount.currentBalance,
-                  showValues,
-                )}
-              </Text>
-            </View>
-          </Card>
-        ) : null}
-
-        <MonthlyBarChart data={weeklyFlow} hideValues={!showValues} />
-
-        <Card style={styles.sectionCard}>
-          <SectionHeader
-            title="Categorias do mês"
-            actionLabel="Relatórios"
-            onActionPress={() => navigation.navigate("Reports")}
-          />
-          {dashboardQuery.isLoading ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator />
-            </View>
-          ) : dashboardQuery.isError ? (
-            <Pressable onPress={() => dashboardQuery.refetch()} accessibilityRole="button">
-              <Text style={styles.emptyText}>
-                Não foi possível carregar os dados. Toque para tentar novamente.
-              </Text>
-            </Pressable>
-          ) : categorySpending.length ? (
-            categorySpending.map((item) => (
-              <View key={item.category} style={styles.categoryRow}>
-                <View style={styles.categoryLabelRow}>
-                  <View
-                    style={[
-                      styles.categoryDot,
-                      { backgroundColor: item.color },
-                    ]}
-                  />
-                  <Text style={styles.categoryLabel}>{item.category}</Text>
-                </View>
-                <View style={styles.categoryValueBlock}>
-                  <Text style={styles.categoryShare}>
-                    {item.share.toFixed(1)}%
-                  </Text>
-                  <Text style={styles.categoryAmount}>
-                    {formatVisibleCurrency(item.amount, showValues)}
-                  </Text>
-                </View>
-              </View>
-            ))
-          ) : (
-            <Text style={styles.emptyText}>
-              Nenhum gasto reportável neste período.
-            </Text>
-          )}
-        </Card>
-
-        <Card noPadding style={styles.sectionCard}>
-          <View style={styles.sectionInner}>
-            <SectionHeader
-              title="Últimas movimentações"
-              actionLabel="Ver todas"
-              onActionPress={() => navigation.navigate("Transactions")}
+            <SummaryStatCard
+              label="Saídas"
+              amount={summary?.expense ?? 0}
+              type="expense"
+              style={styles.summaryStatCard}
+              hideAmounts={!showValues}
             />
           </View>
-          {dashboardQuery.isLoading ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator />
-            </View>
-          ) : recentTransactions.length ? (
-            recentTransactions.map((transaction, index) => (
-              <TransactionListItem
-                key={transaction.id}
-                item={transaction}
-                hideAmounts={!showValues}
-                showDivider={index < recentTransactions.length - 1}
-              />
-            ))
-          ) : (
-            <View style={{ padding: spacing.lg, paddingTop: 0 }}>
-              <Text style={styles.emptyText}>
-                As novas transações vão aparecer aqui.
+
+          <View style={styles.kpiRow}>
+            <Pressable
+              style={styles.kpiCard}
+              onPress={() => navigation.getParent()?.navigate("Goals")}
+            >
+              <Target color={colors.primary} size={18} />
+              <Text style={styles.kpiValue}>{summary?.goalsCount ?? 0}</Text>
+              <Text style={styles.kpiLabel}>Metas</Text>
+            </Pressable>
+            <Pressable
+              style={styles.kpiCard}
+              onPress={() => navigation.getParent()?.navigate("Groups")}
+            >
+              <Users color={colors.primary} size={18} />
+              <Text style={styles.kpiValue}>{summary?.groupsCount ?? 0}</Text>
+              <Text style={styles.kpiLabel}>Grupos</Text>
+            </Pressable>
+            <Pressable
+              style={styles.kpiCard}
+              onPress={() => navigation.navigate("Accounts")}
+            >
+              <Landmark color={colors.primary} size={18} />
+              <Text style={styles.kpiValue}>
+                {summary?.accountsCount ?? accounts.length}
               </Text>
+              <Text style={styles.kpiLabel}>Contas</Text>
+            </Pressable>
+          </View>
+
+          {primaryAccount ? (
+            <Card style={styles.accountHeroCard}>
+              <SectionHeader
+                title="Conta principal"
+                actionLabel="Ver contas"
+                onActionPress={() => navigation.navigate("Accounts")}
+              />
+              <View style={styles.accountRow}>
+                <View>
+                  <Text style={styles.accountName}>{primaryAccount.name}</Text>
+                  <Text style={styles.accountMeta}>
+                    {primaryAccount.institution || "Instituição não informada"}
+                  </Text>
+                </View>
+                <Text style={styles.accountAmount}>
+                  {formatVisibleCurrency(
+                    primaryAccount.currentBalance,
+                    showValues,
+                  )}
+                </Text>
+              </View>
+            </Card>
+          ) : null}
+
+          <MonthlyBarChart data={weeklyFlow} hideValues={!showValues} />
+
+          <Card style={styles.sectionCard}>
+            <SectionHeader
+              title="Categorias do mês"
+              actionLabel="Relatórios"
+              onActionPress={() => navigation.navigate("Reports")}
+            />
+            {dashboardQuery.isLoading ? (
+              <View style={styles.loadingWrap}>
+                <ActivityIndicator />
+              </View>
+            ) : dashboardQuery.isError ? (
+              <Pressable
+                onPress={() => dashboardQuery.refetch()}
+                accessibilityRole="button"
+              >
+                <Text style={styles.emptyText}>
+                  Não foi possível carregar os dados. Toque para tentar
+                  novamente.
+                </Text>
+              </Pressable>
+            ) : categorySpending.length ? (
+              categorySpending.map((item) => (
+                <View key={item.category} style={styles.categoryRow}>
+                  <View style={styles.categoryLabelRow}>
+                    <View
+                      style={[
+                        styles.categoryDot,
+                        { backgroundColor: item.color },
+                      ]}
+                    />
+                    <Text style={styles.categoryLabel}>{item.category}</Text>
+                  </View>
+                  <View style={styles.categoryValueBlock}>
+                    <Text style={styles.categoryShare}>
+                      {item.share.toFixed(1)}%
+                    </Text>
+                    <Text style={styles.categoryAmount}>
+                      {formatVisibleCurrency(item.amount, showValues)}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>
+                Nenhum gasto reportável neste período.
+              </Text>
+            )}
+          </Card>
+
+          <Card noPadding style={styles.sectionCard}>
+            <View style={styles.sectionInner}>
+              <SectionHeader
+                title="Últimas movimentações"
+                actionLabel="Ver todas"
+                onActionPress={() => navigation.navigate("Transactions")}
+              />
             </View>
-          )}
-        </Card>
+            {dashboardQuery.isLoading ? (
+              <View style={styles.loadingWrap}>
+                <ActivityIndicator />
+              </View>
+            ) : recentTransactions.length ? (
+              recentTransactions.map((transaction, index) => (
+                <TransactionListItem
+                  key={transaction.id}
+                  item={transaction}
+                  hideAmounts={!showValues}
+                  showDivider={index < recentTransactions.length - 1}
+                />
+              ))
+            ) : (
+              <View style={{ padding: spacing.lg, paddingTop: 0 }}>
+                <Text style={styles.emptyText}>
+                  As novas transações vão aparecer aqui.
+                </Text>
+              </View>
+            )}
+          </Card>
         </View>
       </ScrollView>
 
@@ -472,7 +478,7 @@ const createStyles = (colors: AppColors, tabBarHeight: number) =>
     fab: {
       position: "absolute",
       right: spacing.lg,
-      bottom: tabBarHeight - 48,
+      bottom: tabBarHeight - 88,
       zIndex: 20,
       elevation: 20,
     },
