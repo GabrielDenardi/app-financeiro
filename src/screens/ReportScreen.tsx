@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Calendar as RNCalendar, LocaleConfig } from 'react-native-calendars';
 import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
 import { Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, X } from 'lucide-react-native';
@@ -7,6 +7,7 @@ import { Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, TrendingDown, 
 import { Card } from '../components/Card';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
+import { useToast } from '../components/Toast';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { endOfMonth, isoDate, startOfMonth } from '../features/finance/utils';
 import { useCurrentPlan } from '../features/plans/hooks';
@@ -34,6 +35,7 @@ function fmtDate(value: string) {
 export default function ReportsScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showError } = useToast();
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
   const [open, setOpen] = useState(false);
@@ -73,7 +75,7 @@ export default function ReportsScreen({ navigation }: any) {
 
   const applyRange = () => {
     if (new Date(tempFrom) > new Date(tempTo)) {
-      Alert.alert('Período inválido', 'A data inicial precisa ser menor ou igual à data final.');
+      showError('A data inicial precisa ser menor ou igual à data final.');
       return;
     }
 
@@ -84,8 +86,8 @@ export default function ReportsScreen({ navigation }: any) {
   };
 
   return (
-    <PageShell>
-      <PageHeader title="Relatórios" onBackPress={() => navigation.goBack()} />
+    <PageShell onBackPress={() => navigation.goBack()}>
+      <PageHeader title="Relatórios" />
 
       <Pressable style={styles.selector} onPress={() => { setSheetMode(mode); setOpen(true); }}>
         <Calendar size={16} color={colors.textSecondary} />

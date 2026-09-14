@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Calendar, Check, ChevronDown, ExternalLink, FileSpreadsheet, FileText, Paperclip } from 'lucide-react-native';
 
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
+import { useToast } from '../components/Toast';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { useExportIncomeTax, useIncomeTaxReport } from '../features/incomeTax/hooks/useIncomeTax';
 import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
@@ -20,6 +21,7 @@ const YEARS = Array.from({ length: 5 }, (_, index) => CURRENT_YEAR - index);
 export default function IncomeTaxScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showSuccess, showError } = useToast();
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
   const allowed = currentPlan.entitlements.dataImportExport;
@@ -39,15 +41,16 @@ export default function IncomeTaxScreen({ navigation }: any) {
     }
 
     if (!report) {
-      Alert.alert('Aguarde', 'O relatório ainda está sendo carregado.');
+      showError('O relatório ainda está sendo carregado.');
       return;
     }
 
     setExportingFormat(format);
     try {
       await exportMutation.mutateAsync({ report, format });
+      showSuccess(format === 'pdf' ? 'PDF gerado com sucesso.' : 'Planilha gerada com sucesso.');
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível gerar o arquivo.');
+      showError(error instanceof Error ? error.message : 'Não foi possível gerar o arquivo.');
     } finally {
       setExportingFormat(null);
     }
@@ -55,8 +58,8 @@ export default function IncomeTaxScreen({ navigation }: any) {
 
   if (!allowed) {
     return (
-      <PageShell>
-        <PageHeader title="Imposto de Renda" onBackPress={() => navigation.goBack()} />
+      <PageShell onBackPress={() => navigation.goBack()}>
+        <PageHeader title="Imposto de Renda" />
         <Card style={styles.card}>
           <View style={styles.icon}>
             <FileText color={colors.textSecondary} size={28} />
@@ -84,6 +87,7 @@ export default function IncomeTaxScreen({ navigation }: any) {
 
   return (
     <PageShell
+      onBackPress={() => navigation.goBack()}
       refreshControl={
         <RefreshControl
           refreshing={reportQuery.isRefetching}
@@ -92,7 +96,7 @@ export default function IncomeTaxScreen({ navigation }: any) {
         />
       }
     >
-      <PageHeader title="Imposto de Renda" onBackPress={() => navigation.goBack()} />
+      <PageHeader title="Imposto de Renda" />
 
       <Pressable
         accessibilityRole="button"

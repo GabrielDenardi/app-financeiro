@@ -61,7 +61,7 @@ export function useRevenueCatPlanPackages(userId?: string | null) {
     queryKey: financeQueryKeys.plans.storeOfferings(userId),
     queryFn: () => {
       if (!userId) {
-        throw new Error('Usuario nao autenticado.');
+        throw new Error('Usuário não autenticado.');
       }
       return listRevenueCatPlanPackages(userId);
     },
@@ -74,7 +74,7 @@ export function usePurchaseRevenueCatPlanMutation(userId?: string | null) {
   return useMutation({
     mutationFn: (selectedPackage: RevenueCatPlanPackage) => {
       if (!userId) {
-        throw new Error('Usuario nao autenticado.');
+        throw new Error('Usuário não autenticado.');
       }
       return purchaseRevenueCatPlan(userId, selectedPackage);
     },
@@ -85,7 +85,7 @@ export function useRestoreRevenueCatPurchasesMutation(userId?: string | null) {
   return useMutation({
     mutationFn: () => {
       if (!userId) {
-        throw new Error('Usuario nao autenticado.');
+        throw new Error('Usuário não autenticado.');
       }
       return restoreRevenueCatPurchases(userId);
     },

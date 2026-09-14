@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import {
@@ -32,6 +34,7 @@ import { Badge } from '../components/Badge';
 import { Chip } from '../components/Chip';
 import { FieldCard, FieldDivider, FieldRow } from '../components/FormField';
 import { getCategoryIcon } from '../components/TransactionListItem';
+import { useToast } from '../components/Toast';
 import { useAccounts } from '../features/accounts/hooks/useAccounts';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import {
@@ -46,6 +49,7 @@ import type { RecurringTransaction } from '../features/recurring/types';
 import type { PaymentMethod } from '../features/transactions/types';
 import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
 import { formatCurrencyInput, formatMonthDate, localIsoDate, normalizeCurrencyInput } from '../features/finance/utils';
+import { useMaskedCursor } from '../hooks/useMaskedCursor';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import { formatCurrencyBRL, getRelativeDueDateInfo } from '../utils/format';
 
@@ -87,6 +91,7 @@ export default function RecurringTransactionsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
+  const { showSuccess, showError } = useToast();
   const user = useAuthenticatedUser();
   const recurringQuery = useRecurringTransactions(user?.id);
   const accountsQuery = useAccounts(user?.id);
@@ -115,6 +120,7 @@ export default function RecurringTransactionsScreen() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [adjustmentValue, setAdjustmentValue] = useState('');
+  const adjustmentValueCursor = useMaskedCursor(adjustmentValue);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   // Confirmação em modal próprio: Alert.alert com botões não funciona no web.
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -191,13 +197,13 @@ export default function RecurringTransactionsScreen() {
 
   const handleSave = async () => {
     if (!title || !amount || !accountId) {
-      Alert.alert('Erro', 'Preencha os campos obrigatórios.');
+      showError('Preencha os campos obrigatórios.');
       return;
     }
 
     const dayNumber = Number(day);
     if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > 31) {
-      Alert.alert('Erro', 'Informe um dia do mês entre 1 e 31.');
+      showError('Informe um dia do mês entre 1 e 31.');
       return;
     }
 
@@ -216,12 +222,15 @@ export default function RecurringTransactionsScreen() {
     try {
       if (editingId) {
         await updateMutation.mutateAsync({ id: editingId, ...payload });
+        closeMainModal();
+        showSuccess('Recorrência atualizada.');
       } else {
         await createMutation.mutateAsync(payload);
+        closeMainModal();
+        showSuccess('Recorrência criada.');
       }
-      closeMainModal();
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível salvar a recorrência.');
+      showError(error instanceof Error ? error.message : 'Não foi possível salvar a recorrência.');
     }
   };
 
@@ -240,9 +249,9 @@ export default function RecurringTransactionsScreen() {
         note: item.notes,
         executionMonth: currentMonthDate(),
       });
-      Alert.alert('Confirmado', `${item.title} (${formatCurrencyBRL(item.amount)}) lançado no extrato.`);
+      showSuccess(`${item.title} (${formatCurrencyBRL(item.amount)}) lançado no extrato.`);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível confirmar o lançamento.');
+      showError(error instanceof Error ? error.message : 'Não foi possível confirmar o lançamento.');
     } finally {
       setPendingActionId(null);
     }
@@ -260,11 +269,11 @@ export default function RecurringTransactionsScreen() {
         note: selectedItem.notes,
         executionMonth: currentMonthDate(),
       });
-      Alert.alert('Sucesso', `Lançamento de ${formatCurrencyBRL(normalizeCurrencyInput(adjustmentValue))} confirmado no extrato.`);
+      showSuccess(`Lançamento de ${formatCurrencyBRL(normalizeCurrencyInput(adjustmentValue))} confirmado no extrato.`);
       setConfirmModalVisible(false);
       setSelectedItem(null);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível confirmar o lançamento.');
+      showError(error instanceof Error ? error.message : 'Não foi possível confirmar o lançamento.');
     }
   };
 
@@ -280,8 +289,9 @@ export default function RecurringTransactionsScreen() {
             ruleId: item.id,
             executionMonth: currentMonthDate(),
           });
+          showSuccess('Confirmação desfeita.');
         } catch (error) {
-          Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível desfazer a confirmação.');
+          showError(error instanceof Error ? error.message : 'Não foi possível desfazer a confirmação.');
         } finally {
           setPendingActionId(null);
         }
@@ -293,7 +303,7 @@ export default function RecurringTransactionsScreen() {
     try {
       await updateMutation.mutateAsync({ id: item.id, isActive: !item.isActive });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível atualizar a recorrência.');
+      showError(error instanceof Error ? error.message : 'Não foi possível atualizar a recorrência.');
     }
   };
 
@@ -319,8 +329,9 @@ export default function RecurringTransactionsScreen() {
       onConfirm: async () => {
         try {
           await deleteMutation.mutateAsync(item.id);
+          showSuccess('Recorrência excluída.');
         } catch (error) {
-          Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível remover a recorrência.');
+          showError(error instanceof Error ? error.message : 'Não foi possível remover a recorrência.');
         }
       },
     });
@@ -329,6 +340,7 @@ export default function RecurringTransactionsScreen() {
   return (
     <>
       <PageShell
+        onBackPress={() => navigation.goBack()}
         refreshControl={
           <RefreshControl
             refreshing={recurringQuery.isRefetching}
@@ -336,33 +348,51 @@ export default function RecurringTransactionsScreen() {
             tintColor={colors.primary}
           />
         }
+        footer={
+          <Button
+            label="Adicionar Transação"
+            icon={<Plus size={20} color={colors.white} />}
+            onPress={handleOpenCreate}
+            fullWidth
+          />
+        }
       >
         <PageHeader
           title="Transações Recorrentes"
           subtitle="Gerencie suas contas fixas"
-          onBackPress={() => navigation.goBack()}
         />
 
         <Card style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>Resumo Mensal Previsto</Text>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Receitas</Text>
-              <Text style={[styles.summaryValue, { color: colors.success }]}>{formatCurrencyBRL(summary.income)}</Text>
+          <View style={styles.summaryStack}>
+            <View style={styles.summaryLine}>
+              <Text style={styles.summaryLineLabel}>Receitas</Text>
+              <Text
+                style={[styles.summaryLineValue, { color: colors.success }]}
+                numberOfLines={1}
+              >
+                {formatCurrencyBRL(summary.income)}
+              </Text>
             </View>
-            <View style={styles.vDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Despesas</Text>
-              <Text style={[styles.summaryValue, { color: colors.danger }]}>{formatCurrencyBRL(summary.expense)}</Text>
+            <View style={styles.summaryLine}>
+              <Text style={styles.summaryLineLabel}>Despesas</Text>
+              <Text
+                style={[styles.summaryLineValue, { color: colors.danger }]}
+                numberOfLines={1}
+              >
+                {formatCurrencyBRL(summary.expense)}
+              </Text>
             </View>
-            <View style={styles.vDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Saldo</Text>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryLine}>
+              <Text style={[styles.summaryLineLabel, styles.summaryTotalLabel]}>Saldo</Text>
               <Text
                 style={[
-                  styles.summaryValue,
+                  styles.summaryLineValue,
+                  styles.summaryTotalValue,
                   { color: summary.income - summary.expense >= 0 ? colors.textPrimary : colors.danger },
                 ]}
+                numberOfLines={1}
               >
                 {formatCurrencyBRL(summary.income - summary.expense)}
               </Text>
@@ -373,15 +403,6 @@ export default function RecurringTransactionsScreen() {
               {summary.confirmedCount} de {summary.activeCount} confirmada{summary.activeCount !== 1 ? 's' : ''} este mês
             </Text>
           ) : null}
-        </Card>
-
-        <Card style={styles.buttonCard}>
-          <Button
-            label="Adicionar Transação"
-            icon={<Plus size={20} color={colors.white} />}
-            onPress={handleOpenCreate}
-            fullWidth
-          />
         </Card>
 
         {recurringQuery.isLoading ? <Card style={styles.card}><ActivityIndicator /></Card> : null}
@@ -405,15 +426,19 @@ export default function RecurringTransactionsScreen() {
                   {getCategoryIcon(item.categoryLabel, item.categoryColor)}
                 </View>
                 <View style={styles.cardBody}>
-                  <View style={styles.titleRow}>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    {item.isVariable ? (
-                      <Badge label="VARIÁVEL" tone="neutral" />
-                    ) : null}
-                    {dueInfo?.isOverdue ? (
-                      <Badge label={dueInfo.label} tone="danger" />
-                    ) : null}
-                  </View>
+                  <Text style={styles.cardTitle} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  {item.isVariable || dueInfo?.isOverdue ? (
+                    <View style={styles.badgeRow}>
+                      {item.isVariable ? (
+                        <Badge label="VARIÁVEL" tone="neutral" />
+                      ) : null}
+                      {dueInfo?.isOverdue ? (
+                        <Badge label={dueInfo.label} tone="danger" />
+                      ) : null}
+                    </View>
+                  ) : null}
                   <Text style={styles.cardSubtitle}>
                     Mensal - Dia {item.dayOfMonth} - {item.accountName}
                   </Text>
@@ -528,7 +553,12 @@ export default function RecurringTransactionsScreen() {
         footer={(close) => (
           <>
             <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
-            <Button label="Salvar" fullWidth onPress={handleSave} />
+            <Button
+              label={editingId ? 'Salvar' : 'Criar'}
+              fullWidth
+              onPress={handleSave}
+              loading={createMutation.isPending || updateMutation.isPending}
+            />
           </>
         )}
       >
@@ -639,7 +669,10 @@ export default function RecurringTransactionsScreen() {
 
       {/* Diálogo de confirmação de valor variável */}
       <Modal visible={confirmModalVisible} animationType="fade" transparent onRequestClose={() => setConfirmModalVisible(false)}>
-        <View style={styles.miniModalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.miniModalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <View style={styles.miniModalContent}>
             <CheckCircle2 size={40} color={colors.primary} style={styles.miniIcon} />
             <Text style={styles.miniModalTitle}>Confirmar {selectedItem?.title}</Text>
@@ -647,14 +680,15 @@ export default function RecurringTransactionsScreen() {
 
             <View style={styles.miniInputContainer}>
               <Text style={styles.currencyPrefix}>R$</Text>
-              <FieldRow
-                label=""
+              <TextInput
                 placeholder="0,00"
+                placeholderTextColor={colors.textSecondary}
                 keyboardType="numeric"
                 value={adjustmentValue}
                 onChangeText={(v) => setAdjustmentValue(formatCurrencyInput(v))}
                 autoFocus
-                inputStyle={styles.miniInput}
+                style={styles.miniInput}
+                {...adjustmentValueCursor}
               />
             </View>
 
@@ -668,7 +702,7 @@ export default function RecurringTransactionsScreen() {
               />
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Diálogo de confirmação de ações destrutivas (desfazer/excluir) */}
@@ -714,33 +748,42 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
       fontWeight: '600',
     },
-    summaryRow: {
+    summaryStack: {
+      gap: spacing.sm,
+    },
+    summaryLine: {
       flexDirection: 'row',
-      justifyContent: 'space-around',
-    },
-    summaryItem: {
       alignItems: 'center',
-      flex: 1,
+      justifyContent: 'space-between',
+      gap: spacing.md,
     },
-    summaryLabel: {
-      ...typography.caption,
+    summaryLineLabel: {
+      ...typography.body,
       color: colors.textSecondary,
     },
-    summaryValue: {
+    summaryLineValue: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: '700',
+      flexShrink: 1,
+      textAlign: 'right',
+    },
+    summaryTotalLabel: {
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    summaryTotalValue: {
       ...typography.h2,
-      marginTop: spacing.xs,
+    },
+    summaryDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: spacing.xs,
     },
     summaryProgress: {
       ...typography.caption,
       color: colors.textSecondary,
       textAlign: 'center',
-    },
-    vDivider: {
-      width: 1,
-      backgroundColor: colors.border,
-    },
-    buttonCard: {
-      padding: spacing.sm,
     },
     card: {
       gap: spacing.md,
@@ -764,10 +807,12 @@ const createStyles = (colors: AppColors) =>
       marginLeft: spacing.md,
       gap: 2,
     },
-    titleRow: {
+    badgeRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      flexWrap: 'wrap',
       gap: spacing.xs,
+      marginTop: 2,
     },
     cardTitle: {
       ...typography.body,
@@ -943,6 +988,7 @@ const createStyles = (colors: AppColors) =>
     miniInputContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       borderBottomWidth: 2,
       borderBottomColor: colors.primary,
       paddingBottom: spacing.sm,
@@ -957,7 +1003,8 @@ const createStyles = (colors: AppColors) =>
     miniInput: {
       fontSize: 32,
       fontWeight: '700',
-      flex: 1,
+      color: colors.textPrimary,
+      minWidth: 80,
     },
     miniModalActions: {
       flexDirection: 'row',

@@ -34,6 +34,8 @@ import {
   useHelpCategories,
 } from "../features/help/hooks/useHelp";
 import type { HelpArticle } from "../features/help/types";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import {
   type AppColors,
   layout,
@@ -72,30 +74,34 @@ function ArticleDetail({
   onNotHelpful: () => void;
 }) {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const [feedback, setFeedback] = useState<"idle" | "helpful">("idle");
 
   return (
     <View style={styles.container}>
-      <View style={styles.detailHeader}>
+      <View style={styles.topBar}>
         <Pressable
           onPress={onBack}
           style={({ pressed }) => [
-            styles.detailBackButton,
+            styles.backButton,
             pressed && styles.pressed,
           ]}
         >
           <ArrowLeft size={20} color={colors.textPrimary} />
         </Pressable>
-        <Text style={styles.detailHeaderTitle} numberOfLines={1}>
-          {article.title}
-        </Text>
-        <View style={styles.levelBadge}>
-          <Text style={styles.levelBadgeText}>{article.level}</Text>
-        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.detailScrollContent}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.detailScrollContent}>
+        <View style={styles.detailTitleRow}>
+          <Text style={styles.detailHeaderTitle} numberOfLines={1}>
+            {article.title}
+          </Text>
+          <View style={styles.levelBadge}>
+            <Text style={styles.levelBadgeText}>{article.level}</Text>
+          </View>
+        </View>
+
         <View style={styles.detailCard}>
           <View style={styles.stepHeader}>
             <BookOpen size={16} color={colors.white} />
@@ -165,7 +171,8 @@ function ArticleDetail({
 
 export function HelpScreen({ navigation }: any) {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const scrollRef = useRef<ScrollView>(null);
   const [searchText, setSearchText] = useState("");
   const [selectedCategoryCode, setSelectedCategoryCode] = useState<
@@ -206,7 +213,20 @@ export function HelpScreen({ navigation }: any) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
+      <View style={styles.topBarOnHero}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => navigation?.goBack()}
+        >
+          <ArrowLeft size={20} color={colors.white} />
+        </Pressable>
+      </View>
+
       <ScrollView
+        style={styles.scroll}
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.screenScrollContent}
@@ -214,15 +234,6 @@ export function HelpScreen({ navigation }: any) {
         <View style={styles.heroHeader}>
           <SafeAreaView>
             <View style={styles.heroTop}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.backButton,
-                  pressed && styles.pressed,
-                ]}
-                onPress={() => navigation?.goBack()}
-              >
-                <ArrowLeft size={24} color={colors.white} />
-              </Pressable>
               <View>
                 <Text style={styles.heroTitle}>Central de Ajuda</Text>
                 <Text style={styles.heroSubtitle}>Como podemos te ajudar?</Text>
@@ -510,7 +521,7 @@ export function HelpScreen({ navigation }: any) {
   );
 }
 
-const createStyles = (colors: AppColors) =>
+const createStyles = (colors: AppColors, topInset: number) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -540,12 +551,33 @@ const createStyles = (colors: AppColors) =>
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: layout.pageHorizontal,
-      marginTop: layout.pageHeaderTop,
+      marginTop: spacing.lg,
       gap: spacing.md,
     },
+    scroll: {
+      flex: 1,
+    },
+    topBar: {
+      backgroundColor: colors.surface,
+      paddingTop: topInset + spacing.xs,
+      paddingBottom: spacing.xs,
+      paddingHorizontal: layout.pageHorizontal,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    // Fica sobre o heroHeader azul (tela principal) — sem borda, mesma cor
+    // do gradiente logo abaixo, pra não cortar a continuidade visual.
+    topBarOnHero: {
+      backgroundColor: colors.primary,
+      paddingTop: topInset + spacing.xs,
+      paddingBottom: spacing.xs,
+      paddingHorizontal: layout.pageHorizontal,
+    },
     backButton: {
-      padding: spacing.sm,
-      borderRadius: radius.pill,
+      width: 36,
+      height: 36,
+      alignItems: "center",
+      justifyContent: "center",
     },
     heroTitle: {
       ...typography.h1,
@@ -806,26 +838,10 @@ const createStyles = (colors: AppColors) =>
     },
 
     // Article detail
-    detailHeader: {
+    detailTitleRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: layout.pageHorizontal,
-      paddingTop: layout.pageHeaderTop,
-      paddingBottom: spacing.md,
-      backgroundColor: colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
       gap: spacing.md,
-    },
-    detailBackButton: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.pill,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.background,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     detailHeaderTitle: {
       flex: 1,
@@ -845,7 +861,7 @@ const createStyles = (colors: AppColors) =>
     },
     detailScrollContent: {
       paddingHorizontal: layout.pageHorizontal,
-      paddingTop: spacing.xl,
+      paddingTop: spacing.lg,
       paddingBottom: spacing.xxl,
       gap: spacing.lg,
     },

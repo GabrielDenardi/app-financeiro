@@ -1,7 +1,6 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Linking,
   Pressable,
   StyleSheet,
@@ -18,6 +17,8 @@ import { PageShell } from '../components/PageShell';
 import { BottomSheet } from '../components/BottomSheet';
 import { Button } from '../components/Button';
 import { FieldCard, FieldDivider, FieldRow } from '../components/FormField';
+import { useResultModal } from '../components/ResultModal';
+import { useToast } from '../components/Toast';
 import { appEnv } from '../config/env';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
@@ -43,6 +44,8 @@ import { radius, spacing, typography, type AppColors, useThemeColors } from '../
 export function PrivacySecurityScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showSuccess, showError } = useToast();
+  const { showResult } = useResultModal();
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
   const preferencesQuery = usePreferences(user?.id);
@@ -66,21 +69,34 @@ export function PrivacySecurityScreen({ navigation }: any) {
   const prefs = preferencesQuery.data;
   const mfaBusy = enrollTotp.isPending || verifyTotp.isPending || disableTotp.isPending;
 
+  type SimplePrefKey =
+    | 'biometricEnabled'
+    | 'hideValuesHome'
+    | 'loginAlertsEnabled'
+    | 'shareAnonymousStats'
+    | 'requireGroupExpenseReceipt';
+
+  const [busyPrefKey, setBusyPrefKey] = useState<SimplePrefKey | null>(null);
+
   const onTogglePref = async (
     key: 'hideValuesHome' | 'loginAlertsEnabled' | 'shareAnonymousStats' | 'requireGroupExpenseReceipt',
     value: boolean,
   ) => {
+    setBusyPrefKey(key);
     try {
       await updatePref.mutateAsync({ [key]: value });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar a preferencia.');
+      showError(error instanceof Error ? error.message : 'Não foi possível atualizar a preferência.');
+    } finally {
+      setBusyPrefKey(null);
     }
   };
 
   const onToggleBiometric = async (value: boolean) => {
+    setBusyPrefKey('biometricEnabled');
     try {
       if (value && !(await canUseBiometricLock())) {
-        Alert.alert('Biometria indisponivel', 'O dispositivo nao possui biometria configurada.');
+        showError('O dispositivo não possui biometria configurada.');
         return;
       }
 
@@ -96,7 +112,9 @@ export function PrivacySecurityScreen({ navigation }: any) {
       await updatePref.mutateAsync({ biometricEnabled: value });
       await setBiometricLockEnabled(value);
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar a biometria.');
+      showError(error instanceof Error ? error.message : 'Não foi possível atualizar a biometria.');
+    } finally {
+      setBusyPrefKey(null);
     }
   };
 
@@ -113,9 +131,10 @@ export function PrivacySecurityScreen({ navigation }: any) {
       const factor = mfaFactorsQuery.data?.[0];
       if (factor) {
         await disableTotp.mutateAsync(factor.id);
+        showSuccess('Autenticação em duas etapas desativada.');
       }
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel atualizar o MFA.');
+      showError(error instanceof Error ? error.message : 'Não foi possível atualizar o MFA.');
     }
   };
 
@@ -129,8 +148,9 @@ export function PrivacySecurityScreen({ navigation }: any) {
       setMfaOpen(false);
       setEnrollment(null);
       setMfaCode('');
+      showSuccess('Autenticação em duas etapas ativada.');
     } catch (error) {
-      Alert.alert('Codigo invalido', error instanceof Error ? error.message : 'Nao foi possivel validar o TOTP.');
+      showError(error instanceof Error ? error.message : 'Não foi possível validar o TOTP.');
     }
   };
 
@@ -143,14 +163,18 @@ export function PrivacySecurityScreen({ navigation }: any) {
     try {
       const url = await exportData.mutateAsync();
       if (!url) {
-        Alert.alert('Exportacao solicitada', 'A requisicao foi registrada, mas o link ainda nao ficou disponivel.');
+        showResult({
+          variant: 'success',
+          title: 'Exportação solicitada!',
+          message: 'A requisição foi registrada, mas o link ainda não ficou disponível.',
+        });
         return;
       }
 
       await Linking.openURL(url);
-      Alert.alert('Exportacao pronta', 'O download foi iniciado.');
+      showResult({ variant: 'success', title: 'Exportação pronta!', message: 'O download foi iniciado.' });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel solicitar a exportacao.');
+      showError(error instanceof Error ? error.message : 'Não foi possível solicitar a exportação.');
     }
   };
 
@@ -160,37 +184,41 @@ export function PrivacySecurityScreen({ navigation }: any) {
       setDeleteOpen(false);
       setReason('');
       setPassword('');
-      Alert.alert('Conta excluida', 'Sua conta foi removida e a sessao atual foi encerrada.');
+      showResult({
+        variant: 'success',
+        title: 'Conta excluída',
+        message: 'Sua conta foi removida e a sessão atual foi encerrada.',
+      });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Nao foi possivel solicitar a exclusao.');
+      showError(error instanceof Error ? error.message : 'Não foi possível solicitar a exclusão.');
     }
   };
 
   const onOpenPolicy = () => {
     if (!appEnv.privacyPolicyUrl) {
-      Alert.alert('Link indisponivel', 'Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a politica.');
+      showError('Defina EXPO_PUBLIC_PRIVACY_POLICY_URL para abrir a política.');
       return;
     }
 
     Linking.openURL(appEnv.privacyPolicyUrl).catch(() => {
-      Alert.alert('Erro', 'Nao foi possivel abrir a politica de privacidade.');
+      showError('Não foi possível abrir a política de privacidade.');
     });
   };
 
   const onOpenTerms = () => {
     if (!appEnv.termsOfUseUrl) {
-      Alert.alert('Link indisponivel', 'Defina EXPO_PUBLIC_TERMS_OF_USE_URL para abrir os termos.');
+      showError('Defina EXPO_PUBLIC_TERMS_OF_USE_URL para abrir os termos.');
       return;
     }
 
     Linking.openURL(appEnv.termsOfUseUrl).catch(() => {
-      Alert.alert('Erro', 'Nao foi possivel abrir os termos de uso.');
+      showError('Não foi possível abrir os termos de uso.');
     });
   };
 
   return (
-    <PageShell>
-      <PageHeader title="Privacidade e Seguranca" onBackPress={() => navigation.goBack()} />
+    <PageShell onBackPress={() => navigation.goBack()}>
+      <PageHeader title="Privacidade e Segurança" />
 
       {preferencesQuery.isLoading && !prefs ? (
         <Card style={styles.cardCenter}>
@@ -199,7 +227,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
       ) : null}
       {preferencesQuery.isError ? (
         <Card style={styles.cardCenter}>
-          <Text style={styles.desc}>Nao foi possivel carregar suas preferencias.</Text>
+          <Text style={styles.desc}>Não foi possível carregar suas preferências.</Text>
           <Pressable style={styles.linkBtn} onPress={() => preferencesQuery.refetch()}>
             <Text style={styles.linkBtnText}>Tentar novamente</Text>
           </Pressable>
@@ -209,13 +237,13 @@ export function PrivacySecurityScreen({ navigation }: any) {
       {prefs ? (
         <>
           <Section
-            title="Seguranca"
+            title="Segurança"
             icon={<ShieldCheck size={18} color={colors.textPrimary} />}
             styles={styles}
           >
             <PrefRow
-              label="Autenticacao em duas etapas"
-              desc="Adiciona uma camada extra de seguranca."
+              label="Autenticação em duas etapas"
+              desc="Adiciona uma camada extra de segurança."
               value={prefs.twoFactorEnabled}
               loading={mfaBusy}
               onChange={onToggleTwoFactor}
@@ -225,7 +253,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
               label="Bloqueio por biometria"
               desc="Exige biometria ou o PIN do aparelho ao abrir o app."
               value={prefs.biometricEnabled}
-              loading={updatePref.isPending}
+              loading={busyPrefKey === 'biometricEnabled'}
               onChange={onToggleBiometric}
               styles={styles}
             />
@@ -233,7 +261,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
               label="Alertas de login"
               desc="Notificar sobre novos acessos."
               value={prefs.loginAlertsEnabled}
-              loading={updatePref.isPending}
+              loading={busyPrefKey === 'loginAlertsEnabled'}
               onChange={(value) => onTogglePref('loginAlertsEnabled', value)}
               styles={styles}
             />
@@ -242,25 +270,25 @@ export function PrivacySecurityScreen({ navigation }: any) {
           <Section title="Privacidade" icon={<Lock size={18} color={colors.textPrimary} />} styles={styles}>
             <PrefRow
               label="Ocultar valores na tela inicial"
-              desc="Protege seus dados em publico."
+              desc="Protege seus dados em público."
               value={prefs.hideValuesHome}
-              loading={updatePref.isPending}
+              loading={busyPrefKey === 'hideValuesHome'}
               onChange={(value) => onTogglePref('hideValuesHome', value)}
               styles={styles}
             />
             <PrefRow
-              label="Compartilhar estatisticas anonimas"
+              label="Compartilhar estatísticas anônimas"
               desc="Ajuda a melhorar o app."
               value={prefs.shareAnonymousStats}
-              loading={updatePref.isPending}
+              loading={busyPrefKey === 'shareAnonymousStats'}
               onChange={(value) => onTogglePref('shareAnonymousStats', value)}
               styles={styles}
             />
             <PrefRow
               label="Exigir comprovante em despesas de grupo"
-              desc="Quando ativo, novos lancamentos de despesa em grupo exigem NF ou notinha."
+              desc="Quando ativo, novos lançamentos de despesa em grupo exigem NF ou notinha."
               value={prefs.requireGroupExpenseReceipt}
-              loading={updatePref.isPending}
+              loading={busyPrefKey === 'requireGroupExpenseReceipt'}
               onChange={(value) => onTogglePref('requireGroupExpenseReceipt', value)}
               styles={styles}
             />
@@ -285,7 +313,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
       <Card style={styles.card}>
         <Text style={styles.sectionTitle}>Acessos recentes</Text>
         {loginEventsQuery.isLoading ? <ActivityIndicator color={colors.primaryLight} /> : null}
-        {loginEventsQuery.isError ? <Text style={styles.desc}>Nao foi possivel carregar os acessos.</Text> : null}
+        {loginEventsQuery.isError ? <Text style={styles.desc}>Não foi possível carregar os acessos.</Text> : null}
         {!loginEventsQuery.isLoading && !loginEventsQuery.isError && !(loginEventsQuery.data?.length) ? (
           <Text style={styles.desc}>Nenhum evento registrado ainda.</Text>
         ) : null}
@@ -300,13 +328,13 @@ export function PrivacySecurityScreen({ navigation }: any) {
       </Card>
 
       <View style={styles.policy}>
-        <Text style={styles.policyTitle}>Politica de Privacidade</Text>
+        <Text style={styles.policyTitle}>Política de Privacidade</Text>
         <Text style={styles.policyText}>
-          Levamos sua privacidade a serio. Seus dados financeiros sao protegidos, voce pode exporta-los a qualquer momento
-          e o controle das preferencias fica sempre com sua conta.
+          Levamos sua privacidade a sério. Seus dados financeiros são protegidos, você pode exportá-los a qualquer momento
+          e o controle das preferências fica sempre com sua conta.
         </Text>
         <Pressable onPress={onOpenPolicy}>
-          <Text style={styles.policyLink}>Ler politica completa</Text>
+          <Text style={styles.policyLink}>Ler política completa</Text>
         </Pressable>
         <Pressable onPress={onOpenTerms}>
           <Text style={styles.policyLink}>Ler termos de uso</Text>
@@ -317,7 +345,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
         visible={paywallOpen}
         onClose={() => setPaywallOpen(false)}
         featureTitle="Exportar dados"
-        description="Baixe uma copia completa dos seus dados financeiros — recurso do Plano Pro."
+        description="Baixe uma cópia completa dos seus dados financeiros — recurso do Plano Pro."
       />
 
       <BottomSheet
@@ -367,7 +395,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
           <>
             <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
             <Button
-              label="Confirmar exclusão"
+              label="Excluir"
               variant="danger"
               fullWidth
               onPress={onDelete}
@@ -443,16 +471,16 @@ function PrefRow({
         <Text style={styles.prefTitle}>{label}</Text>
         <Text style={styles.prefDesc}>{desc}</Text>
       </View>
-      {loading ? (
-        <ActivityIndicator />
-      ) : (
+      <View style={styles.prefControl}>
+        {loading ? <ActivityIndicator size="small" style={styles.prefSpinner} /> : null}
         <Switch
           value={value}
           onValueChange={onChange}
+          disabled={loading}
           trackColor={{ false: colors.border, true: `${colors.primary}66` }}
           thumbColor={value ? colors.primaryLight : colors.white}
         />
-      )}
+      </View>
     </View>
   );
 }
@@ -491,6 +519,14 @@ const createStyles = (colors: AppColors) =>
     },
     prefText: {
       flex: 1,
+    },
+    prefControl: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    prefSpinner: {
+      marginRight: 2,
     },
     prefTitle: {
       ...typography.body,

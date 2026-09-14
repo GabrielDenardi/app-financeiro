@@ -9,8 +9,8 @@ import { isFreePlan } from '../plans';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 
 const PREMIUM_HIGHLIGHTS = [
-  'Cartoes de credito com controle de faturas e parcelas',
-  'Orcamentos, metas e relatorios completos',
+  'Cartões de crédito com controle de faturas e parcelas',
+  'Orçamentos, metas e relatórios completos',
   'Grupos para dividir despesas com outras pessoas',
 ];
 
@@ -67,7 +67,7 @@ export function PremiumGate({ featureTitle, description, children }: PremiumGate
         <Text style={styles.title}>{featureTitle}</Text>
         <Text style={styles.subtitle}>
           {description ??
-            `${featureTitle} esta disponivel apenas nos planos pagos. Assine para desbloquear esse e outros recursos.`}
+            `${featureTitle} está disponível apenas nos planos pagos. Assine para desbloquear esse e outros recursos.`}
         </Text>
 
         <View style={styles.highlights}>

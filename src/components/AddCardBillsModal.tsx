@@ -16,6 +16,7 @@ import type {
 } from "../features/cards/types";
 import type { FinanceCategory } from "../features/transactions/types";
 import { formatCurrencyInput, normalizeCurrencyInput } from "../features/finance/utils";
+import { useMaskedCursor } from "../hooks/useMaskedCursor";
 import {
   radius,
   spacing,
@@ -68,6 +69,7 @@ export function AddCardBillsModal({
   );
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
+  const amountCursor = useMaskedCursor(amount);
   const [selectedCardId, setSelectedCardId] = useState(cards[0]?.id ?? "");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     expenseCategories[0]?.id ?? null,
@@ -246,6 +248,7 @@ export function AddCardBillsModal({
             style={styles.amountInput}
             value={amount}
             onChangeText={(text) => setAmount(formatCurrencyInput(text))}
+            {...amountCursor}
           />
         </View>
         <FieldDivider />

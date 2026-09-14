@@ -2,7 +2,6 @@ import { useNavigation } from '@react-navigation/native';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -12,12 +11,15 @@ import {
   View,
 } from 'react-native';
 import { ArrowLeft, Copy, KeyRound, Plus, Users } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Badge } from '../../../components/Badge';
 import { BottomSheet } from '../../../components/BottomSheet';
 import { Button } from '../../../components/Button';
 import { Card } from '../../../components/Card';
 import { FieldCard, FieldDivider, FieldRow } from '../../../components/FormField';
+import { useToast } from '../../../components/Toast';
+import { beginTrustedSystemUI } from '../../../lib/trustedSystemUi';
 import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import type { AuthenticatedUserSummary } from '../../../types/auth';
 import { formatCurrencyBRL } from '../../../utils/format';
@@ -43,8 +45,10 @@ function formatSignedAmount(value: number) {
 
 export function GroupsScreen({ currentUser }: GroupsScreenProps) {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const navigation = useNavigation<any>();
+  const { showSuccess, showError } = useToast();
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [isJoinModalVisible, setIsJoinModalVisible] = useState(false);
   const [isPaywallVisible, setIsPaywallVisible] = useState(false);
@@ -68,7 +72,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
 
   const handleCreateGroup = async () => {
     if (!groupTitle.trim()) {
-      Alert.alert('Grupo', 'Informe um nome para o grupo.');
+      showError('Informe um nome para o grupo.');
       return;
     }
 
@@ -80,15 +84,16 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
       setGroupTitle('');
       setGroupDescription('');
       setIsCreateModalVisible(false);
+      showSuccess('Grupo criado.');
       navigation.navigate('GroupDetails', { groupId: newGroupId });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível criar o grupo.');
+      showError(error instanceof Error ? error.message : 'Não foi possível criar o grupo.');
     }
   };
 
   const handleJoinGroup = async () => {
     if (!/^[A-F0-9]{16}$/.test(joinCode.trim().toUpperCase())) {
-      Alert.alert('Grupo', 'Informe um código válido com 16 caracteres.');
+      showError('Informe um código válido com 16 caracteres.');
       return;
     }
 
@@ -96,36 +101,38 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
       const targetGroupId = await joinGroupMutation.mutateAsync(joinCode);
       setJoinCode('');
       setIsJoinModalVisible(false);
+      showSuccess('Você entrou no grupo.');
       navigation.navigate('GroupDetails', { groupId: targetGroupId });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível entrar no grupo.');
+      showError(error instanceof Error ? error.message : 'Não foi possível entrar no grupo.');
     }
   };
 
   const handleShareCode = async (title: string, shareCode: string) => {
+    beginTrustedSystemUI();
     try {
       await Share.share({
         message: `Entre no grupo "${title}" com o código ${shareCode}.`,
       });
-    } catch (error) {
-      Alert.alert('Compartilhamento', 'Não foi possível abrir o compartilhamento agora.');
+    } catch {
+      showError('Não foi possível abrir o compartilhamento agora.');
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <View style={styles.topBar}>
         <Pressable onPress={() => navigation.goBack()} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
           <ArrowLeft size={20} color={colors.textPrimary} />
         </Pressable>
+      </View>
 
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerCopy}>
           <Text style={styles.headerTitle}>Grupos</Text>
           <Text style={styles.headerSubtitle}>Compartilhe despesas, receitas e acertos.</Text>
         </View>
-      </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Card style={styles.heroCard}>
           <Text style={styles.heroTitle}>Controle financeiro em conjunto</Text>
           <Text style={styles.heroDescription}>
@@ -223,7 +230,9 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
             <View style={styles.codeRow}>
               <View style={styles.codePill}>
                 <Copy size={14} color={colors.textSecondary} />
-                <Text style={styles.codeText}>{item.group.shareCode}</Text>
+                <Text style={styles.codeText} numberOfLines={1}>
+                  {item.group.shareCode}
+                </Text>
               </View>
 
               <Button
@@ -253,7 +262,7 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
           <>
             <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
             <Button
-              label="Criar grupo"
+              label="Criar"
               fullWidth
               loading={createGroupMutation.isPending}
               onPress={handleCreateGroup}
@@ -318,35 +327,34 @@ export function GroupsScreen({ currentUser }: GroupsScreenProps) {
   );
 }
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
+const createStyles = (colors: AppColors, topInset: number) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
+  topBar: {
+    backgroundColor: colors.surface,
+    paddingTop: topInset + spacing.xs,
+    paddingBottom: spacing.xs,
     paddingHorizontal: layout.pageHorizontal,
-    paddingTop: layout.pageHeaderTop,
-    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+  },
+  scroll: {
+    flex: 1,
   },
   pressed: {
     opacity: 0.85,
   },
   headerCopy: {
-    flex: 1,
     gap: spacing.xs,
+    paddingTop: spacing.lg,
   },
   headerTitle: {
     ...typography.h1,
@@ -474,11 +482,14 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: spacing.md,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
   codePill: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
+    minWidth: 0,
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,

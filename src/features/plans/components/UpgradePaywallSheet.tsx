@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { CheckCircle2, Lock } from 'lucide-react-native';
 
@@ -9,6 +9,7 @@ import { formatCurrencyBRL } from '../../../utils/format';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import { BottomSheet } from '../../../components/BottomSheet';
 import { Button } from '../../../components/Button';
+import { useToast } from '../../../components/Toast';
 import { SUBSCRIPTION_PLANS, TRIAL_DURATION_DAYS } from '../plans';
 import { useCurrentPlan, usePaywallStats, useStartTrialMutation } from '../hooks';
 
@@ -33,6 +34,7 @@ export function UpgradePaywallSheet({
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<NavigationProp<AppStackParamList>>();
+  const { showSuccess, showError } = useToast();
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
   const statsQuery = usePaywallStats(user?.id, visible);
@@ -45,15 +47,11 @@ export function UpgradePaywallSheet({
     try {
       await startTrial.mutateAsync();
       onClose();
-      Alert.alert(
-        'Teste gratuito ativado',
-        `Voce tem ${TRIAL_DURATION_DAYS} dias com os recursos do ${intermediate.name}. Aproveite!`,
+      showSuccess(
+        `Teste grátis ativado! Você tem ${TRIAL_DURATION_DAYS} dias com os recursos do ${intermediate.name}. Aproveite!`,
       );
     } catch (error) {
-      Alert.alert(
-        'Teste gratuito',
-        error instanceof Error ? error.message : 'Nao foi possivel iniciar o periodo de teste.',
-      );
+      showError(error instanceof Error ? error.message : 'Não foi possível iniciar o período de teste.');
     }
   };
 
@@ -74,7 +72,7 @@ export function UpgradePaywallSheet({
         </View>
       }
       title={featureTitle}
-      subtitle={description ?? `${featureTitle} nao esta incluido no seu plano atual.`}
+      subtitle={description ?? `${featureTitle} não está incluído no seu plano atual.`}
       maxHeightRatio={0.85}
     >
       {(close) => (
@@ -82,14 +80,14 @@ export function UpgradePaywallSheet({
           {stats && stats.totalTransactions > 0 ? (
             <View style={styles.statsCard}>
               <Text style={styles.statsHighlight}>
-                Voce ja registrou {stats.totalTransactions}{' '}
-                {stats.totalTransactions === 1 ? 'transacao' : 'transacoes'}
-                {stats.monthTransactions > 0 ? ` — ${stats.monthTransactions} so neste mes.` : '.'}
+                Você já registrou {stats.totalTransactions}{' '}
+                {stats.totalTransactions === 1 ? 'transação' : 'transações'}
+                {stats.monthTransactions > 0 ? ` — ${stats.monthTransactions} só neste mês.` : '.'}
               </Text>
               {stats.monthExpense > 0 ? (
                 <Text style={styles.statsText}>
-                  Suas despesas do mes somam {formatCurrencyBRL(stats.monthExpense)}. Desbloqueie os
-                  recursos do {intermediate.name} para aproveitar ao maximo esses dados.
+                  Suas despesas do mês somam {formatCurrencyBRL(stats.monthExpense)}. Desbloqueie os
+                  recursos do {intermediate.name} para aproveitar ao máximo esses dados.
                 </Text>
               ) : null}
             </View>
@@ -107,7 +105,7 @@ export function UpgradePaywallSheet({
           <View style={styles.actions}>
             {currentPlan.trial.isEligible ? (
               <Button
-                label={`Experimentar gratis por ${TRIAL_DURATION_DAYS} dias`}
+                label={`Experimentar grátis por ${TRIAL_DURATION_DAYS} dias`}
                 onPress={handleStartTrial}
                 loading={startTrial.isPending}
               />
@@ -119,7 +117,7 @@ export function UpgradePaywallSheet({
               onPress={handleSeePlans}
             />
 
-            <Button label="Agora nao" variant="ghost" size="md" onPress={close} />
+            <Button label="Agora não" variant="ghost" size="md" onPress={close} />
           </View>
         </View>
       )}

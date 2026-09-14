@@ -1,12 +1,16 @@
-import { ArrowLeft } from 'lucide-react-native';
 import { type ReactNode, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
+import { spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 type PageHeaderProps = {
   title: string;
   subtitle?: string;
+  /**
+   * @deprecated O botão de voltar agora é renderizado pelo `PageShell` (prop
+   * `onBackPress`), fixo sobre o conteúdo. Passe `onBackPress` para o
+   * `PageShell` em vez de para este componente.
+   */
   onBackPress?: () => void;
   action?: ReactNode;
   variant?: 'primary' | 'secondary';
@@ -15,7 +19,6 @@ type PageHeaderProps = {
 export function PageHeader({
   title,
   subtitle,
-  onBackPress,
   action,
   variant = 'secondary',
 }: PageHeaderProps) {
@@ -24,12 +27,6 @@ export function PageHeader({
 
   return (
     <View style={styles.root}>
-      {onBackPress ? (
-        <Pressable style={styles.backButton} onPress={onBackPress}>
-          <ArrowLeft size={20} color={colors.textPrimary} />
-        </Pressable>
-      ) : null}
-
       <View style={styles.copy}>
         <Text style={[styles.title, variant === 'primary' ? styles.primaryTitle : styles.secondaryTitle]}>
           {title}
@@ -48,18 +45,7 @@ const createStyles = (colors: AppColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.md,
-      paddingTop: layout.pageHeaderTop,
       paddingBottom: spacing.md,
-    },
-    backButton: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.pill,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     copy: {
       flex: 1,

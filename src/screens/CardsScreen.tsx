@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -17,6 +16,8 @@ import { AddCardBillsModal } from '../components/AddCardBillsModal';
 import { AddCardModal } from '../components/AddCardModal';
 import { BottomSheet } from '../components/BottomSheet';
 import { Button } from '../components/Button';
+import { useResultModal } from '../components/ResultModal';
+import { useToast } from '../components/Toast';
 import { useAccounts } from '../features/accounts/hooks/useAccounts';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import {
@@ -31,6 +32,7 @@ import {
 import type { CardInvoiceSummary, CreditCard } from '../features/cards/types';
 import { useFinanceCategories } from '../features/transactions/hooks/useTransactions';
 import { formatCurrencyInput, normalizeCurrencyInput } from '../features/finance/utils';
+import { useMaskedCursor } from '../hooks/useMaskedCursor';
 import { layout, radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 import {
   formatCurrencyBRL,
@@ -61,6 +63,8 @@ function isInvoiceClosed(invoiceMonth: string, closingDay: number): boolean {
 export default function CardsScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showSuccess, showError } = useToast();
+  const { showResult } = useResultModal();
   const currentUser = useAuthenticatedUser();
   const cardsQuery = useCards(currentUser?.id);
   const invoicesQuery = useCardInvoices(currentUser?.id);
@@ -78,6 +82,7 @@ export default function CardsScreen({ navigation }: any) {
   const [pendingPayment, setPendingPayment] = useState<{ cardId: string; invoiceMonth: string; totalAmount: number } | null>(null);
   const [paymentMode, setPaymentMode] = useState<'full' | 'minimum' | 'custom'>('full');
   const [customAmountText, setCustomAmountText] = useState('');
+  const customAmountCursor = useMaskedCursor(customAmountText);
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [payingKey, setPayingKey] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<{ cardId: string; invoiceMonth: string } | null>(null);
@@ -127,8 +132,9 @@ export default function CardsScreen({ navigation }: any) {
     try {
       await createCardMutation.mutateAsync(input);
       setCardModalVisible(false);
+      showResult({ variant: 'success', title: 'Cartão criado!', message: 'Seu novo cartão já está disponível na lista.' });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível criar o cartão.');
+      showError(error instanceof Error ? error.message : 'Não foi possível criar o cartão.');
     }
   };
 
@@ -137,8 +143,9 @@ export default function CardsScreen({ navigation }: any) {
     try {
       await updateCardMutation.mutateAsync({ id: editingCard.id, input });
       setEditingCard(null);
+      showSuccess('Cartão atualizado.');
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível atualizar o cartão.');
+      showError(error instanceof Error ? error.message : 'Não foi possível atualizar o cartão.');
     }
   };
 
@@ -146,8 +153,9 @@ export default function CardsScreen({ navigation }: any) {
     try {
       await recordChargeMutation.mutateAsync(input);
       setChargeModalVisible(false);
+      showSuccess('Compra lançada.');
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível lançar a compra.');
+      showError(error instanceof Error ? error.message : 'Não foi possível lançar a compra.');
     }
   };
 
@@ -156,8 +164,9 @@ export default function CardsScreen({ navigation }: any) {
     setPayingKey(key);
     try {
       await payInvoiceMutation.mutateAsync({ cardId, invoiceMonth, accountId, amount });
+      showResult({ variant: 'success', title: 'Fatura paga!', message: 'O pagamento foi registrado com sucesso.' });
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível pagar a fatura.');
+      showError(error instanceof Error ? error.message : 'Não foi possível pagar a fatura.');
     } finally {
       setPayingKey(null);
     }
@@ -165,7 +174,7 @@ export default function CardsScreen({ navigation }: any) {
 
   const handlePayPress = (cardId: string, invoiceMonth: string, totalAmount: number) => {
     if (!activeAccounts.length) {
-      Alert.alert('Conta necessária', 'Cadastre uma conta para pagar faturas.');
+      showError('Cadastre uma conta para pagar faturas.');
       return;
     }
     setPendingPayment({ cardId, invoiceMonth, totalAmount });
@@ -183,7 +192,7 @@ export default function CardsScreen({ navigation }: any) {
     } else if (paymentMode === 'custom') {
       const parsed = normalizeCurrencyInput(customAmountText);
       if (!Number.isFinite(parsed) || parsed <= 0) {
-        Alert.alert('Valor inválido', 'Digite um valor maior que zero.');
+        showError('Digite um valor maior que zero.');
         return;
       }
       amount = parsed;
@@ -195,19 +204,20 @@ export default function CardsScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Meus Cartões</Text>
-        <Button
-          label="Novo"
-          size="sm"
-          icon={<Plus size={16} color={colors.white} />}
-          onPress={() => setCardModalVisible(true)}
-        />
-      </View>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* ── Header ── */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Meus Cartões</Text>
+          <Button
+            label="Criar"
+            size="sm"
+            icon={<Plus size={16} color={colors.white} />}
+            onPress={() => setCardModalVisible(true)}
+          />
+        </View>
 
-      {/* ── Resumo fixo ── */}
-      <View style={styles.summaryCard}>
+        {/* ── Resumo ── */}
+        <View style={styles.summaryCard}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Em aberto</Text>
             <Text style={[styles.summaryValue, { color: totalOpenAmount > 0 ? colors.danger : colors.textPrimary }]}>
@@ -223,7 +233,6 @@ export default function CardsScreen({ navigation }: any) {
           </View>
         </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* ── Main Content ── */}
         <View style={styles.mainContent}>
           {urgentAlerts.length > 0 && (
@@ -502,6 +511,7 @@ export default function CardsScreen({ navigation }: any) {
               placeholder="0,00"
               placeholderTextColor={colors.textSecondary}
               autoFocus
+              {...customAmountCursor}
             />
           </View>
         )}
@@ -635,7 +645,7 @@ export default function CardsScreen({ navigation }: any) {
         onSubmit={handleEditCard}
         initialValues={editingCard ?? undefined}
         title="Editar Cartão"
-        submitLabel="Salvar alterações"
+        submitLabel="Salvar"
       />
 
       <AddCardBillsModal
@@ -655,6 +665,9 @@ const createStyles = (colors: AppColors) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    scroll: {
+      flex: 1,
     },
     scrollContent: {
       paddingBottom: spacing.xxl + spacing.sm,

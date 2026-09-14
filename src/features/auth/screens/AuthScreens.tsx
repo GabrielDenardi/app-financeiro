@@ -189,7 +189,7 @@ export function ExistingPasswordScreen({ navigation }: ScreenProps<'ExistingPass
       await requestPasswordResetByCpf(existingAccount.cpf);
       setInfo('Se houver uma conta elegível para este CPF, enviaremos as instruções por e-mail.');
     } catch (resetError) {
-      setError(getReadableError(resetError, 'Nao foi possivel enviar a redefinição.'));
+      setError(getReadableError(resetError, 'Não foi possível enviar a redefinição.'));
     } finally {
       setIsResetting(false);
     }
@@ -258,7 +258,7 @@ export function PasswordRecoveryScreen({ onComplete }: PasswordRecoveryScreenPro
     }
 
     if (password !== confirmPassword) {
-      setError('As senhas nao coincidem.');
+      setError('As senhas não coincidem.');
       return;
     }
 
@@ -270,7 +270,7 @@ export function PasswordRecoveryScreen({ onComplete }: PasswordRecoveryScreenPro
       await updatePassword(password);
       setIsDone(true);
     } catch (updateError) {
-      setError(getReadableError(updateError, 'Nao foi possivel atualizar sua senha.'));
+      setError(getReadableError(updateError, 'Não foi possível atualizar sua senha.'));
     } finally {
       setIsLoading(false);
     }
@@ -284,7 +284,7 @@ export function PasswordRecoveryScreen({ onComplete }: PasswordRecoveryScreenPro
         message="Sua nova senha foi salva com sucesso."
         actionLabel="Continuar"
         badgeLabel="Senha atualizada"
-        helperMessage="Agora voce ja pode continuar no aplicativo com a nova senha."
+        helperMessage="Agora você já pode continuar no aplicativo com a nova senha."
         onContinue={onComplete}
       />
     );
@@ -309,7 +309,7 @@ export function PasswordRecoveryScreen({ onComplete }: PasswordRecoveryScreenPro
           autoCapitalize="none"
           autoCorrect={false}
           error={error}
-          helperText="Use pelo menos 8 caracteres com letras e numeros."
+          helperText="Use pelo menos 8 caracteres com letras e números."
         />
 
         <MaskedTextInput

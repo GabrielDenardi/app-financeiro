@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,11 +14,10 @@ import { BottomSheet } from '../components/BottomSheet';
 import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
 import { FieldCard, FieldDivider, FieldRow } from '../components/FormField';
-import { Search } from 'lucide-react-native';
-import { FloatingActionButton } from '../components/FloatingActionButton';
+import { Plus, Search } from 'lucide-react-native';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
-import { BOTTOM_TAB_BAR_HEIGHT } from '../components/BottomTabBarMock';
+import { useToast } from '../components/Toast';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
 import { useCurrentPlan } from '../features/plans/hooks';
@@ -56,6 +54,7 @@ export default function ListChatScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
+  const { showError } = useToast();
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
   const conversationsQuery = useSupportConversations(
@@ -102,19 +101,30 @@ export default function ListChatScreen() {
       setDescription('');
       navigation.navigate('Chat', { chatId: conversationId, chatTitle: title });
     } catch (error) {
-      Alert.alert(
-        'Chat de suporte',
+      showError(
         error instanceof Error ? error.message : 'Não foi possível iniciar a conversa.',
       );
     }
   };
 
   return (
-    <PageShell scroll={false}>
+    <PageShell
+      scroll={false}
+      onBackPress={() => navigation.goBack()}
+      footer={
+        currentPlan.entitlements.supportChat ? (
+          <Button
+            label="Criar"
+            fullWidth
+            icon={<Plus size={18} color={colors.white} />}
+            onPress={() => setSheetVisible(true)}
+          />
+        ) : undefined
+      }
+    >
       <PageHeader
         title="Chat de Suporte"
         subtitle="Assistente automático 24h."
-        onBackPress={() => navigation.goBack()}
       />
 
       {!currentPlan.entitlements.supportChat ? (
@@ -232,14 +242,11 @@ export default function ListChatScreen() {
             )}
           </ScrollView>
 
-          <FloatingActionButton
-            style={styles.fab}
-            onPress={() => setSheetVisible(true)}
-          />
-
           <BottomSheet
             visible={sheetVisible}
             onClose={() => setSheetVisible(false)}
+            title="Nova conversa"
+            subtitle="Descreva o que precisa e o assistente vai te ajudar."
             footer={(close) => (
               <>
                 <Button
@@ -249,11 +256,7 @@ export default function ListChatScreen() {
                   onPress={close}
                 />
                 <Button
-                  label={
-                    createConversationMutation.isPending
-                      ? 'Iniciando...'
-                      : 'Iniciar conversa'
-                  }
+                  label="Criar"
                   fullWidth
                   disabled={
                     !title.trim() ||
@@ -267,11 +270,6 @@ export default function ListChatScreen() {
             )}
           >
             <View style={styles.sheetContent}>
-              <Text style={styles.sheetTitle}>Nova conversa</Text>
-              <Text style={styles.sheetSubtitle}>
-                Descreva o que precisa e o assistente vai te ajudar.
-              </Text>
-
               <FieldCard>
                 <FieldRow
                   label="Assunto"
@@ -353,7 +351,7 @@ const createStyles = (colors: AppColors) =>
     },
     listContent: {
       gap: spacing.sm,
-      paddingBottom: BOTTOM_TAB_BAR_HEIGHT + 72,
+      paddingBottom: spacing.xl,
     },
     conversationCard: {
       flexDirection: 'row',
@@ -447,20 +445,7 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
       textAlign: 'center',
     },
-    fab: {
-      position: 'absolute',
-      right: layout.pageHorizontal,
-      bottom: spacing.xl,
-    },
     sheetContent: {
       gap: spacing.sm,
-    },
-    sheetTitle: {
-      ...typography.h2,
-      color: colors.textPrimary,
-    },
-    sheetSubtitle: {
-      ...typography.body,
-      color: colors.textSecondary,
     },
   });

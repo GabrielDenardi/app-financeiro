@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Check, CreditCard } from "lucide-react-native";
 
 import type { CreateCardInput } from "../features/cards/types";
+import { formatCurrencyInput, normalizeCurrencyInput } from "../features/finance/utils";
 import { radius, spacing, typography, type AppColors, useThemeColors } from "../theme";
 import { BottomSheet } from "./BottomSheet";
 import { Button } from "./Button";
@@ -48,10 +49,6 @@ type AddCardModalProps = {
   submitLabel?: string;
 };
 
-function parseCurrencyInput(value: string) {
-  return Number(value.replace(/\./g, "").replace(",", ".") || 0);
-}
-
 function gradientForColor(baseColor: string): [string, string] {
   if (baseColor === "#0F172A") {
     return ["#334155", "#0F172A"];
@@ -67,7 +64,7 @@ export function AddCardModal({
   onSubmit,
   initialValues,
   title = "Novo Cartão",
-  submitLabel = "Criar Cartão",
+  submitLabel = "Criar",
 }: AddCardModalProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -109,7 +106,7 @@ export function AddCardModal({
       institution: institution.trim(),
       network,
       lastDigits: lastDigits.trim(),
-      limitAmount: parseCurrencyInput(limitAmount),
+      limitAmount: normalizeCurrencyInput(limitAmount),
       dueDay: Number(dueDay) || 0,
       closingDay: Number(closingDay) || 0,
       color: cardColor,
@@ -245,7 +242,7 @@ export function AddCardModal({
           keyboardType="number-pad"
           maxLength={4}
           value={lastDigits}
-          onChangeText={setLastDigits}
+          onChangeText={(value) => setLastDigits(value.replace(/\D/g, "").slice(0, 4))}
         />
         <FieldDivider />
         <FieldRow
@@ -254,7 +251,7 @@ export function AddCardModal({
           placeholder="0,00"
           keyboardType="decimal-pad"
           value={limitAmount}
-          onChangeText={setLimitAmount}
+          onChangeText={(value) => setLimitAmount(formatCurrencyInput(value))}
         />
       </FieldCard>
 
@@ -265,7 +262,7 @@ export function AddCardModal({
           keyboardType="number-pad"
           maxLength={2}
           value={dueDay}
-          onChangeText={setDueDay}
+          onChangeText={(value) => setDueDay(value.replace(/\D/g, "").slice(0, 2))}
         />
         <FieldDivider />
         <FieldRow
@@ -274,7 +271,7 @@ export function AddCardModal({
           keyboardType="number-pad"
           maxLength={2}
           value={closingDay}
-          onChangeText={setClosingDay}
+          onChangeText={(value) => setClosingDay(value.replace(/\D/g, "").slice(0, 2))}
         />
       </FieldCard>
 

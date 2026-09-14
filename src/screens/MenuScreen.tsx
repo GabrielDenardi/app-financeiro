@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import {
-  Alert,
   Pressable,
   Switch,
   Text,
@@ -25,6 +24,7 @@ import {
 import { Card } from "../components/Card";
 import { PageHeader } from "../components/PageHeader";
 import { PageShell } from "../components/PageShell";
+import { useToast } from "../components/Toast";
 import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
 import { useUserNotifications } from "../features/notifications/hooks/useNotifications";
 import { useProfile } from "../features/profile/hooks/useProfile";
@@ -75,6 +75,7 @@ const FEATURE_GRID = [
 export function MenuScreen({ navigation, user }: MenuScreenProps) {
   const { colors, isDarkMode, setDarkMode } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showError } = useToast();
   const currentUser = useAuthenticatedUser();
   const resolvedUserId = currentUser?.id ?? user?.id;
   const profileQuery = useProfile(resolvedUserId);
@@ -116,7 +117,7 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      Alert.alert("Erro", "Não foi possível sair agora. Tente novamente.");
+      showError("Não foi possível sair agora. Tente novamente.");
     }
   };
 
@@ -124,7 +125,7 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
     if (!page) return;
 
     if (!IMPLEMENTED_ROUTES.has(page)) {
-      Alert.alert("Em breve", "Essa tela ainda não está disponível.");
+      showError("Essa tela ainda não está disponível.");
       return;
     }
 
