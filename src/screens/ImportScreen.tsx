@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { CheckCircle2, FileSpreadsheet, Upload, X } from 'lucide-react-native';
 
 import { Card } from '../components/Card';
 import { PageHeader } from '../components/PageHeader';
 import { PageShell } from '../components/PageShell';
+import { useToast } from '../components/Toast';
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import { useImportBatches, useImportTransactionsMutation } from '../features/imports/hooks/useImports';
 import { UpgradePaywallSheet } from '../features/plans/components/UpgradePaywallSheet';
@@ -16,6 +17,7 @@ import { radius, spacing, typography, type AppColors, useThemeColors } from '../
 export default function ImportScreen({ navigation }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { showError } = useToast();
   const user = useAuthenticatedUser();
   const currentPlan = useCurrentPlan(user?.id);
   const batchesQuery = useImportBatches(user?.id, currentPlan.entitlements.dataImportExport);
@@ -36,7 +38,7 @@ export default function ImportScreen({ navigation }: any) {
         setAsset(result.assets[0]);
       }
     } catch (error) {
-      Alert.alert('Erro', error instanceof Error ? error.message : 'Não foi possível selecionar o arquivo.');
+      showError(error instanceof Error ? error.message : 'Não foi possível selecionar o arquivo.');
     }
   };
 
@@ -69,7 +71,7 @@ export default function ImportScreen({ navigation }: any) {
               ? 'O arquivo não contém linhas para importar.'
               : 'Nenhuma transação nova foi importada.';
 
-        Alert.alert('Erro', message);
+        showError(message);
         return;
       }
 
@@ -81,13 +83,13 @@ export default function ImportScreen({ navigation }: any) {
         ? 'O arquivo contém datas inválidas. Corrija a planilha e tente novamente.'
         : rawMessage || 'O arquivo não pôde ser importado. Verifique se o formato está correto.';
 
-      Alert.alert('Erro', message);
+      showError(message);
     }
   };
 
   return (
-    <PageShell>
-      <PageHeader title="Importar Dados" onBackPress={() => navigation.goBack()} />
+    <PageShell onBackPress={() => navigation.goBack()}>
+      <PageHeader title="Importar Dados" />
 
       {!currentPlan.entitlements.dataImportExport ? (
         <Card style={styles.card}>
@@ -97,7 +99,7 @@ export default function ImportScreen({ navigation }: any) {
           <Text style={styles.cardTitle}>Recurso do Plano Pro</Text>
           <Text style={styles.cardSub}>{getUpgradeMessage('Importacao de dados')}</Text>
           <Pressable style={styles.primary} onPress={() => setPaywallOpen(true)}>
-            <Text style={styles.primaryText}>Ver opcoes de desbloqueio</Text>
+            <Text style={styles.primaryText}>Ver opções de desbloqueio</Text>
           </Pressable>
         </Card>
       ) : (
@@ -200,7 +202,7 @@ export default function ImportScreen({ navigation }: any) {
         visible={paywallOpen}
         onClose={() => setPaywallOpen(false)}
         featureTitle="Importacao de dados"
-        description="Importe extratos em CSV ou Excel e traga seu historico financeiro de uma vez — recurso do Plano Pro."
+        description="Importe extratos em CSV ou Excel e traga seu histórico financeiro de uma vez — recurso do Plano Pro."
       />
     </PageShell>
   );

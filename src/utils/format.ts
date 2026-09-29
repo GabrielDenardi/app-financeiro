@@ -27,6 +27,35 @@ export function formatCurrencyBRL(value: number): string {
   return currencyFormatter.format(value);
 }
 
+/**
+ * Versão compacta para caixas de valor com espaço limitado: valores a partir
+ * de 1 milhão viram "R$ 1,2 mi" / "R$ 1,2 bi" em vez de quebrar linha ou
+ * exigir fonte muito pequena.
+ */
+export function formatCompactCurrencyBRL(value: number): string {
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+
+  if (abs >= 1_000_000_000) {
+    return `${sign}R$ ${trimCompactDecimal(abs / 1_000_000_000)} bi`;
+  }
+  if (abs >= 1_000_000) {
+    return `${sign}R$ ${trimCompactDecimal(abs / 1_000_000)} mi`;
+  }
+  return formatCurrencyBRL(value);
+}
+
+/** Indica se `formatCompactCurrencyBRL` vai abreviar o valor (>= R$ 1 milhão). */
+export function isCompactCurrencyBRL(value: number): boolean {
+  return Math.abs(value) >= 1_000_000;
+}
+
+function trimCompactDecimal(value: number): string {
+  const fixed = value.toFixed(1);
+  const normalized = fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed;
+  return normalized.replace('.', ',');
+}
+
 export function formatSignedCurrencyBRL(value: number, type: EntryType): string {
   const sign = type === 'income' ? '+' : '-';
   return `${sign} ${formatCurrencyBRL(Math.abs(value))}`;

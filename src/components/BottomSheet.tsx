@@ -1,7 +1,8 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   PanResponder,
@@ -62,6 +63,24 @@ export function BottomSheet({
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+    });
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const animateIn = useCallback(() => {
     Animated.parallel([
@@ -114,6 +133,13 @@ export function BottomSheet({
   const resolvedFooter = typeof footer === 'function' ? footer(requestClose) : footer;
   const resolvedChildren = typeof children === 'function' ? children(requestClose) : children;
 
+  // Nunca deixa o sheet exceder o espaço livre acima do teclado — sem isso,
+  // um sheet alto (maxHeightRatio próximo de 1) "estoura" pelo topo da tela
+  // quando o teclado abre, em vez de só encolher e deixar o ScrollView interno
+  // rolar até o campo focado.
+  const availableHeight = SCREEN_HEIGHT - keyboardHeight - spacing.xl;
+  const sheetMaxHeight = Math.min(SCREEN_HEIGHT * maxHeightRatio, availableHeight);
+
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={requestClose}>
       <View style={styles.overlay}>
@@ -126,7 +152,7 @@ export function BottomSheet({
           style={styles.keyboardWrap}
         >
           <Animated.View
-            style={[styles.sheet, { maxHeight: SCREEN_HEIGHT * maxHeightRatio, transform: [{ translateY }] }]}
+            style={[styles.sheet, { maxHeight: sheetMaxHeight, transform: [{ translateY }] }]}
           >
             <View {...panResponder.panHandlers} style={styles.gestureCapture}>
               <View style={styles.handle} />
@@ -272,8 +298,8 @@ const createStyles = (colors: AppColors) =>
       borderTopColor: colors.border,
       backgroundColor: colors.background,
       paddingHorizontal: spacing.xl,
-      paddingTop: spacing.lg,
-      paddingBottom: spacing.xxl,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
       flexDirection: 'row',
       gap: spacing.md,
     },

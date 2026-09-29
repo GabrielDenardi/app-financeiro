@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,6 +12,7 @@ import { AlertTriangle, Info, Trash2 } from 'lucide-react-native';
 import { BottomSheet } from '../../../components/BottomSheet';
 import { Button } from '../../../components/Button';
 import { FieldCard, FieldDivider, FieldRow } from '../../../components/FormField';
+import { useToast } from '../../../components/Toast';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../../../theme';
 import { formatCurrencyInput } from '../../finance/utils';
 import {
@@ -55,6 +55,7 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  const { showError } = useToast();
   const [step, setStep] = useState<Step>('actions');
   const [confirmTitle, setConfirmTitle] = useState('');
   const [confirmMessage, setConfirmMessage] = useState('');
@@ -112,16 +113,16 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
     if (!transaction) return;
     const isoDate = parseDateInput(editDateDisplay);
     if (!editTitle.trim()) {
-      Alert.alert('Atenção', 'O título é obrigatório.');
+      showError('O título é obrigatório.');
       return;
     }
     const amount = parseInt(amountDigits || '0', 10) / 100;
     if (amount <= 0) {
-      Alert.alert('Atenção', 'Informe um valor maior que zero.');
+      showError('Informe um valor maior que zero.');
       return;
     }
     if (!isoDate) {
-      Alert.alert('Atenção', 'Informe uma data válida no formato DD/MM/AAAA.');
+      showError('Informe uma data válida no formato DD/MM/AAAA.');
       return;
     }
     updateMutation.mutate(
@@ -139,7 +140,7 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
       },
       {
         onSuccess: () => onClose(),
-        onError: (err) => Alert.alert('Erro', err.message),
+        onError: (err) => showError(err.message),
       },
     );
   }
@@ -233,7 +234,7 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
                     () =>
                       deleteTransferMutation.mutate(transaction.id, {
                         onSuccess: () => onClose(),
-                        onError: (err) => Alert.alert('Erro', err.message),
+                        onError: (err) => showError(err.message),
                       }),
                   )
                 }
@@ -260,7 +261,7 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
                     () =>
                       reverseCardPaymentMutation.mutate(transaction.id, {
                         onSuccess: () => onClose(),
-                        onError: (err) => Alert.alert('Erro', err.message),
+                        onError: (err) => showError(err.message),
                       }),
                   )
                 }
@@ -298,7 +299,7 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
                       () =>
                         deleteMutation.mutate(transaction!.id, {
                           onSuccess: () => onClose(),
-                          onError: (err) => Alert.alert('Erro', err.message),
+                          onError: (err) => showError(err.message),
                         }),
                     )
                   }
@@ -321,7 +322,7 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
                     () =>
                       deleteMutation.mutate(transaction!.id, {
                         onSuccess: () => onClose(),
-                        onError: (err) => Alert.alert('Erro', err.message),
+                        onError: (err) => showError(err.message),
                       }),
                   )
                 }

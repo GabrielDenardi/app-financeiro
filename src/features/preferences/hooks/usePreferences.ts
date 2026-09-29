@@ -40,10 +40,24 @@ export function useMfaFactors(userId?: string | null) {
 
 export function useUpdatePreferencesMutation(userId?: string | null) {
   const queryClient = useQueryClient();
+  const queryKey = financeQueryKeys.preferences.detail(userId);
 
   return useMutation({
     mutationFn: (patch: Partial<UserPreferences>) => updatePreferences(patch),
-    onSuccess: () => {
+    onMutate: async (patch) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<UserPreferences>(queryKey);
+      if (previous) {
+        queryClient.setQueryData<UserPreferences>(queryKey, { ...previous, ...patch });
+      }
+      return { previous };
+    },
+    onError: (_error, _patch, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.preferences.all });
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.dashboard.all });
     },

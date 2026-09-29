@@ -11,12 +11,12 @@ import {
   View,
 } from "react-native";
 import { FontAwesome5 } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import {
   ArrowLeft,
   CheckCircle2,
   ExternalLink,
 } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const brandMark = require("../../assets/brand/nitin-app-icon-1024.png");
 
@@ -41,7 +41,8 @@ function iconNameFromKey(key: string): keyof typeof FontAwesome5.glyphMap {
 
 export default function SobreScreen({ navigation }: any) {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const [rating, setRating] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const aboutQuery = useAboutContent();
@@ -56,27 +57,25 @@ export default function SobreScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+
+      <View style={styles.topBar}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => navigation.goBack()}
+        >
+          <ArrowLeft size={20} color={colors.white} />
+        </Pressable>
+      </View>
+
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={[colors.primary, colors.primaryLight]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.header}
-        >
-          <Pressable
-            style={({ pressed }) => [
-              styles.backButton,
-              pressed && styles.pressed,
-            ]}
-            onPress={() => navigation.goBack()}
-          >
-            <ArrowLeft size={24} color={colors.white} />
-          </Pressable>
-
+        <View style={styles.header}>
           <Image source={brandMark} style={styles.logoContainer} resizeMode="contain" />
           <Text style={styles.appName}>{about?.appName ?? "nitin"}</Text>
           <Text style={styles.appTagline}>Seu dinheiro, sob controle.</Text>
@@ -85,7 +84,7 @@ export default function SobreScreen({ navigation }: any) {
               Versão {about?.version ?? "1.0.0"}
             </Text>
           </View>
-        </LinearGradient>
+        </View>
 
         <View style={styles.body}>
           {aboutQuery.isLoading ? (
@@ -215,11 +214,17 @@ export default function SobreScreen({ navigation }: any) {
   );
 }
 
-const createStyles = (colors: AppColors) =>
+const createStyles = (colors: AppColors, topInset: number) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
       backgroundColor: colors.primary,
+    },
+    topBar: {
+      backgroundColor: colors.primary,
+      paddingTop: topInset + spacing.xs,
+      paddingBottom: spacing.xs,
+      paddingHorizontal: layout.pageHorizontal,
     },
     container: {
       flex: 1,
@@ -234,7 +239,8 @@ const createStyles = (colors: AppColors) =>
 
     // Header
     header: {
-      paddingTop: layout.pageHeaderTop,
+      backgroundColor: colors.primary,
+      paddingTop: spacing.xl,
       paddingBottom: spacing.xxl + spacing.xl,
       paddingHorizontal: layout.pageHorizontal,
       alignItems: "center",
@@ -242,14 +248,10 @@ const createStyles = (colors: AppColors) =>
       borderBottomRightRadius: radius.lg + spacing.md,
     },
     backButton: {
-      alignSelf: "flex-start",
-      width: 40,
-      height: 40,
-      borderRadius: radius.pill,
+      width: 36,
+      height: 36,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: colors.whiteAlpha15,
-      marginBottom: spacing.xl,
     },
     logoContainer: {
       width: 88,

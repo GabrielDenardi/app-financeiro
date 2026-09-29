@@ -16,11 +16,11 @@ export async function startIntermediateTrial(): Promise<string> {
 
   if (error) {
     // Repassa a mensagem da RPC (ex.: trial ja utilizado, plano ja superior).
-    throw new Error(error.message || 'Nao foi possivel iniciar o periodo de teste.');
+    throw new Error(error.message || 'Não foi possível iniciar o período de teste.');
   }
 
   if (!data || typeof data !== 'string') {
-    throw new Error('RPC retornou dados invalidos.');
+    throw new Error('RPC retornou dados inválidos.');
   }
 
   return data;
@@ -70,6 +70,6 @@ export async function selectFreePlan(): Promise<void> {
 
   if (error) {
     // Repassa a mensagem da RPC (ex.: bloqueio por assinatura ativa).
-    throw new Error(error.message || 'Nao foi possivel ativar o plano Free. Tente novamente.');
+    throw new Error(error.message || 'Não foi possível ativar o plano Free. Tente novamente.');
   }
 }

@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   SafeAreaView,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -21,8 +20,11 @@ import {
   Plus,
   Repeat,
 } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AddAccountModal } from "../components/AddAccountModal";
+import { Button } from "../components/Button";
+import { useToast } from "../components/Toast";
 import { TransferModal } from "../components/TransferModal";
 import { typeConfig } from "../data/accountsMock";
 import {
@@ -46,11 +48,22 @@ import {
   type AppColors,
   useAppTheme,
 } from "../theme";
-import { formatCurrencyBRL } from "../utils/format";
+import {
+  formatCompactCurrencyBRL,
+  formatCurrencyBRL,
+  isCompactCurrencyBRL,
+} from "../utils/format";
+
+const COMPACT_HINT_STORAGE_KEY = "app-financeiro:accounts-compact-hint-seen";
 
 export function AccountsScreen({ navigation }: any) {
-  const { colors, isDarkMode } = useAppTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(
+    () => createStyles(colors, insets.top, insets.bottom),
+    [colors, insets.top, insets.bottom],
+  );
+  const { showSuccess, showError } = useToast();
   const currentUser = useAuthenticatedUser();
   const overviewQuery = useAccountsOverview(currentUser?.id);
   const createAccountMutation = useCreateAccountMutation(currentUser?.id);
@@ -60,10 +73,45 @@ export function AccountsScreen({ navigation }: any) {
 
   const [showBalances, setShowBalances] = useState(true);
   const [addVisible, setAddVisible] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<AccountBalanceSnapshot | null>(null);
+  const [editingAccount, setEditingAccount] =
+    useState<AccountBalanceSnapshot | null>(null);
   const [transferVisible, setTransferVisible] = useState(false);
+  const [pressedStat, setPressedStat] = useState<
+    "assets" | "liabilities" | null
+  >(null);
+  const [compactHintDismissed, setCompactHintDismissed] = useState(true);
 
   const overview = overviewQuery.data;
+
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem(COMPACT_HINT_STORAGE_KEY).then((value) => {
+      if (active && value !== "1") {
+        setCompactHintDismissed(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const dismissCompactHint = () => {
+    setCompactHintDismissed(true);
+    AsyncStorage.setItem(COMPACT_HINT_STORAGE_KEY, "1").catch(() => {});
+  };
+
+  const hasCompactStatValue =
+    isCompactCurrencyBRL(overview?.totalAssets ?? 0) ||
+    isCompactCurrencyBRL(overview?.totalLiabilities ?? 0);
+  const showCompactHint =
+    showBalances && hasCompactStatValue && !compactHintDismissed;
+
+  useEffect(() => {
+    if (!showCompactHint) return;
+    const timer = setTimeout(dismissCompactHint, 5000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCompactHint]);
   const activeAccounts = useMemo(
     () => overview?.accounts.filter((account) => account.isActive) ?? [],
     [overview?.accounts],
@@ -73,18 +121,26 @@ export function AccountsScreen({ navigation }: any) {
     return showBalances ? formatCurrencyBRL(value) : "R$ ••••••";
   };
 
+  const formatMaybeHiddenCompact = (value: number) => {
+    return showBalances ? formatCompactCurrencyBRL(value) : "R$ ••••••";
+  };
+
   const handleSubmitAccount = async (input: any) => {
     try {
       if (editingAccount) {
-        await updateAccountMutation.mutateAsync({ id: editingAccount.id, ...input });
+        await updateAccountMutation.mutateAsync({
+          id: editingAccount.id,
+          ...input,
+        });
         setEditingAccount(null);
+        showSuccess("Conta atualizada.");
       } else {
         await createAccountMutation.mutateAsync(input);
+        showSuccess("Conta criada.");
       }
       setAddVisible(false);
     } catch (error) {
-      Alert.alert(
-        "Erro",
+      showError(
         error instanceof Error
           ? error.message
           : "Não foi possível salvar a conta.",
@@ -94,10 +150,7 @@ export function AccountsScreen({ navigation }: any) {
 
   const handleOpenAddAccount = () => {
     if (!canCreateAccount(currentPlan.plan.id, activeAccounts.length)) {
-      Alert.alert(
-        "Limite do plano",
-        getAccountLimitMessage(currentPlan.plan.id),
-      );
+      showError(getAccountLimitMessage(currentPlan.plan.id));
       return;
     }
 
@@ -108,9 +161,9 @@ export function AccountsScreen({ navigation }: any) {
     try {
       await createTransferMutation.mutateAsync(input);
       setTransferVisible(false);
+      showSuccess("Transferência realizada.");
     } catch (error) {
-      Alert.alert(
-        "Erro",
+      showError(
         error instanceof Error ? error.message : "Não foi possível transferir.",
       );
     }
@@ -118,44 +171,30 @@ export function AccountsScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle={isDarkMode ? "light-content" : "dark-content"}
-        backgroundColor={colors.background}
-      />
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topBar}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <ArrowLeft color={colors.textPrimary} size={20} />
+          </Pressable>
+        </View>
 
-      <View style={styles.headerBackground}>
-        <SafeAreaView>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.headerContent}>
-            <Pressable
-              onPress={() => navigation.goBack()}
-              style={styles.headerIconButton}
-            >
-              <ArrowLeft color={colors.white} size={22} />
-            </Pressable>
-
             <Text style={styles.headerTitle}>Contas</Text>
-
-            <View style={styles.headerActions}>
-              <Pressable
-                style={styles.actionButtonGhost}
-                onPress={() => setTransferVisible(true)}
-              >
-                <Repeat color={colors.white} size={14} />
-                <Text style={styles.headerActionText}>Transferir</Text>
-              </Pressable>
-              <Pressable
-                style={styles.actionButtonSolid}
-                onPress={handleOpenAddAccount}
-              >
-                <Plus color={colors.white} size={14} />
-                <Text style={styles.headerActionText}>Novo</Text>
-              </Pressable>
-            </View>
           </View>
 
           <View style={styles.totalCard}>
             {overviewQuery.isLoading ? (
-              <ActivityIndicator color={colors.white} />
+              <ActivityIndicator color={colors.primary} />
             ) : (
               <>
                 <View style={styles.totalRow}>
@@ -164,9 +203,9 @@ export function AccountsScreen({ navigation }: any) {
                     onPress={() => setShowBalances((current) => !current)}
                   >
                     {showBalances ? (
-                      <Eye color={colors.white} size={18} opacity={0.7} />
+                      <Eye color={colors.textSecondary} size={18} />
                     ) : (
-                      <EyeOff color={colors.white} size={18} opacity={0.7} />
+                      <EyeOff color={colors.textSecondary} size={18} />
                     )}
                   </Pressable>
                 </View>
@@ -175,21 +214,89 @@ export function AccountsScreen({ navigation }: any) {
                 </Text>
 
                 <View style={styles.statsGrid}>
-                  <View style={styles.statItem}>
+                  <Pressable
+                    style={styles.statItem}
+                    onPress={() => {
+                      dismissCompactHint();
+                      setPressedStat((current) =>
+                        current === "assets" ? null : "assets",
+                      );
+                    }}
+                  >
                     <Text style={styles.statLabel}>Ativos</Text>
-                    <Text style={styles.statValue}>
-                      {formatMaybeHidden(overview?.totalAssets ?? 0)}
+                    <Text
+                      style={[
+                        styles.statValue,
+                        isCompactCurrencyBRL(overview?.totalAssets ?? 0) &&
+                          showBalances &&
+                          styles.statValueHintable,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {formatMaybeHiddenCompact(overview?.totalAssets ?? 0)}
                     </Text>
-                  </View>
+                    {pressedStat === "assets" &&
+                      showBalances &&
+                      isCompactCurrencyBRL(overview?.totalAssets ?? 0) && (
+                        <View
+                          style={[
+                            styles.fullValueTooltip,
+                            styles.fullValueTooltipLeft,
+                          ]}
+                          pointerEvents="none"
+                        >
+                          <Text
+                            style={styles.fullValueTooltipText}
+                            numberOfLines={1}
+                          >
+                            {formatCurrencyBRL(overview?.totalAssets ?? 0)}
+                          </Text>
+                        </View>
+                      )}
+                  </Pressable>
                   <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
+                  <Pressable
+                    style={styles.statItem}
+                    onPress={() => {
+                      dismissCompactHint();
+                      setPressedStat((current) =>
+                        current === "liabilities" ? null : "liabilities",
+                      );
+                    }}
+                  >
                     <Text style={styles.statLabel}>Dívidas</Text>
-                    <Text style={styles.statValue}>
-                      {showBalances
-                        ? formatCurrencyBRL(overview?.totalLiabilities ?? 0)
-                        : "R$ ••••"}
+                    <Text
+                      style={[
+                        styles.statValue,
+                        isCompactCurrencyBRL(overview?.totalLiabilities ?? 0) &&
+                          showBalances &&
+                          styles.statValueHintable,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {formatMaybeHiddenCompact(
+                        overview?.totalLiabilities ?? 0,
+                      )}
                     </Text>
-                  </View>
+                    {pressedStat === "liabilities" &&
+                      showBalances &&
+                      isCompactCurrencyBRL(overview?.totalLiabilities ?? 0) && (
+                        <View
+                          style={[
+                            styles.fullValueTooltip,
+                            styles.fullValueTooltipRight,
+                          ]}
+                          pointerEvents="none"
+                        >
+                          <Text
+                            style={styles.fullValueTooltipText}
+                            numberOfLines={1}
+                          >
+                            {formatCurrencyBRL(overview?.totalLiabilities ?? 0)}
+                          </Text>
+                        </View>
+                      )}
+                  </Pressable>
                   <View style={styles.statDivider} />
                   <View style={styles.statItem}>
                     <Text style={styles.statLabel}>Contas</Text>
@@ -199,138 +306,165 @@ export function AccountsScreen({ navigation }: any) {
                     </Text>
                   </View>
                 </View>
+
+                {showCompactHint && (
+                  <Pressable
+                    style={styles.compactHint}
+                    onPress={dismissCompactHint}
+                  >
+                    <Text style={styles.compactHintText}>
+                      Segure no valor para ver o número completo
+                    </Text>
+                  </Pressable>
+                )}
               </>
             )}
           </View>
-        </SafeAreaView>
-      </View>
 
-      <ScrollView
-        style={styles.scrollContent}
-        contentContainerStyle={styles.scrollPadding}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryBox}>
-              <View style={styles.summaryLabelRow}>
-                <ArrowUpRight size={14} color={colors.success} />
-                <Text style={styles.summarySmallLabel}>Entradas</Text>
+          <View style={styles.restContent}>
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryBox}>
+                  <View style={styles.summaryLabelRow}>
+                    <ArrowUpRight size={14} color={colors.success} />
+                    <Text style={styles.summarySmallLabel}>Entradas</Text>
+                  </View>
+                  <Text style={[styles.summaryAmount, styles.incomeText]}>
+                    {formatMaybeHidden(overview?.monthlyIncome ?? 0)}
+                  </Text>
+                </View>
+
+                <View style={styles.verticalDivider} />
+
+                <View style={styles.summaryBox}>
+                  <View style={styles.summaryLabelRow}>
+                    <ArrowDownRight size={14} color={colors.danger} />
+                    <Text style={styles.summarySmallLabel}>Saídas</Text>
+                  </View>
+                  <Text style={[styles.summaryAmount, styles.expenseText]}>
+                    {formatMaybeHidden(overview?.monthlyExpense ?? 0)}
+                  </Text>
+                </View>
               </View>
-              <Text style={[styles.summaryAmount, styles.incomeText]}>
-                {formatMaybeHidden(overview?.monthlyIncome ?? 0)}
-              </Text>
+
+              <View style={styles.progressBg}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${
+                        overview?.monthlyIncome
+                          ? Math.min(
+                              ((overview.monthlyExpense ?? 0) /
+                                overview.monthlyIncome) *
+                                100,
+                              100,
+                            )
+                          : 0
+                      }%`,
+                    },
+                  ]}
+                />
+              </View>
             </View>
 
-            <View style={styles.verticalDivider} />
+            <Text style={styles.sectionTitle}>Suas Contas</Text>
 
-            <View style={styles.summaryBox}>
-              <View style={styles.summaryLabelRow}>
-                <ArrowDownRight size={14} color={colors.danger} />
-                <Text style={styles.summarySmallLabel}>Saídas</Text>
+            {overviewQuery.isLoading ? (
+              <View style={styles.loadingWrap}>
+                <ActivityIndicator />
               </View>
-              <Text style={[styles.summaryAmount, styles.expenseText]}>
-                {formatMaybeHidden(overview?.monthlyExpense ?? 0)}
-              </Text>
-            </View>
-          </View>
+            ) : activeAccounts.length ? (
+              activeAccounts.map((account) => {
+                const config = typeConfig[account.type];
 
-          <View style={styles.progressBg}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${
-                    overview?.monthlyIncome
-                      ? Math.min(
-                          ((overview.monthlyExpense ?? 0) /
-                            overview.monthlyIncome) *
-                            100,
-                          100,
-                        )
-                      : 0
-                  }%`,
-                },
-              ]}
-            />
-          </View>
-        </View>
+                return (
+                  <View key={account.id} style={styles.accountCard}>
+                    <View style={styles.accountMainInfo}>
+                      <View style={styles.accountTypeRow}>
+                        <View
+                          style={[
+                            styles.typeIconContainer,
+                            { backgroundColor: config.light },
+                          ]}
+                        >
+                          <config.icon size={12} color={colors.primary} />
+                        </View>
+                        <Text style={styles.accountTypeLabel}>
+                          {config.label}
+                        </Text>
+                      </View>
 
-        <Text style={styles.sectionTitle}>Suas Contas</Text>
+                      <Text style={styles.accountName}>{account.name}</Text>
 
-        {overviewQuery.isLoading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator />
-          </View>
-        ) : activeAccounts.length ? (
-          activeAccounts.map((account) => {
-            const config = typeConfig[account.type];
-
-            return (
-              <View key={account.id} style={styles.accountCard}>
-                <View style={styles.accountMainInfo}>
-                  <View style={styles.accountTypeRow}>
-                    <View
-                      style={[
-                        styles.typeIconContainer,
-                        { backgroundColor: config.light },
-                      ]}
-                    >
-                      <config.icon size={12} color={colors.primary} />
+                      <View style={styles.institutionRow}>
+                        <Landmark size={12} color={colors.textSecondary} />
+                        <Text style={styles.institutionText}>
+                          {account.institution || "Instituição não informada"}
+                        </Text>
+                      </View>
                     </View>
-                    <Text style={styles.accountTypeLabel}>{config.label}</Text>
-                  </View>
 
-                  <Text style={styles.accountName}>{account.name}</Text>
-
-                  <View style={styles.institutionRow}>
-                    <Landmark size={12} color={colors.textSecondary} />
-                    <Text style={styles.institutionText}>
-                      {account.institution || "Instituição não informada"}
-                    </Text>
+                    <View style={styles.accountBalanceWrapper}>
+                      <View style={styles.balanceTextContainer}>
+                        <Text style={styles.balanceLabel}>Saldo</Text>
+                        <Text style={styles.balanceValue}>
+                          {showBalances
+                            ? formatCurrencyBRL(account.currentBalance)
+                            : "••••"}
+                        </Text>
+                      </View>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Editar conta ${account.name}`}
+                        hitSlop={spacing.sm}
+                        style={styles.editAccountBtn}
+                        onPress={() => {
+                          setEditingAccount(account);
+                          setAddVisible(true);
+                        }}
+                      >
+                        <Pencil size={16} color={colors.textSecondary} />
+                      </Pressable>
+                    </View>
                   </View>
-                </View>
-
-                <View style={styles.accountBalanceWrapper}>
-                  <View style={styles.balanceTextContainer}>
-                    <Text style={styles.balanceLabel}>Saldo</Text>
-                    <Text style={styles.balanceValue}>
-                      {showBalances
-                        ? formatCurrencyBRL(account.currentBalance)
-                        : "••••"}
-                    </Text>
-                  </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Editar conta ${account.name}`}
-                    hitSlop={spacing.sm}
-                    style={styles.editAccountBtn}
-                    onPress={() => {
-                      setEditingAccount(account);
-                      setAddVisible(true);
-                    }}
-                  >
-                    <Pencil size={16} color={colors.textSecondary} />
-                  </Pressable>
-                </View>
+                );
+              })
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyTitle}>Nenhuma conta cadastrada</Text>
+                <Text style={styles.emptyText}>
+                  Crie a primeira conta para ver o patrimônio real do
+                  aplicativo.
+                </Text>
               </View>
-            );
-          })
-        ) : (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>Nenhuma conta cadastrada</Text>
-            <Text style={styles.emptyText}>
-              Crie a primeira conta para ver o patrimônio real do aplicativo.
-            </Text>
+            )}
           </View>
-        )}
+        </ScrollView>
 
-      </ScrollView>
+        <View style={styles.footerBar}>
+          <Button
+            label="Transferir"
+            variant="secondary"
+            fullWidth
+            icon={<Repeat size={16} color={colors.textPrimary} />}
+            onPress={() => setTransferVisible(true)}
+          />
+          <Button
+            label="Criar"
+            fullWidth
+            icon={<Plus size={16} color={colors.white} />}
+            onPress={handleOpenAddAccount}
+          />
+        </View>
+      </SafeAreaView>
 
       <AddAccountModal
         visible={addVisible}
         account={editingAccount}
-        submitting={createAccountMutation.isPending || updateAccountMutation.isPending}
+        submitting={
+          createAccountMutation.isPending || updateAccountMutation.isPending
+        }
         onClose={() => {
           setAddVisible(false);
           setEditingAccount(null);
@@ -349,72 +483,70 @@ export function AccountsScreen({ navigation }: any) {
   );
 }
 
-const createStyles = (colors: AppColors) =>
+const createStyles = (
+  colors: AppColors,
+  topInset: number,
+  bottomInset: number,
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
-    headerBackground: {
-      backgroundColor: colors.primary,
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    topBar: {
+      backgroundColor: colors.surface,
+      paddingTop: topInset + spacing.xs,
+      paddingBottom: spacing.xs,
       paddingHorizontal: layout.pageHorizontal,
-      paddingBottom: 70,
-      borderBottomLeftRadius: radius.lg * 2,
-      borderBottomRightRadius: radius.lg * 2,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      width: 36,
+      height: 36,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    scroll: {
+      flex: 1,
+    },
+    footerBar: {
+      flexDirection: "row",
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingHorizontal: layout.pageHorizontal,
+      paddingTop: spacing.md,
+      paddingBottom: bottomInset + spacing.md,
     },
     headerContent: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: spacing.sm,
-      paddingTop: layout.pageHeaderTop,
+      paddingHorizontal: layout.pageHorizontal,
+      paddingTop: spacing.lg,
       paddingBottom: spacing.md,
-    },
-    headerIconButton: {
-      padding: spacing.sm,
-      marginLeft: -spacing.sm,
     },
     headerTitle: {
       ...typography.h1,
-      color: colors.white,
+      color: colors.textPrimary,
       flex: 1,
       flexShrink: 1,
     },
-    headerActions: {
-      flexDirection: "row",
-      gap: spacing.xs,
-      alignItems: "center",
-    },
-    actionButtonGhost: {
-      minHeight: 40,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.sm,
-      backgroundColor: colors.primaryLight,
-      borderRadius: radius.md,
-      flexDirection: "row",
-      gap: spacing.xs,
-      alignItems: "center",
-    },
-    actionButtonSolid: {
-      minHeight: 40,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.sm,
-      backgroundColor: colors.success,
-      borderRadius: radius.md,
-      flexDirection: "row",
-      gap: spacing.xs,
-      alignItems: "center",
-    },
-    headerActionText: {
-      ...typography.caption,
-      color: colors.white,
-      fontWeight: "700",
-    },
     totalCard: {
-      backgroundColor: colors.whiteAlpha08,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
       padding: spacing.lg,
       borderRadius: radius.lg,
-      marginTop: spacing.sm,
+      marginHorizontal: layout.pageHorizontal,
+      marginBottom: spacing.xl,
       minHeight: 158,
       justifyContent: "center",
     },
@@ -425,12 +557,12 @@ const createStyles = (colors: AppColors) =>
     },
     totalLabel: {
       ...typography.caption,
-      color: colors.whiteAlpha65,
+      color: colors.textSecondary,
       fontWeight: "600",
     },
     totalValue: {
       ...typography.h1,
-      color: colors.white,
+      color: colors.textPrimary,
       fontSize: 32,
       marginTop: spacing.xs,
     },
@@ -439,31 +571,79 @@ const createStyles = (colors: AppColors) =>
       marginTop: spacing.lg,
       paddingTop: spacing.md,
       borderTopWidth: 1,
-      borderTopColor: colors.whiteAlpha08,
+      borderTopColor: colors.border,
     },
     statItem: {
       flex: 1,
+      position: "relative",
+    },
+    fullValueTooltip: {
+      position: "absolute",
+      bottom: "100%",
+      marginBottom: spacing.xs,
+      width: 130,
+      alignItems: "center",
+      backgroundColor: colors.textPrimary,
+      borderRadius: radius.sm,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 6,
+      zIndex: 20,
+    },
+    fullValueTooltipLeft: {
+      left: 0,
+    },
+    fullValueTooltipRight: {
+      right: 0,
+    },
+    fullValueTooltipText: {
+      ...typography.caption,
+      color: colors.surface,
+      fontWeight: "700",
     },
     statDivider: {
       width: 1,
-      backgroundColor: colors.whiteAlpha08,
+      backgroundColor: colors.border,
       marginHorizontal: spacing.md,
     },
     statLabel: {
       ...typography.caption,
-      color: colors.whiteAlpha50,
+      color: colors.textSecondary,
     },
     statValue: {
       ...typography.body,
-      color: colors.white,
+      color: colors.textPrimary,
       fontWeight: "700",
       marginTop: spacing.xs,
     },
-    scrollContent: {
-      flex: 1,
-      marginTop: -50,
+    statValueHintable: {
+      textDecorationLine: "underline",
+      textDecorationStyle: "dotted",
+      textDecorationColor: colors.textSecondary,
     },
-    scrollPadding: {
+    compactHint: {
+      marginTop: spacing.md,
+      alignSelf: "flex-start",
+      backgroundColor: colors.mutedSurface,
+      borderRadius: radius.sm,
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+    },
+    compactHintText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      backgroundColor: colors.background,
+    },
+    restContent: {
+      flexGrow: 1,
+      backgroundColor: colors.background,
       paddingHorizontal: layout.pageHorizontal,
       paddingBottom: spacing.xxl,
     },

@@ -9,6 +9,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { useMaskedCursor } from '../hooks/useMaskedCursor';
 import { radius, spacing, typography, type AppColors, useThemeColors } from '../theme';
 
 /** Cartão com borda que agrupa linhas de campos (`FieldRow`) com divisores. */
@@ -39,6 +40,13 @@ export function FieldRow({ label, prefix, trailing, inputStyle, ...inputProps }:
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  // Campos monetários (com `prefix`, ex.: "R$") são mascarados: a cada
+  // dígito digitado, o texto inteiro é reformatado e o cursor deve
+  // permanecer sempre no fim — do contrário, o Android reposiciona a
+  // seleção de forma imprevisível e os dígitos entram fora de ordem.
+  const isMaskedValue = typeof prefix === 'string';
+  const maskedCursor = useMaskedCursor(typeof inputProps.value === 'string' ? inputProps.value : '');
+
   return (
     <View style={styles.row}>
       <Text style={styles.label}>{label}</Text>
@@ -49,6 +57,7 @@ export function FieldRow({ label, prefix, trailing, inputStyle, ...inputProps }:
             placeholderTextColor={colors.textSecondary}
             textAlign="right"
             {...inputProps}
+            {...(isMaskedValue ? maskedCursor : null)}
             style={[styles.input, inputStyle]}
           />
         </View>

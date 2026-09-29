@@ -136,3 +136,22 @@ export function formatCurrencyInput(value: string): string {
     maximumFractionDigits: 2,
   });
 }
+
+/**
+ * Máscara de percentual (0–100, com até 2 casas decimais via vírgula).
+ * Remove qualquer caractere que não seja dígito/vírgula e satura em 100.
+ */
+export function formatPercentInput(value: string): string {
+  const cleaned = value.replace(/[^\d,]/g, '').replace(/(,.*),/g, '$1');
+  const [intPart = '', decPart] = cleaned.split(',');
+  const boundedInt = intPart.slice(0, 3);
+  const boundedDec = decPart?.slice(0, 2);
+  const candidate = boundedDec !== undefined ? `${boundedInt},${boundedDec}` : boundedInt;
+  const numeric = Number(candidate.replace(',', '.') || 0);
+
+  if (numeric > 100) {
+    return boundedDec !== undefined ? '100,00' : '100';
+  }
+
+  return candidate;
+}

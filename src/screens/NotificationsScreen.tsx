@@ -70,11 +70,8 @@ export function NotificationsScreen() {
   }
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Notificações"
-        onBackPress={() => navigation.goBack()}
-      />
+    <PageShell onBackPress={() => navigation.goBack()}>
+      <PageHeader title="Notificações" />
 
       <View style={styles.actionsRow}>
         <Pressable
