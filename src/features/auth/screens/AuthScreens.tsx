@@ -34,7 +34,7 @@ import { MaskedTextInput } from '../components/MaskedTextInput';
 import { SelectableList } from '../components/SelectableList';
 import { digitsOnly, formatAddressNumber, formatCep, formatCpf, formatDateBR, formatPhoneBR } from '../utils/masks';
 import { validatePassword } from '../utils/password';
-import { isAdult, isValidCep, isValidCpf, isValidEmail, isValidPhoneBR, parseDateBR } from '../utils/validation';
+import { isAdult, isValidCep, isValidCpf, isValidEmail, isValidPhoneBR, parseDateBR, suggestEmailCorrection } from '../utils/validation';
 
 type ScreenProps<RouteName extends keyof AuthStackParamList> = NativeStackScreenProps<
   AuthStackParamList,
@@ -334,6 +334,12 @@ export function RegisterEmailScreen({ navigation }: ScreenProps<'RegisterEmail'>
   const { draft, setField } = useAuthFlow();
   const [email, setEmail] = useState(draft.email);
   const [error, setError] = useState<string | null>(null);
+  const [suggestedEmail, setSuggestedEmail] = useState<string | null>(null);
+
+  const continueWithEmail = (value: string) => {
+    setField('email', value.trim().toLowerCase());
+    navigation.navigate('RegisterPhone');
+  };
 
   const handleContinue = () => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -343,8 +349,12 @@ export function RegisterEmailScreen({ navigation }: ScreenProps<'RegisterEmail'>
       return;
     }
 
-    setField('email', normalizedEmail);
-    navigation.navigate('RegisterPhone');
+    const suggestion = suggestEmailCorrection(normalizedEmail);
+    if (suggestion) {
+      setSuggestedEmail(suggestion);
+      return;
+    }
+    continueWithEmail(normalizedEmail);
   };
 
   return (
@@ -361,12 +371,29 @@ export function RegisterEmailScreen({ navigation }: ScreenProps<'RegisterEmail'>
         onChangeText={(value) => {
           setEmail(value);
           setError(null);
+          setSuggestedEmail(null);
         }}
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
         error={error}
       />
+      {suggestedEmail ? (
+        <View style={styles.footerColumn}>
+          <InlineMessage variant="info" message={`Você quis dizer ${suggestedEmail}? Confira o endereço para receber a confirmação e recuperar sua senha.`} />
+          <SecondaryButton
+            title={`Usar ${suggestedEmail}`}
+            onPress={() => {
+              setEmail(suggestedEmail);
+              continueWithEmail(suggestedEmail);
+            }}
+          />
+          <SecondaryButton
+            title="Manter o e-mail que digitei"
+            onPress={() => continueWithEmail(email)}
+          />
+        </View>
+      ) : null}
     </AuthScaffold>
   );
 }

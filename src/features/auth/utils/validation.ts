@@ -32,6 +32,33 @@ export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim().toLowerCase());
 }
 
+const EMAIL_DOMAIN_CORRECTIONS: Record<string, string> = {
+  'gmai.com': 'gmail.com',
+  'gmial.com': 'gmail.com',
+  'gmal.com': 'gmail.com',
+  'gamil.com': 'gmail.com',
+  'gmail.con': 'gmail.com',
+  'gmail.co': 'gmail.com',
+  'gmail.com.br': 'gmail.com',
+  'hotmai.com': 'hotmail.com',
+  'hotmal.com': 'hotmail.com',
+  'hotmial.com': 'hotmail.com',
+  'hotmail.con': 'hotmail.com',
+  'outlok.com': 'outlook.com',
+  'outllook.com': 'outlook.com',
+  'outlook.con': 'outlook.com',
+  'yaho.com': 'yahoo.com',
+  'yahoo.con': 'yahoo.com',
+};
+
+export function suggestEmailCorrection(email: string): string | null {
+  const normalized = email.trim().toLowerCase();
+  if (!isValidEmail(normalized)) return null;
+  const [local, domain] = normalized.split('@');
+  const correction = EMAIL_DOMAIN_CORRECTIONS[domain];
+  return correction ? `${local}@${correction}` : null;
+}
+
 export function isValidPhoneBR(phone: string): boolean {
   return digitsOnly(phone).length === 11;
 }
