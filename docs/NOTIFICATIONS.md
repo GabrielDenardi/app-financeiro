@@ -6,10 +6,20 @@
 - `deliver-notifications` e `recommend-notifications` foram publicadas. O segredo privado do worker foi configurado nas Edge Functions e no Vault. A chave da OpenAI já existente foi preservada; `OPENAI_NOTIFICATION_MODEL` usa `gpt-4.1-mini`, o mesmo modelo configurado localmente para o parser.
 - Job `deliver-financial-notifications` ativo a cada minuto via pg_cron/pg_net, com timeout HTTP de 60 segundos. Uma execução automática retornou HTTP 200, sem timeout nem erro de rede.
 - Verificações remotas: worker autenticado HTTP 200; worker sem credencial HTTP 401; recomendações sem autenticação HTTP 401; lint do banco sem erros.
-- Nenhuma nova build nativa foi gerada nesta ativação. O EAS Android ainda informa `None assigned yet` para FCM v1; push Android precisa dessa credencial e de uma build com o plugin para validação no aparelho. Não foram disparadas chamadas reais de IA na verificação; continuam condicionadas ao consentimento do usuário no app.
-- Por decisão do usuário, a configuração do FCM ficou para a etapa da próxima build nativa.
+- Nenhuma nova build nativa foi gerada nesta ativação. O FCM v1 foi configurado no EAS conforme a seção abaixo; a validação no aparelho depende da próxima build de teste com o plugin. Não foram disparadas chamadas reais de IA na verificação; continuam condicionadas ao consentimento do usuário no app.
 
-## Instalação
+## Firebase Android configurado em 18/10/2026
+
+- Projeto Firebase: `nitin-36592`, número `831488954752`, plano Spark, Analytics e Gemini desativados na criação.
+- Aplicativo `nitin Android`: pacote `com.nitin.appfinanceiro`, ID `1:831488954752:android:3bbc9bbf8134cfc95b3165`.
+- API Firebase Cloud Messaging v1 ativa. A configuração pública do aplicativo está em `google-services.json`, referenciada por `expo.android.googleServicesFile` em `app.json`.
+- Conta de serviço dedicada: `nitin-fcm@nitin-36592.iam.gserviceaccount.com`, com papel `roles/firebasecloudmessaging.admin`. A chave JSON foi cadastrada no Expo EAS e vinculada ao pacote `com.nitin.appfinanceiro`; o resumo de credenciais do EAS confirmou o projeto e a conta corretos.
+- A chave privada da conta de serviço não deve ser incluída no repositório. Ela é diferente do `google-services.json`, que contém a configuração pública do aplicativo.
+- Uma cópia privada fica em `C:\Users\Gabriel\.codex\secrets\nitin-fcm-service-account.json`, fora do repositório e com acesso no Windows restrito ao usuário atual. A cópia baixada foi movida para esse local.
+- Verificações: configuração do Expo válida; pacote Android e projeto Firebase coincidem; autenticação Google OAuth HTTP 200; FCM HTTP v1 com `validate_only: true` HTTP 200. A validação não enviou push a dispositivos.
+- Nenhuma nova build nativa foi gerada. O teste de entrega em aparelho continua dependendo da próxima build de teste, da permissão de notificações e da ativação do push nas preferências do app.
+
+## Instalação em outro ambiente
 
 1. Aplicar, em ordem, as migrations `202610180001` a `202610180004` no Supabase. O app deve ser publicado após as migrations.
 2. Publicar as Edge Functions `deliver-notifications` e `recommend-notifications`. A primeira usa `verify_jwt = false` e exige seu próprio Bearer `NOTIFICATION_WORKER_SECRET`; a segunda mantém a validação JWT padrão e confere o usuário novamente.

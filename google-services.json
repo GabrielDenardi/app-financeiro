@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "831488954752",
+    "project_id": "nitin-36592",
+    "storage_bucket": "nitin-36592.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:831488954752:android:3bbc9bbf8134cfc95b3165",
+        "android_client_info": {
+          "package_name": "com.nitin.appfinanceiro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1N2a8IDyhlkK1ZYU4UrBvCY10B4Pnkr0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
