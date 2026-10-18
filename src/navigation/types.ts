@@ -1,7 +1,7 @@
 export type AppTabParamList = {
   Home: undefined;
   Transactions: undefined;
-  Cards: undefined;
+  Cards: { notificationInvoice?: { cardId: string; invoiceMonth: string } } | undefined;
   Budget: undefined;
   More: undefined;
 };

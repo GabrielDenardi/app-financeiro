@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { RootNavigator } from "./src/navigation/RootNavigator";
+import { notificationNavigationRef } from "./src/features/notifications/usePushResponses";
 import { RevenueCatBootstrap } from "./src/features/billing/RevenueCatBootstrap";
 import { ResultModalProvider } from "./src/components/ResultModal";
 import { ToastProvider } from "./src/components/Toast";
@@ -25,7 +26,7 @@ function AppNavigation() {
   return (
     <>
       <RevenueCatBootstrap />
-      <NavigationContainer theme={navigationTheme}>
+      <NavigationContainer ref={notificationNavigationRef} theme={navigationTheme}>
         <RootNavigator />
       </NavigationContainer>
     </>

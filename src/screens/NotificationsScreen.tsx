@@ -1,6 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -18,6 +17,9 @@ import {
 } from "lucide-react-native";
 
 import { Card } from "../components/Card";
+import { useToast } from "../components/Toast";
+import { NotificationSettings } from "../features/notifications/components/NotificationSettings";
+import { notificationDestination } from "../features/notifications/navigation";
 import { PageHeader } from "../components/PageHeader";
 import { PageShell } from "../components/PageShell";
 import { useAuthenticatedUser } from "../features/auth/hooks/useAuthenticatedUser";
@@ -27,6 +29,7 @@ import {
   useMarkAllNotificationsAsReadMutation,
   useMarkNotificationAsReadMutation,
   useUserNotifications,
+  useNotificationInteraction,
 } from "../features/notifications/hooks/useNotifications";
 import {
   radius,
@@ -42,13 +45,26 @@ export function NotificationsScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const user = useAuthenticatedUser();
+  const toast = useToast();
+  const [showSettings, setShowSettings] = useState(false);
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const interaction = useNotificationInteraction(user?.id);
   const notificationsQuery = useUserNotifications(user?.id);
   const markAllMutation = useMarkAllNotificationsAsReadMutation(user?.id);
   const markOneMutation = useMarkNotificationAsReadMutation(user?.id);
   const deleteOneMutation = useDeleteNotificationMutation(user?.id);
   const deleteAllMutation = useDeleteAllNotificationsMutation(user?.id);
 
-  const notifications = notificationsQuery.data ?? [];
+  const notifications = (notificationsQuery.data ?? []).filter(item => !unreadOnly || !item.read);
+  const unreadCount = (notificationsQuery.data ?? []).filter(item => !item.read).length;
+  const onError = (error: Error) => toast.showError(error.message);
+  async function openNotification(item: UserNotification) {
+    const destination = notificationDestination(item);
+    try {
+      await interaction.mutateAsync(item.id);
+      if (destination) navigation.navigate(destination.screen, destination.params);
+    } catch (error) { toast.showError(error instanceof Error ? error.message : 'Não foi possível abrir a notificação.'); }
+  }
   const loading =
     notificationsQuery.isLoading ||
     markAllMutation.isPending ||
@@ -72,11 +88,22 @@ export function NotificationsScreen() {
   return (
     <PageShell onBackPress={() => navigation.goBack()}>
       <PageHeader title="Notificações" />
+      <Text style={styles.stateText}>{unreadCount} não lida(s)</Text>
+      <View style={styles.actionsRow}>
+        <Pressable accessibilityRole="button" style={styles.topActionBtn} onPress={() => setUnreadOnly(!unreadOnly)}>
+          <Text style={styles.topActionText}>{unreadOnly ? 'Mostrar todas' : 'Somente não lidas'}</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" style={styles.topActionBtn} onPress={() => setShowSettings(!showSettings)}>
+          <Text style={styles.topActionText}>{showSettings ? 'Fechar preferências' : 'Preferências'}</Text>
+        </Pressable>
+      </View>
+      {showSettings && <NotificationSettings userId={user?.id} />}
 
       <View style={styles.actionsRow}>
         <Pressable
+          accessibilityRole="button"
           style={styles.topActionBtn}
-          onPress={() => markAllMutation.mutate()}
+          onPress={() => markAllMutation.mutate(undefined, { onError })}
           disabled={loading}
         >
           <Check size={14} color={colors.textPrimary} />
@@ -84,8 +111,9 @@ export function NotificationsScreen() {
         </Pressable>
 
         <Pressable
+          accessibilityRole="button"
           style={[styles.topActionBtn, styles.deleteAction]}
-          onPress={() => deleteAllMutation.mutate()}
+          onPress={() => deleteAllMutation.mutate(undefined, { onError })}
           disabled={loading}
         >
           <Trash2 size={14} color={colors.danger} />
@@ -95,12 +123,14 @@ export function NotificationsScreen() {
         </Pressable>
       </View>
 
-      {notificationsQuery.isLoading ? (
+      {notificationsQuery.isError ? (
+        <Pressable onPress={() => notificationsQuery.refetch()}><Text style={styles.stateText}>Não foi possível carregar notificações. Toque para tentar novamente.</Text></Pressable>
+      ) : notificationsQuery.isLoading ? (
         <Text style={styles.stateText}>Carregando notificações...</Text>
       ) : notifications.length === 0 ? (
         <Card style={styles.emptyState}>
           <Bell size={28} color={colors.textSecondary} />
-          <Text style={styles.emptyTitle}>Nenhuma notificação</Text>
+          <Text style={styles.emptyTitle}>{unreadOnly ? 'Nenhuma notificação não lida' : 'Nenhuma notificação'}</Text>
           <Text style={styles.emptySubtitle}>
             Quando houver novidades, elas aparecerão aqui.
           </Text>
@@ -114,19 +144,20 @@ export function NotificationsScreen() {
             <View style={styles.cardTop}>
               <View style={styles.iconBox}>{renderIcon(item.icon)}</View>
 
-              <View style={styles.cardText}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Abrir: ${item.title}`} style={styles.cardText} disabled={interaction.isPending} onPress={() => openNotification(item)}>
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.description}>{item.description}</Text>
                 <Text style={styles.date}>
                   {new Date(item.date).toLocaleString("pt-BR")}
                 </Text>
-              </View>
+              </Pressable>
             </View>
 
             <View style={styles.cardActions}>
               <Pressable
+                accessibilityRole="button"
                 style={[styles.actionBtn, item.read && styles.disabledBtn]}
-                onPress={() => markOneMutation.mutate(item.id)}
+                onPress={() => markOneMutation.mutate(item.id, { onError })}
                 disabled={item.read || loading}
               >
                 <Check size={16} color={colors.textPrimary} />
@@ -136,8 +167,9 @@ export function NotificationsScreen() {
               </Pressable>
 
               <Pressable
+                accessibilityRole="button"
                 style={[styles.actionBtn, styles.deleteAction]}
-                onPress={() => deleteOneMutation.mutate(item.id)}
+                onPress={() => deleteOneMutation.mutate(item.id, { onError })}
                 disabled={loading}
               >
                 <Trash2 size={16} color={colors.danger} />

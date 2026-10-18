@@ -77,6 +77,7 @@ export const financeQueryKeys = {
   },
   notifications: {
     all: ['finance', 'notifications'] as const,
+    preferences: (userId?: string | null) => ['finance', 'notifications', 'preferences', userId] as const,
     list: (userId?: string | null) => ['finance', 'notifications', 'list', userId] as const,
   },
   plans: {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -60,7 +60,7 @@ function isInvoiceClosed(invoiceMonth: string, closingDay: number): boolean {
   return today >= closingDate;
 }
 
-export default function CardsScreen({ navigation }: any) {
+export default function CardsScreen({ navigation, route }: any) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { showSuccess, showError } = useToast();
@@ -91,6 +91,15 @@ export default function CardsScreen({ navigation }: any) {
 
   const cards = cardsQuery.data ?? [];
   const invoices = invoicesQuery.data ?? [];
+  const notificationCardId = route?.params?.notificationInvoice?.cardId;
+  const notificationInvoiceMonth = route?.params?.notificationInvoice?.invoiceMonth;
+  useEffect(() => {
+    if (!notificationCardId || !notificationInvoiceMonth || !invoicesQuery.isSuccess) return;
+    const found = invoicesQuery.data.some(invoice => invoice.cardId === notificationCardId && invoice.invoiceMonth === notificationInvoiceMonth);
+    if (found) setSelectedInvoice({ cardId: notificationCardId, invoiceMonth: notificationInvoiceMonth });
+    else showError('Esta fatura não está mais disponível.');
+    navigation.setParams({ notificationInvoice: undefined });
+  }, [notificationCardId, notificationInvoiceMonth, invoicesQuery.isSuccess, invoicesQuery.data, navigation, showError]);
   const activeAccounts = (accountsQuery.data ?? []).filter((a) => a.isActive);
 
   const invoicesByCard = useMemo(() => {

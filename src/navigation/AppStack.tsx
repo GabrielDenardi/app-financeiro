@@ -1,4 +1,6 @@
 import React from 'react';
+import { useNotificationRefresh } from '../features/notifications/hooks/useNotifications';
+import { usePushResponses } from '../features/notifications/usePushResponses';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { PremiumGate } from '../features/plans/components/PremiumGate';
@@ -30,6 +32,8 @@ type AppStackProps = {
 };
 
 export function AppStack({ currentUser }: AppStackProps) {
+  useNotificationRefresh(currentUser?.id);
+  usePushResponses(currentUser?.id);
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs">
