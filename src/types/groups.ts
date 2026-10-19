@@ -1,4 +1,5 @@
 export type GroupRole = 'admin' | 'member';
+export type GroupStatus = 'active' | 'inactive';
 export type GroupSplitKind = 'income' | 'expense';
 export type SplitMode = 'equal' | 'percentage' | 'custom';
 export type GroupSettlementStatus = 'pending' | 'confirmed';
@@ -9,6 +10,9 @@ export interface Group {
   title: string;
   description: string;
   shareCode: string;
+  status: GroupStatus;
+  closedAt: string | null;
+  closedBy: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

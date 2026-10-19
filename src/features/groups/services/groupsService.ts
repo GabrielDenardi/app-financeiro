@@ -27,6 +27,9 @@ type GroupRow = {
   title: string;
   description: string;
   share_code: string;
+  status: Group['status'];
+  closed_at: string | null;
+  closed_by: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -133,6 +136,9 @@ function mapGroup(row: GroupRow): Group {
     title: row.title,
     description: row.description ?? '',
     shareCode: row.share_code,
+    status: row.status ?? 'active',
+    closedAt: row.closed_at ?? null,
+    closedBy: row.closed_by ?? null,
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -245,7 +251,7 @@ async function fetchGroupGraph(groupIds: string[]) {
     await Promise.all([
       supabase
         .from('groups')
-        .select('id, title, description, share_code, created_by, created_at, updated_at')
+        .select('id, title, description, share_code, status, closed_at, closed_by, created_by, created_at, updated_at')
         .in('id', groupIds)
         .order('updated_at', { ascending: false }),
       supabase
@@ -486,6 +492,14 @@ export async function confirmGroupSettlement(settlementId: string): Promise<stri
   return runRpc<string>('confirm_group_settlement', {
     p_settlement_id: settlementId,
   });
+}
+
+export async function closeGroup(groupId: string): Promise<string> {
+  return runRpc<string>('close_group', { p_group_id: groupId });
+}
+
+export async function reopenGroup(groupId: string): Promise<string> {
+  return runRpc<string>('reopen_group', { p_group_id: groupId });
 }
 
 export async function removeGroupMember(groupId: string, userId: string): Promise<boolean> {
