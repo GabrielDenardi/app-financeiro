@@ -115,6 +115,10 @@ export default function MetasScreen() {
   const [accountId, setAccountId] = useState("");
   const [tempDue, setTempDue] = useState(TODAY);
   const [goalToDelete, setGoalToDelete] = useState<string | null>(null);
+  const [reachedOpen, setReachedOpen] = useState(false);
+  const [continuing, setContinuing] = useState(false);
+  const [newTarget, setNewTarget] = useState("");
+  const [newDue, setNewDue] = useState(TODAY);
 
   const goals = goalsQuery.data ?? [];
   const accounts = (accountsQuery.data ?? []).filter((item) => item.isActive);
@@ -194,23 +198,98 @@ export default function MetasScreen() {
       showError("Selecione uma conta e informe um aporte válido.");
       return;
     }
+    const value = normalizeCurrencyInput(amount);
+    if (selectedGoal) {
+      const remaining = Number(
+        (selectedGoal.targetAmount - selectedGoal.currentAmount).toFixed(2),
+      );
+      if (value > remaining) {
+        showError(
+          `O aporte excede o que falta para a meta (${formatCurrencyBRL(remaining)}).`,
+        );
+        return;
+      }
+    }
     try {
+      const reachesTarget = selectedGoal
+        ? selectedGoal.currentAmount + value >= selectedGoal.targetAmount
+        : false;
       await contribute.mutateAsync({
         goalId,
         accountId,
-        amount: normalizeCurrencyInput(amount),
+        amount: value,
         note,
       });
       setAddOpen(false);
       setAmount("");
       setNote("");
-      setGoalId(null);
       showSuccess("Aporte registrado.");
+      if (reachesTarget) {
+        openReachedPrompt(goalId);
+      } else {
+        setGoalId(null);
+      }
     } catch (error) {
       showError(
         error instanceof Error
           ? error.message
           : "Não foi possível registrar o aporte.",
+      );
+    }
+  };
+
+  const openReachedPrompt = (id: string) => {
+    setGoalId(id);
+    setContinuing(false);
+    setNewTarget("");
+    setNewDue(TODAY);
+    setReachedOpen(true);
+  };
+
+  const closeReachedPrompt = () => {
+    setReachedOpen(false);
+    setContinuing(false);
+    setGoalId(null);
+  };
+
+  const onCompleteGoal = async () => {
+    if (!goalId) return;
+    try {
+      await updateGoal.mutateAsync({ id: goalId, status: "completed" });
+      closeReachedPrompt();
+      setTab("completed");
+      showSuccess("Meta concluída.");
+    } catch (error) {
+      showError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível concluir a meta.",
+      );
+    }
+  };
+
+  const onContinueGoal = async () => {
+    if (!goalId || !selectedGoal) return;
+    const value = normalizeCurrencyInput(newTarget);
+    if (value <= selectedGoal.currentAmount) {
+      showError(
+        `Informe um valor maior que ${formatCurrencyBRL(selectedGoal.currentAmount)}.`,
+      );
+      return;
+    }
+    try {
+      await updateGoal.mutateAsync({
+        id: goalId,
+        targetAmount: value,
+        targetDate: newDue,
+      });
+      closeReachedPrompt();
+      showSuccess("Meta atualizada.");
+    } catch (error) {
+      showError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível atualizar a meta.",
       );
     }
   };
@@ -271,6 +350,14 @@ export default function MetasScreen() {
           </Pressable>
         </View>
 
+        {tab === "completed" ? (
+          <View style={s.notice}>
+            <Text style={s.noticeText}>
+              Todas as metas concluídas, irão desaparecer dentro de 30 dias
+            </Text>
+          </View>
+        ) : null}
+
         {goalsQuery.isLoading ? (
           <View style={s.card}>
             <ActivityIndicator color={themeColors.primaryLight} />
@@ -293,6 +380,7 @@ export default function MetasScreen() {
         {list.map((goal) => {
           const Icon = iconOf(goal.icon);
           const done = goal.status === "completed";
+          const reached = !done && goal.currentAmount >= goal.targetAmount;
           return (
             <View
               key={goal.id}
@@ -354,7 +442,15 @@ export default function MetasScreen() {
               <Text style={s.pct}>
                 {goal.progressPercent.toFixed(1)}% alcançado
               </Text>
-              {!done ? (
+              {reached ? (
+                <View style={s.soft}>
+                  <Text style={s.softText}>
+                    <Text style={s.softStrong}>Meta atingida!</Text> Deseja
+                    continuar ou concluir esta meta?
+                  </Text>
+                </View>
+              ) : null}
+              {!done && !reached ? (
                 <View style={s.soft}>
                   <Text style={s.softText}>
                     Guarde{" "}
@@ -372,7 +468,16 @@ export default function MetasScreen() {
                   </Text>
                 </View>
               ) : null}
-              {!done ? (
+              {reached ? (
+                <Pressable
+                  style={s.add}
+                  onPress={() => openReachedPrompt(goal.id)}
+                >
+                  <Target size={18} color={themeColors.textPrimary} />
+                  <Text style={s.addText}>Continuar ou concluir</Text>
+                </Pressable>
+              ) : null}
+              {!done && !reached ? (
                 <Pressable
                   style={s.add}
                   onPress={() => {
@@ -561,6 +666,106 @@ export default function MetasScreen() {
         <View style={s.bottomSpacer} />
       </BottomSheet>
 
+      {/* Meta atingida: continuar ou concluir */}
+      <BottomSheet
+        visible={reachedOpen}
+        onClose={closeReachedPrompt}
+        title="Meta atingida! 🎉"
+        subtitle={
+          continuing
+            ? `Defina o novo valor e prazo de ${selectedGoal?.title ?? "Meta"}`
+            : `Você chegou ao valor de ${selectedGoal?.title ?? "Meta"}. O que deseja fazer?`
+        }
+        maxHeightRatio={0.92}
+        footer={
+          continuing ? (
+            <>
+              <Button
+                label="Voltar"
+                variant="secondary"
+                fullWidth
+                onPress={() => setContinuing(false)}
+                disabled={updateGoal.isPending}
+              />
+              <Button
+                label="Salvar"
+                fullWidth
+                onPress={onContinueGoal}
+                loading={updateGoal.isPending}
+              />
+            </>
+          ) : (
+            <>
+              <Button
+                label="Continuar"
+                variant="secondary"
+                fullWidth
+                onPress={() => {
+                  setNewTarget("");
+                  setNewDue(selectedGoal?.targetDate ?? TODAY);
+                  setContinuing(true);
+                }}
+                disabled={updateGoal.isPending}
+              />
+              <Button
+                label="Concluir"
+                fullWidth
+                onPress={onCompleteGoal}
+                loading={updateGoal.isPending}
+              />
+            </>
+          )
+        }
+      >
+        {continuing ? (
+          <>
+            <FieldCard>
+              <FieldRow
+                label="Novo valor alvo"
+                prefix="R$"
+                placeholder="0,00"
+                keyboardType="numeric"
+                value={newTarget}
+                onChangeText={(value) => setNewTarget(formatCurrencyInput(value))}
+                autoFocus
+              />
+            </FieldCard>
+
+            <Text style={s.label}>Novo prazo</Text>
+            <View style={s.calendar}>
+              <Calendar
+                current={newDue}
+                minDate={TODAY}
+                markedDates={{
+                  [newDue]: {
+                    selected: true,
+                    selectedColor: themeColors.primaryLight,
+                  },
+                }}
+                onDayPress={(day) => setNewDue(day.dateString)}
+                theme={{
+                  backgroundColor: themeColors.surface,
+                  calendarBackground: themeColors.surface,
+                  dayTextColor: themeColors.textPrimary,
+                  monthTextColor: themeColors.textPrimary,
+                  textDisabledColor: themeColors.textSecondary,
+                  todayTextColor: themeColors.primaryLight,
+                  selectedDayBackgroundColor: themeColors.primaryLight,
+                  selectedDayTextColor: themeColors.white,
+                  arrowColor: themeColors.primaryLight,
+                }}
+              />
+            </View>
+          </>
+        ) : (
+          <Text style={s.msg}>
+            Continuar mantém a meta ativa com um novo valor e prazo. Concluir
+            move a meta para a aba de concluídas.
+          </Text>
+        )}
+        <View style={s.bottomSpacer} />
+      </BottomSheet>
+
       {/* Editar Prazo */}
       <BottomSheet
         visible={deadlineOpen}
@@ -725,6 +930,19 @@ const createStyles = (colors: AppColors) =>
     addText: {
       ...typography.body,
       fontWeight: "800",
+      color: colors.textPrimary,
+    },
+    notice: {
+      backgroundColor: colors.warningSoft,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.warning,
+      padding: spacing.md,
+    },
+    noticeText: {
+      ...typography.caption,
+      textAlign: "center",
+      fontWeight: "700",
       color: colors.textPrimary,
     },
     msg: {

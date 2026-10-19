@@ -15,6 +15,7 @@ type GoalProgressRow = {
   icon: string;
   target_date: string | null;
   status: FinancialGoal['status'];
+  completed_at: string | null;
 };
 
 function mapGoal(row: GoalProgressRow): FinancialGoal {
@@ -30,6 +31,7 @@ function mapGoal(row: GoalProgressRow): FinancialGoal {
     icon: row.icon,
     targetDate: row.target_date,
     status: row.status,
+    completedAt: row.completed_at,
   };
 }
 
@@ -37,7 +39,7 @@ export async function listGoals(): Promise<FinancialGoal[]> {
   const userId = await requireCurrentUserId();
   const { data, error } = await supabase
     .from('v_goal_progress')
-    .select('goal_id, title, target_amount, initial_amount, current_amount, contributed_amount, progress_percent, color, icon, target_date, status')
+    .select('goal_id, title, target_amount, initial_amount, current_amount, contributed_amount, progress_percent, color, icon, target_date, status, completed_at')
     .eq('user_id', userId)
     .order('target_date', { ascending: true, nullsFirst: false });
 
@@ -63,7 +65,7 @@ export async function createGoal(input: CreateGoalInput): Promise<string> {
       color: input.color,
       icon: input.icon,
       target_date: input.targetDate,
-      status: initialAmount >= input.targetAmount ? 'completed' : 'active',
+      status: 'active',
     })
     .select('id')
     .single();
@@ -90,12 +92,17 @@ export async function updateGoal(input: UpdateGoalInput): Promise<void> {
     payload.icon = input.icon;
   }
 
+  if (typeof input.targetAmount === 'number') {
+    payload.target_amount = Number(input.targetAmount.toFixed(2));
+  }
+
   if ('targetDate' in input) {
     payload.target_date = input.targetDate;
   }
 
   if (typeof input.status === 'string') {
     payload.status = input.status;
+    payload.completed_at = input.status === 'completed' ? new Date().toISOString() : null;
   }
 
   const { error } = await supabase.from('financial_goals').update(payload).eq('id', input.id);
