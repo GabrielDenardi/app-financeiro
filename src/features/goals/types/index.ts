@@ -29,6 +29,8 @@ export type GoalContributionInput = {
   occurredAt?: string;
 };
 
+export type GoalWithdrawalInput = GoalContributionInput;
+
 export type UpdateGoalInput = {
   id: string;
   title?: string;

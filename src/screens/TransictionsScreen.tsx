@@ -66,6 +66,7 @@ const EXCLUDED_SUMMARY_SOURCES = new Set([
   "transfer",
   "group_settlement",
   "goal_contribution",
+  "goal_withdrawal",
   "card_payment",
 ]);
 

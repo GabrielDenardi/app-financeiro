@@ -1,7 +1,7 @@
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { toNumber } from '../../finance/utils';
-import type { CreateGoalInput, FinancialGoal, GoalContributionInput, UpdateGoalInput } from '../types';
+import type { CreateGoalInput, FinancialGoal, GoalContributionInput, GoalWithdrawalInput, UpdateGoalInput } from '../types';
 
 type GoalProgressRow = {
   goal_id: string;
@@ -126,5 +126,22 @@ export async function addGoalContribution(input: GoalContributionInput): Promise
     throw new Error(error.message);
   }
 
+  return data as string;
+}
+
+export async function withdrawFromGoal(input: GoalWithdrawalInput): Promise<string> {
+  await requireCurrentUserId();
+  const amount = Number(input.amount.toFixed(2));
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('Informe um valor válido para retirar.');
+  }
+  const { data, error } = await supabase.rpc('withdraw_from_goal', {
+    p_goal_id: input.goalId,
+    p_account_id: input.accountId,
+    p_amount: amount,
+    p_note: input.note?.trim() ?? '',
+    p_occurred_at: input.occurredAt ?? new Date().toISOString(),
+  });
+  if (error) throw new Error(error.message);
   return data as string;
 }
