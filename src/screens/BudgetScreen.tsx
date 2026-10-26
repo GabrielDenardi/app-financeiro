@@ -67,6 +67,18 @@ export default function BudgetsScreen() {
   );
   const showBackButton = route.name === "Budgets";
 
+    // Função para pegar o mês e ano atual dinamicamente
+  const getCurrentMonthYear = () => {
+    const now = new Date();
+    
+    // Pega o nome do mês por extenso
+    const month = now.toLocaleDateString('pt-BR', { month: 'long' });
+    const year = now.getFullYear();
+
+     const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
+     return `${capitalizedMonth} de ${year}`;
+  };
+
   const totals = useMemo(() => {
     return (budgetsQuery.data ?? []).reduce(
       (accumulator, item) => {
@@ -153,7 +165,7 @@ export default function BudgetsScreen() {
       <PageShell onBackPress={showBackButton ? () => navigation.goBack() : undefined}>
         <PageHeader
           title="Orçamentos"
-          subtitle={monthLabel(monthDate)}
+          subtitle={getCurrentMonthYear()}
           variant="primary"
           action={
             <Button
