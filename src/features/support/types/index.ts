@@ -13,6 +13,7 @@ export type SupportMessage = {
   id: string;
   conversationId: string;
   senderUserId: string | null;
+  senderName?: string | null;
   senderRole: 'user' | 'support' | 'system';
   body: string;
   createdAt: string;
@@ -20,11 +21,13 @@ export type SupportMessage = {
 };
 
 export type CreateSupportConversationInput = {
+  requestId: string;
   title: string;
   message: string;
 };
 
 export type SendSupportMessageInput = {
+  requestId: string;
   conversationId: string;
   body: string;
 };

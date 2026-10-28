@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,14 +12,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
 import { ArrowLeft, Send } from 'lucide-react-native';
+import { randomUUID } from 'expo-crypto';
+import { useToast } from '../components/Toast';
 
 import { useAuthenticatedUser } from '../features/auth/hooks/useAuthenticatedUser';
 import {
   useMarkSupportConversationReadMutation,
   useSendSupportMessageMutation,
   useSupportMessages,
+  useSupportRealtime,
 } from '../features/support/hooks/useSupport';
 import {
   layout,
@@ -40,28 +44,39 @@ export default function ChatScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const user = useAuthenticatedUser();
+  const { showError } = useToast();
   const route = useRoute();
+  const focused = useIsFocused();
   const params = (route.params ?? {}) as Partial<ChatRouteParams>;
   const messagesQuery = useSupportMessages(user?.id, params.chatId);
   const markReadMutation = useMarkSupportConversationReadMutation(user?.id);
   const sendMessageMutation = useSendSupportMessageMutation(user?.id);
   const [messageText, setMessageText] = useState('');
+  const pendingSend = useRef<{ body: string; requestId: string } | null>(null);
+  const sending = useRef(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  useSupportRealtime(user?.id, params.chatId, focused);
+  const unreadReplyIds = (messagesQuery.data ?? [])
+    .filter((item) => item.senderRole !== 'user' && !item.readAt).map((item) => item.id).join(',');
 
   useEffect(() => {
-    if (params.chatId) {
+    if (focused && AppState.currentState === 'active' && params.chatId && unreadReplyIds) {
       markReadMutation.mutate(params.chatId);
     }
-  }, [params.chatId]);
+  }, [params.chatId, unreadReplyIds, focused, messagesQuery.dataUpdatedAt]);
 
   const handleSend = async () => {
     const text = messageText.trim();
-    if (!text || !params.chatId) return;
-    await sendMessageMutation.mutateAsync({
-      conversationId: params.chatId,
-      body: text,
-    });
-    setMessageText('');
+    if (!text || !params.chatId || sending.current) return;
+    sending.current = true;
+    if (pendingSend.current?.body !== text) pendingSend.current = { body: text, requestId: randomUUID() };
+    try {
+      await sendMessageMutation.mutateAsync({ conversationId: params.chatId, ...pendingSend.current });
+      setMessageText((current) => current.trim() === text ? '' : current);
+      pendingSend.current = null;
+    } catch (error) {
+      showError(error instanceof Error ? error.message : 'Não foi possível enviar. Tente novamente.');
+    } finally { sending.current = false; }
   };
 
   const messages = messagesQuery.data ?? [];
@@ -82,14 +97,14 @@ export default function ChatScreen() {
           </Pressable>
 
           <View style={styles.botAvatar}>
-            <Text style={styles.botAvatarText}>IA</Text>
+            <Text style={styles.botAvatarText}>S</Text>
           </View>
 
           <View style={styles.headerInfo}>
             <Text style={styles.headerTitle} numberOfLines={1}>
               {params.chatTitle}
             </Text>
-            <Text style={styles.headerSubtitle}>Assistente automático</Text>
+            <Text style={styles.headerSubtitle}>Equipe de suporte</Text>
           </View>
         </View>
 
@@ -105,6 +120,11 @@ export default function ChatScreen() {
             scrollViewRef.current?.scrollToEnd({ animated: false })
           }
         >
+          {messagesQuery.isError ? (
+            <Pressable onPress={() => messagesQuery.refetch()} accessibilityRole="button">
+              <Text style={styles.emptyText}>Não foi possível atualizar as mensagens. Toque para tentar novamente.</Text>
+            </Pressable>
+          ) : null}
           {messagesQuery.isLoading ? (
             <ActivityIndicator
               color={colors.primary}
@@ -113,9 +133,9 @@ export default function ChatScreen() {
           ) : messages.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyAvatar}>
-                <Text style={styles.emptyAvatarText}>IA</Text>
+                <Text style={styles.emptyAvatarText}>S</Text>
               </View>
-              <Text style={styles.emptyTitle}>Assistente Financeiro</Text>
+              <Text style={styles.emptyTitle}>Atendimento nitin</Text>
               <Text style={styles.emptyText}>
                 Envie uma mensagem para começar o atendimento.
               </Text>
@@ -147,7 +167,7 @@ export default function ChatScreen() {
                         !showBotAvatar && styles.avatarHidden,
                       ]}
                     >
-                      <Text style={styles.botAvatarText}>IA</Text>
+                      <Text style={styles.botAvatarText}>S</Text>
                     </View>
                   )}
 
@@ -163,6 +183,7 @@ export default function ChatScreen() {
                         isUser && styles.bubbleTextUser,
                       ]}
                     >
+                      {!isUser ? `${item.senderName || 'Equipe nitin'}\n` : ''}
                       {item.body}
                     </Text>
                     <Text
@@ -189,6 +210,7 @@ export default function ChatScreen() {
               multiline
               scrollEnabled
               value={messageText}
+              maxLength={5000}
               onChangeText={setMessageText}
             />
           </View>
@@ -200,6 +222,8 @@ export default function ChatScreen() {
               pressed && styles.pressed,
             ]}
             onPress={handleSend}
+            accessibilityRole="button"
+            accessibilityLabel="Enviar mensagem"
             disabled={!messageText.trim() || sendMessageMutation.isPending}
           >
             {sendMessageMutation.isPending ? (
