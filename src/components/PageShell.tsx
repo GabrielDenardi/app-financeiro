@@ -29,6 +29,8 @@ type PageShellProps = PropsWithChildren<{
    * linha e do espaçamento entre eles.
    */
   footer?: ReactNode;
+  /** Mantém toques funcionando com o teclado aberto (ex.: telas com busca). */
+  keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
 }>;
 
 export function PageShell({
@@ -41,6 +43,7 @@ export function PageShell({
   refreshControl,
   onBackPress,
   footer,
+  keyboardShouldPersistTaps,
 }: PageShellProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -80,6 +83,7 @@ export function PageShell({
           contentContainerStyle={baseContentStyle}
           showsVerticalScrollIndicator={showsVerticalScrollIndicator}
           refreshControl={refreshControl}
+          keyboardShouldPersistTaps={keyboardShouldPersistTaps}
         >
           {children}
         </ScrollView>

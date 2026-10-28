@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
+    "test:groups:sql": "node scripts/test-group-splits.cjs",
+    "test:goals:sql": "node scripts/test-goal-withdrawals.cjs",
     "test:notifications:sql": "node scripts/test-notifications.cjs",
     "start": "expo start",
     "android": "expo run:android",

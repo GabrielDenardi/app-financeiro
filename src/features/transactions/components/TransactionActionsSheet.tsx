@@ -278,6 +278,15 @@ export function TransactionActionsSheet({ visible, transaction, categories, onCl
             </View>
           )}
 
+          {transaction?.sourceType === 'goal_withdrawal' && (
+            <View style={styles.infoBox}>
+              <Info size={16} color={colors.primary} />
+              <Text style={styles.infoText}>
+                Esta retirada está vinculada a uma meta financeira. Acesse a tela de Metas para gerenciá-la.
+              </Text>
+            </View>
+          )}
+
           {isGroupTransaction && (
             <>
               <View style={styles.warningBox}>

@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { financeQueryKeys } from '../../finance/queryKeys';
-import { addGoalContribution, createGoal, deleteGoal, listGoals, updateGoal } from '../services/goalsService';
-import type { CreateGoalInput, GoalContributionInput, UpdateGoalInput } from '../types';
+import { addGoalContribution, createGoal, deleteGoal, listGoals, updateGoal, withdrawFromGoal } from '../services/goalsService';
+import type { CreateGoalInput, GoalContributionInput, GoalWithdrawalInput, UpdateGoalInput } from '../types';
 
 export function useGoals(userId?: string | null) {
   return useQuery({
@@ -61,6 +61,16 @@ export function useGoalContributionMutation(userId?: string | null) {
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.accounts.all });
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.dashboard.all });
+    },
+  });
+}
+
+export function useGoalWithdrawalMutation(userId?: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: GoalWithdrawalInput) => withdrawFromGoal(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financeQueryKeys.root });
     },
   });
 }

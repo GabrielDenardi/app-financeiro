@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -11,6 +11,7 @@ import {
   Car,
   Home,
   Landmark,
+  Minus,
   Plane,
   Plus,
   Target,
@@ -34,6 +35,7 @@ import {
   useCreateGoalMutation,
   useDeleteGoalMutation,
   useGoalContributionMutation,
+  useGoalWithdrawalMutation,
   useGoals,
   useUpdateGoalMutation,
 } from "../features/goals/hooks/useGoals";
@@ -97,11 +99,15 @@ export default function MetasScreen() {
   const createGoal = useCreateGoalMutation(user?.id);
   const deleteGoal = useDeleteGoalMutation(user?.id);
   const contribute = useGoalContributionMutation(user?.id);
+  const withdraw = useGoalWithdrawalMutation(user?.id);
+  const submittingMovement = useRef(false);
   const updateGoal = useUpdateGoalMutation(user?.id);
 
   const [tab, setTab] = useState<"active" | "completed">("active");
   const [createOpen, setCreateOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [movementMode, setMovementMode] = useState<"contribution" | "withdrawal">("contribution");
+  const [movementError, setMovementError] = useState<string | null>(null);
   const [deadlineOpen, setDeadlineOpen] = useState(false);
   const [goalId, setGoalId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -135,6 +141,19 @@ export default function MetasScreen() {
     () => goals.find((item) => item.id === goalId) ?? null,
     [goals, goalId],
   );
+  const isWithdrawal = movementMode === "withdrawal";
+  const movementPending = contribute.isPending || withdraw.isPending;
+
+  const openMovement = (id: string, mode: "contribution" | "withdrawal") => {
+    if (submittingMovement.current) return;
+    setGoalId(id);
+    setMovementMode(mode);
+    setMovementError(null);
+    setAccountId(accounts[0]?.id ?? "");
+    setAmount("");
+    setNote("");
+    setAddOpen(true);
+  };
 
   const resetCreate = () => {
     setTitle("");
@@ -194,28 +213,36 @@ export default function MetasScreen() {
   };
 
   const onContribute = async () => {
-    if (!goalId || !accountId || normalizeCurrencyInput(amount) <= 0) {
-      showError("Selecione uma conta e informe um aporte válido.");
+    if (submittingMovement.current) return;
+    const value = normalizeCurrencyInput(amount);
+    if (!selectedGoal || !accounts.some((account) => account.id === accountId) || !Number.isFinite(value) || value <= 0) {
+      setMovementError("Selecione uma conta e informe um valor válido.");
+      showError("Selecione uma conta e informe um valor válido.");
       return;
     }
-    const value = normalizeCurrencyInput(amount);
-    if (selectedGoal) {
+    if (!isWithdrawal) {
       const remaining = Number(
         (selectedGoal.targetAmount - selectedGoal.currentAmount).toFixed(2),
       );
-      if (value > remaining) {
+      if (Math.round(value * 100) > Math.round(remaining * 100)) {
         showError(
           `O aporte excede o que falta para a meta (${formatCurrencyBRL(remaining)}).`,
         );
         return;
       }
     }
+    if (isWithdrawal && Math.round(value * 100) > Math.round(selectedGoal.currentAmount * 100)) {
+      setMovementError("O valor da retirada não pode ser maior que o saldo da meta.");
+      showError("O valor da retirada não pode ser maior que o saldo da meta.");
+      return;
+    }
+    submittingMovement.current = true;
+    setMovementError(null);
     try {
-      const reachesTarget = selectedGoal
-        ? selectedGoal.currentAmount + value >= selectedGoal.targetAmount
-        : false;
-      await contribute.mutateAsync({
-        goalId,
+      const reachesTarget = !isWithdrawal &&
+        Math.round((selectedGoal.currentAmount + value) * 100) >= Math.round(selectedGoal.targetAmount * 100);
+      await (isWithdrawal ? withdraw : contribute).mutateAsync({
+        goalId: selectedGoal.id,
         accountId,
         amount: value,
         note,
@@ -223,18 +250,21 @@ export default function MetasScreen() {
       setAddOpen(false);
       setAmount("");
       setNote("");
-      showSuccess("Aporte registrado.");
+      showSuccess(isWithdrawal ? "Retirada registrada." : "Aporte registrado.");
       if (reachesTarget) {
-        openReachedPrompt(goalId);
+        openReachedPrompt(selectedGoal.id);
       } else {
         setGoalId(null);
       }
     } catch (error) {
+      setMovementError(error instanceof Error ? error.message : "Não foi possível registrar a movimentação.");
       showError(
         error instanceof Error
           ? error.message
-          : "Não foi possível registrar o aporte.",
+          : "Não foi possível registrar a movimentação.",
       );
+    } finally {
+      submittingMovement.current = false;
     }
   };
 
@@ -271,10 +301,14 @@ export default function MetasScreen() {
   const onContinueGoal = async () => {
     if (!goalId || !selectedGoal) return;
     const value = normalizeCurrencyInput(newTarget);
-    if (value <= selectedGoal.currentAmount) {
+    if (!Number.isFinite(value) || value <= selectedGoal.currentAmount) {
       showError(
         `Informe um valor maior que ${formatCurrencyBRL(selectedGoal.currentAmount)}.`,
       );
+      return;
+    }
+    if (!newDue || newDue < CalendarUtils.getCalendarDateString(new Date())) {
+      showError("Informe um novo prazo a partir de hoje.");
       return;
     }
     try {
@@ -468,30 +502,41 @@ export default function MetasScreen() {
                   </Text>
                 </View>
               ) : null}
-              {reached ? (
+              <View style={s.actions}>
+                {reached ? (
+                  <Pressable
+                    style={s.add}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Continuar ou concluir ${goal.title}`}
+                    onPress={() => openReachedPrompt(goal.id)}
+                  >
+                    <Target size={18} color={themeColors.textPrimary} />
+                    <Text style={s.addText}>Continuar ou concluir</Text>
+                  </Pressable>
+                ) : null}
+                {!done && !reached ? (
+                  <Pressable
+                    style={s.add}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Adicionar valor a ${goal.title}`}
+                    onPress={() => openMovement(goal.id, "contribution")}
+                  >
+                    <Plus size={18} color={themeColors.textPrimary} />
+                    <Text style={s.addText}>Adicionar</Text>
+                  </Pressable>
+                ) : null}
                 <Pressable
-                  style={s.add}
-                  onPress={() => openReachedPrompt(goal.id)}
+                  style={[s.add, goal.currentAmount <= 0 && s.disabledAction]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Retirar valor de ${goal.title}`}
+                  accessibilityState={{ disabled: goal.currentAmount <= 0 }}
+                  disabled={goal.currentAmount <= 0}
+                  onPress={() => openMovement(goal.id, "withdrawal")}
                 >
-                  <Target size={18} color={themeColors.textPrimary} />
-                  <Text style={s.addText}>Continuar ou concluir</Text>
+                  <Minus size={18} color={themeColors.textPrimary} />
+                  <Text style={s.addText}>Retirar</Text>
                 </Pressable>
-              ) : null}
-              {!done && !reached ? (
-                <Pressable
-                  style={s.add}
-                  onPress={() => {
-                    setGoalId(goal.id);
-                    setAccountId(accounts[0]?.id ?? "");
-                    setAmount("");
-                    setNote("");
-                    setAddOpen(true);
-                  }}
-                >
-                  <Plus size={18} color={themeColors.textPrimary} />
-                  <Text style={s.addText}>Adicionar</Text>
-                </Pressable>
-              ) : null}
+              </View>
             </View>
           );
         })}
@@ -613,22 +658,26 @@ export default function MetasScreen() {
       <BottomSheet
         visible={addOpen}
         onClose={() => setAddOpen(false)}
-        title="Adicionar Valor"
-        subtitle={`Adicionando a ${selectedGoal?.title ?? "Meta"}`}
+        title={isWithdrawal ? "Retirar Valor" : "Adicionar Valor"}
+        subtitle={`${isWithdrawal ? "Retirando de" : "Adicionando a"} ${selectedGoal?.title ?? "Meta"}`}
         footer={(close) => (
           <>
-            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} disabled={movementPending} />
             <Button
-              label="Adicionar"
+              label={isWithdrawal ? "Retirar" : "Adicionar"}
+              accessibilityLabel={isWithdrawal ? "Confirmar retirada" : "Confirmar aporte"}
               fullWidth
               onPress={onContribute}
               disabled={!accounts.length}
-              loading={contribute.isPending}
+              loading={movementPending}
             />
           </>
         )}
       >
-        <Text style={s.label}>Conta</Text>
+        {isWithdrawal ? (
+          <Text style={s.msg}>Saldo disponível: {formatCurrencyBRL(selectedGoal?.currentAmount ?? 0)}</Text>
+        ) : null}
+        <Text style={s.label}>{isWithdrawal ? "Conta de destino" : "Conta"}</Text>
         <View style={s.wrap}>
           {accounts.length ? (
             accounts.map((item) => (
@@ -640,28 +689,32 @@ export default function MetasScreen() {
               />
             ))
           ) : (
-            <Text style={s.msg}>Crie uma conta antes de aportar.</Text>
+            <Text style={s.msg}>Crie uma conta antes de {isWithdrawal ? "retirar" : "aportar"}.</Text>
           )}
         </View>
 
         <FieldCard>
           <FieldRow
             label="Valor"
+            accessibilityLabel="Valor da movimentação"
             prefix="R$"
             placeholder="0,00"
             keyboardType="numeric"
             value={amount}
-            onChangeText={(value) => setAmount(formatCurrencyInput(value))}
+            onChangeText={(value) => { setAmount(formatCurrencyInput(value)); setMovementError(null); }}
             autoFocus
           />
           <FieldDivider />
           <FieldRow
             label="Observação"
+            accessibilityLabel="Observação da movimentação"
             placeholder="Opcional"
             value={note}
             onChangeText={setNote}
           />
         </FieldCard>
+
+        {movementError ? <Text accessibilityRole="alert" style={s.movementError}>{movementError}</Text> : null}
 
         <View style={s.bottomSpacer} />
       </BottomSheet>
@@ -702,7 +755,8 @@ export default function MetasScreen() {
                 fullWidth
                 onPress={() => {
                   setNewTarget("");
-                  setNewDue(selectedGoal?.targetDate ?? TODAY);
+                  const today = CalendarUtils.getCalendarDateString(new Date());
+                  setNewDue(selectedGoal?.targetDate && selectedGoal.targetDate >= today ? selectedGoal.targetDate : today);
                   setContinuing(true);
                 }}
                 disabled={updateGoal.isPending}
@@ -722,6 +776,7 @@ export default function MetasScreen() {
             <FieldCard>
               <FieldRow
                 label="Novo valor alvo"
+                accessibilityLabel="Novo valor alvo"
                 prefix="R$"
                 placeholder="0,00"
                 keyboardType="numeric"
@@ -918,14 +973,20 @@ const createStyles = (colors: AppColors) =>
       lineHeight: 18,
     },
     softStrong: { fontWeight: "800", color: colors.textPrimary },
+    actions: {
+      flexDirection: "row",
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    disabledAction: { opacity: 0.4 },
+    movementError: { ...typography.caption, color: colors.danger, marginTop: spacing.sm },
     add: {
+      flex: 1,
       flexDirection: "row",
       justifyContent: "center",
       alignItems: "center",
       gap: spacing.sm,
       paddingTop: spacing.md,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
     },
     addText: {
       ...typography.body,
