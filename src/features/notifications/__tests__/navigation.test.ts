@@ -1,6 +1,12 @@
 import { notificationDestination } from '../navigation';
 
 describe('notification destinations', () => {
+  it('opens support conversations only with a valid ID', () => {
+    const chatId = '00000000-0000-4000-8000-000000000001';
+    expect(notificationDestination({ metadata: { screen: 'Chat', chatId } }))
+      .toEqual({ screen: 'Chat', params: { chatId, chatTitle: 'Atendimento nitin' } });
+    expect(notificationDestination({ metadata: { screen: 'Chat', chatId: '../../other' } })).toBeNull();
+  });
   it('rejects arbitrary links, routes, and malformed group IDs', () => {
     expect(notificationDestination({ metadata: { screen: 'https://example.com' } })).toBeNull();
     expect(notificationDestination({ metadata: { screen: 'GroupDetails', groupId: '../../secret' } })).toBeNull();

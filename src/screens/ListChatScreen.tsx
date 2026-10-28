@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { randomUUID } from 'expo-crypto';
 import {
   Pressable,
   ScrollView,
@@ -25,6 +26,7 @@ import { getUpgradeMessage } from '../features/plans/plans';
 import {
   useCreateSupportConversationMutation,
   useSupportConversations,
+  useSupportRealtime,
 } from '../features/support/hooks/useSupport';
 import type { SupportConversationStatus } from '../features/support/types';
 import {
@@ -45,9 +47,9 @@ const FILTER_TABS: Array<{ key: FilterTab; label: string }> = [
 ];
 
 function statusBadge(status: SupportConversationStatus) {
-  if (status === 'active') return { label: 'Ativo', tone: 'success' as const };
+  if (status === 'active') return { label: 'Aberto', tone: 'success' as const };
   if (status === 'working') return { label: 'Em andamento', tone: 'warning' as const };
-  return { label: 'Encerrado', tone: 'neutral' as const };
+  return { label: 'Resolvido', tone: 'neutral' as const };
 }
 
 export default function ListChatScreen() {
@@ -68,6 +70,9 @@ export default function ListChatScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
+  const pendingCreate = useRef<{ key: string; requestId: string } | null>(null);
+  const creating = useRef(false);
+  useSupportRealtime(user?.id, null, currentPlan.entitlements.supportChat);
 
   const filteredData = useMemo(() => {
     return (conversationsQuery.data ?? []).filter((item) => {
@@ -87,24 +92,30 @@ export default function ListChatScreen() {
     navigation.navigate('Chat', { chatId: id, chatTitle });
 
   const handleCreateConversation = async () => {
+    if (creating.current) return;
     if (!currentPlan.entitlements.supportChat) {
       setSheetVisible(false);
       return;
     }
+    creating.current = true;
+    const key = JSON.stringify([title.trim(), description.trim()]);
+    if (pendingCreate.current?.key !== key) pendingCreate.current = { key, requestId: randomUUID() };
     try {
       const conversationId = await createConversationMutation.mutateAsync({
         title,
         message: description,
+        requestId: pendingCreate.current.requestId,
       });
       setSheetVisible(false);
       setTitle('');
       setDescription('');
+      pendingCreate.current = null;
       navigation.navigate('Chat', { chatId: conversationId, chatTitle: title });
     } catch (error) {
       showError(
         error instanceof Error ? error.message : 'Não foi possível iniciar a conversa.',
       );
-    }
+    } finally { creating.current = false; }
   };
 
   return (
@@ -124,14 +135,14 @@ export default function ListChatScreen() {
     >
       <PageHeader
         title="Chat de Suporte"
-        subtitle="Assistente automático 24h."
+        subtitle="Converse com a equipe nitin."
       />
 
       {!currentPlan.entitlements.supportChat ? (
         <>
           <View style={styles.paywallCard}>
             <View style={styles.paywallIcon}>
-              <Text style={styles.paywallIconText}>IA</Text>
+              <Text style={styles.paywallIconText}>S</Text>
             </View>
             <Text style={styles.paywallTitle}>Chat de suporte Pro</Text>
             <Text style={styles.paywallText}>
@@ -180,7 +191,11 @@ export default function ListChatScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
           >
-            {conversationsQuery.isLoading ? (
+            {conversationsQuery.isError ? (
+              <Pressable accessibilityRole="button" onPress={() => conversationsQuery.refetch()}>
+                <Text style={styles.emptyText}>Não foi possível carregar as conversas. Toque para tentar novamente.</Text>
+              </Pressable>
+            ) : conversationsQuery.isLoading ? (
               <Text style={styles.emptyText}>Carregando conversas...</Text>
             ) : filteredData.length > 0 ? (
               filteredData.map((item) => {
@@ -195,7 +210,7 @@ export default function ListChatScreen() {
                     ]}
                   >
                     <View style={styles.botAvatar}>
-                      <Text style={styles.botAvatarText}>IA</Text>
+                      <Text style={styles.botAvatarText}>S</Text>
                     </View>
 
                     <View style={styles.conversationBody}>
@@ -228,7 +243,7 @@ export default function ListChatScreen() {
             ) : (
               <View style={styles.emptyState}>
                 <View style={styles.emptyAvatar}>
-                  <Text style={styles.emptyAvatarText}>IA</Text>
+                  <Text style={styles.emptyAvatarText}>S</Text>
                 </View>
                 <Text style={styles.emptyTitle}>
                   {activeTab === 'all'
@@ -236,7 +251,7 @@ export default function ListChatScreen() {
                     : 'Nenhuma conversa encontrada'}
                 </Text>
                 <Text style={styles.emptyText}>
-                  Toque em "+" para iniciar um novo atendimento.
+                  Toque em Criar para iniciar um novo atendimento.
                 </Text>
               </View>
             )}
@@ -246,7 +261,7 @@ export default function ListChatScreen() {
             visible={sheetVisible}
             onClose={() => setSheetVisible(false)}
             title="Nova conversa"
-            subtitle="Descreva o que precisa e o assistente vai te ajudar."
+            subtitle="Descreva sua dúvida para a equipe de atendimento."
             footer={(close) => (
               <>
                 <Button

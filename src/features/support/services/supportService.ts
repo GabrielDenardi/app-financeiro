@@ -22,6 +22,7 @@ type MessageRow = {
   sender_user_id: string | null;
   sender_role: SupportMessage['senderRole'];
   body: string;
+  sender_name: string | null;
   read_at: string | null;
   created_at: string;
 };
@@ -54,6 +55,7 @@ function mapMessage(row: MessageRow): SupportMessage {
     senderUserId: row.sender_user_id,
     senderRole: row.sender_role,
     body: row.body,
+    senderName: row.sender_name,
     createdAt: row.created_at,
     readAt: row.read_at,
   };
@@ -80,7 +82,7 @@ export async function listSupportConversations(): Promise<SupportConversation[]>
   const conversationIds = conversations.map((conversation) => conversation.id);
   const { data: messagesData, error: messagesError } = await supabase
     .from('support_messages')
-    .select('id, conversation_id, sender_user_id, sender_role, body, read_at, created_at')
+    .select('id, conversation_id, sender_user_id, sender_role, sender_name, body, read_at, created_at')
     .in('conversation_id', conversationIds)
     .order('created_at', { ascending: false });
 
@@ -118,6 +120,7 @@ export async function listSupportMessages(conversationId: string): Promise<Suppo
         conversation_id,
         sender_user_id,
         sender_role,
+        sender_name,
         body,
         read_at,
         created_at,
@@ -136,69 +139,22 @@ export async function listSupportMessages(conversationId: string): Promise<Suppo
 }
 
 export async function createSupportConversation(input: CreateSupportConversationInput): Promise<string> {
-  const userId = await requireCurrentUserId();
-  await ensureSupportChatAllowed(userId);
-  const { data, error } = await supabase
-    .from('support_conversations')
-    .insert({
-      user_id: userId,
-      title: input.title.trim(),
-      status: 'active',
-    })
-    .select('id')
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const conversationId = (data as { id: string }).id;
-  const { error: messageError } = await supabase.from('support_messages').insert({
-    conversation_id: conversationId,
-    sender_user_id: userId,
-    sender_role: 'user',
-    body: input.message.trim(),
+  const { data, error } = await supabase.rpc("create_support_conversation", {
+    p_title: input.title.trim(), p_body: input.message.trim(), p_request_id: input.requestId,
   });
-
-  if (messageError) {
-    throw new Error(messageError.message);
-  }
-
-  return conversationId;
+  if (error) throw new Error(error.message);
+  return data as string;
 }
 
 export async function sendSupportMessage(input: SendSupportMessageInput): Promise<string> {
-  const userId = await requireCurrentUserId();
-  await ensureSupportChatAllowed(userId);
-  const { data, error } = await supabase
-    .from('support_messages')
-    .insert({
-      conversation_id: input.conversationId,
-      sender_user_id: userId,
-      sender_role: 'user',
-      body: input.body.trim(),
-    })
-    .select('id')
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data as { id: string }).id;
+  const { data, error } = await supabase.rpc("send_support_message", {
+    p_conversation_id: input.conversationId, p_body: input.body.trim(), p_request_id: input.requestId,
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
 }
 
 export async function markSupportConversationRead(conversationId: string): Promise<void> {
-  const userId = await requireCurrentUserId();
-  await ensureSupportChatAllowed(userId);
-  const { error } = await supabase
-    .from('support_messages')
-    .update({ read_at: new Date().toISOString() })
-    .eq('conversation_id', conversationId)
-    .neq('sender_role', 'user')
-    .is('read_at', null);
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  const { error } = await supabase.rpc("mark_support_read", { p_conversation_id: conversationId });
+  if (error) throw new Error(error.message);
 }
