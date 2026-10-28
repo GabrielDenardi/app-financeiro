@@ -222,7 +222,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
 
       {preferencesQuery.isLoading && !prefs ? (
         <Card style={styles.cardCenter}>
-          <ActivityIndicator color={colors.primaryLight} />
+          <ActivityIndicator color={colors.primaryText} />
         </Card>
       ) : null}
       {preferencesQuery.isError ? (
@@ -303,7 +303,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
               {exportData.isPending ? <ActivityIndicator /> : null}
             </Pressable>
             <Pressable style={[styles.action, styles.danger]} onPress={() => setDeleteOpen(true)}>
-              <Trash2 size={18} color={colors.danger} />
+              <Trash2 size={18} color={colors.dangerText} />
               <Text style={[styles.actionText, styles.dangerText]}>Excluir minha conta</Text>
             </Pressable>
           </Section>
@@ -312,7 +312,7 @@ export function PrivacySecurityScreen({ navigation }: any) {
 
       <Card style={styles.card}>
         <Text style={styles.sectionTitle}>Acessos recentes</Text>
-        {loginEventsQuery.isLoading ? <ActivityIndicator color={colors.primaryLight} /> : null}
+        {loginEventsQuery.isLoading ? <ActivityIndicator color={colors.primaryText} /> : null}
         {loginEventsQuery.isError ? <Text style={styles.desc}>Não foi possível carregar os acessos.</Text> : null}
         {!loginEventsQuery.isLoading && !loginEventsQuery.isError && !(loginEventsQuery.data?.length) ? (
           <Text style={styles.desc}>Nenhum evento registrado ainda.</Text>
@@ -562,7 +562,7 @@ const createStyles = (colors: AppColors) =>
       backgroundColor: colors.dangerSoft,
     },
     dangerText: {
-      color: colors.danger,
+      color: colors.dangerText,
     },
     desc: {
       ...typography.body,
@@ -574,7 +574,7 @@ const createStyles = (colors: AppColors) =>
     },
     linkBtnText: {
       ...typography.caption,
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '800',
     },
     event: {
@@ -609,7 +609,7 @@ const createStyles = (colors: AppColors) =>
     },
     policyLink: {
       ...typography.caption,
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '800',
       marginTop: spacing.xs,
     },

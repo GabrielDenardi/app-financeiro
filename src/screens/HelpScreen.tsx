@@ -79,10 +79,10 @@ const CATEGORY_TONES: Record<string, ToneKey> = {
 
 function getTone(colors: AppColors, key: ToneKey) {
   return {
-    primary: { bg: colors.primarySoft, fg: colors.primaryLight },
-    success: { bg: colors.successSoft, fg: colors.success },
-    warning: { bg: colors.warningSoft, fg: colors.warning },
-    danger: { bg: colors.dangerSoft, fg: colors.danger },
+    primary: { bg: colors.primarySoft, fg: colors.primaryText },
+    success: { bg: colors.successSoft, fg: colors.successText },
+    warning: { bg: colors.warningSoft, fg: colors.warningText },
+    danger: { bg: colors.dangerSoft, fg: colors.dangerText },
   }[key];
 }
 
@@ -176,7 +176,7 @@ function ArticleList({
 
                 {article.tip ? (
                   <View style={styles.tip}>
-                    <Lightbulb size={16} color={colors.primaryLight} />
+                    <Lightbulb size={16} color={colors.primaryText} />
                     <Text style={styles.tipText}>{article.tip}</Text>
                   </View>
                 ) : null}
@@ -188,7 +188,7 @@ function ArticleList({
                   />
                   {helpful === true ? (
                     <View style={styles.thanks}>
-                      <CheckCircle2 size={16} color={colors.success} />
+                      <CheckCircle2 size={16} color={colors.successText} />
                       <Text style={styles.thanksText}>Obrigado!</Text>
                     </View>
                   ) : helpful === false ? (
@@ -362,7 +362,7 @@ export function HelpScreen({ navigation }: any) {
       {ready && inCategory ? (
         <>
           <Pressable accessibilityRole="button" onPress={goHome} style={styles.crumb}>
-            <ChevronLeft size={18} color={colors.primaryLight} />
+            <ChevronLeft size={18} color={colors.primaryText} />
             <Text style={styles.link}>Todos os assuntos</Text>
           </Pressable>
           <Text style={styles.sectionTitle}>{activeCategory?.label}</Text>
@@ -542,7 +542,7 @@ const createStyles = (colors: AppColors) =>
     link: {
       ...typography.body,
       fontWeight: "700",
-      color: colors.primaryLight,
+      color: colors.primaryText,
     },
     crumb: {
       flexDirection: "row",
@@ -563,7 +563,7 @@ const createStyles = (colors: AppColors) =>
       color: colors.textPrimary,
     },
     qTitleOpen: {
-      color: colors.primaryLight,
+      color: colors.primaryText,
     },
     catRow: {
       flexDirection: "row",
@@ -587,7 +587,7 @@ const createStyles = (colors: AppColors) =>
       width: 20,
       ...typography.body,
       fontWeight: "700",
-      color: colors.primaryLight,
+      color: colors.primaryText,
     },
     stepText: {
       flex: 1,
@@ -626,7 +626,7 @@ const createStyles = (colors: AppColors) =>
     thanksText: {
       ...typography.body,
       fontWeight: "600",
-      color: colors.success,
+      color: colors.successText,
     },
 
     // Estados

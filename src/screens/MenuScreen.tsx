@@ -184,7 +184,7 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
                 onPress={() => handleNavigate(item.page)}
               >
                 <View style={styles.featureIconWrap}>
-                  <Icon size={22} color={colors.primary} />
+                  <Icon size={22} color={colors.primaryText} />
                 </View>
                 <Text style={styles.featureLabel} numberOfLines={2}>
                   {item.label}

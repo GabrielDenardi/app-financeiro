@@ -84,13 +84,13 @@ export function BottomTabBarMock({
                 <MaterialCommunityIcons
                   name={iconName}
                   size={isFocused ? 22 : 20}
-                  color={isFocused ? colors.primary : colors.textSecondary}
+                  color={isFocused ? colors.primaryText : colors.textSecondary}
                 />
               ) : (
                 <Ionicons
                   name={iconName}
                   size={isFocused ? 22 : 20}
-                  color={isFocused ? colors.primary : colors.textSecondary}
+                  color={isFocused ? colors.primaryText : colors.textSecondary}
                 />
               )}
             </View>
@@ -160,7 +160,7 @@ const createStyles = (colors: AppColors, bottomInset: number) =>
       fontSize: 10,
     },
     tabLabelActive: {
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: "700",
     },
   });
