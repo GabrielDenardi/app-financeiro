@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { financeQueryKeys } from '../../finance/queryKeys';
 import type { CreateGroupInput, CreateGroupSplitInput, RequestSettlementInput } from '../../../types/groups';
 import {
+  closeGroup,
   confirmGroupSettlement,
   createGroup,
   createGroupSplit,
@@ -10,6 +11,7 @@ import {
   joinGroupByCode,
   listGroups,
   removeGroupMember,
+  reopenGroup,
   requestGroupSettlement,
 } from '../services/groupsService';
 
@@ -99,6 +101,30 @@ export function useConfirmSettlementMutation(
       queryClient.invalidateQueries({ queryKey: groupsQueryKeys.list(currentUserId) });
       queryClient.invalidateQueries({ queryKey: groupsQueryKeys.detail(currentUserId, groupId) });
       queryClient.invalidateQueries({ queryKey: financeQueryKeys.root });
+    },
+  });
+}
+
+export function useCloseGroupMutation(currentUserId: string | null | undefined, groupId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => closeGroup(groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupsQueryKeys.list(currentUserId) });
+      queryClient.invalidateQueries({ queryKey: groupsQueryKeys.detail(currentUserId, groupId) });
+    },
+  });
+}
+
+export function useReopenGroupMutation(currentUserId: string | null | undefined, groupId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => reopenGroup(groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupsQueryKeys.list(currentUserId) });
+      queryClient.invalidateQueries({ queryKey: groupsQueryKeys.detail(currentUserId, groupId) });
     },
   });
 }

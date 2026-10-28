@@ -1,19 +1,34 @@
-import { useNavigation } from '@react-navigation/native';
-import { useMemo, useState } from 'react';
+﻿import { useNavigation } from '@react-navigation/native';
+import * as Clipboard from 'expo-clipboard';
+import { type ReactNode, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
-  ScrollView,
   Share,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { ArrowLeft, Camera, FileText, Image as ImageIcon, Plus, Share2, Trash2, X } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Camera,
+  Check,
+  Copy,
+  FileText,
+  HandCoins,
+  Image as ImageIcon,
+  Lock,
+  Plus,
+  Receipt,
+  RotateCcw,
+  Share2,
+  Trash2,
+  Wallet,
+  X,
+} from 'lucide-react-native';
 
 import { Badge } from '../../../components/Badge';
+import { PageHeader } from '../../../components/PageHeader';
+import { PageShell } from '../../../components/PageShell';
 import { BottomSheet } from '../../../components/BottomSheet';
 import { Button } from '../../../components/Button';
 import { Card } from '../../../components/Card';
@@ -43,12 +58,14 @@ import type {
   SettlementPaymentMethod,
   SplitMode,
 } from '../../../types/groups';
-import { formatCurrencyBRL } from '../../../utils/format';
+import { formatCurrencyBRL, formatShortDate } from '../../../utils/format';
 import {
+  useCloseGroupMutation,
   useConfirmSettlementMutation,
   useCreateGroupSplitMutation,
   useGroupDetails,
   useRemoveGroupMemberMutation,
+  useReopenGroupMutation,
   useRequestSettlementMutation,
 } from '../hooks/useGroups';
 import {
@@ -70,6 +87,12 @@ const TABS: Array<{ key: DetailsTab; label: string }> = [
   { key: 'settlements', label: 'Acertos' },
   { key: 'members', label: 'Membros' },
 ];
+
+const SPLIT_MODE_LABELS: Record<SplitMode, string> = {
+  equal: 'Igual',
+  percentage: 'Porcentagem',
+  custom: 'Personalizado',
+};
 
 const PAYMENT_METHODS: Array<{ value: SettlementPaymentMethod; label: string }> = [
   { value: 'PIX', label: 'PIX' },
@@ -100,8 +123,7 @@ function sortMembers(members: GroupMember[]) {
 
 export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenProps) {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const { showSuccess, showError } = useToast();
   const { showResult } = useResultModal();
@@ -112,7 +134,12 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
   const requestSettlementMutation = useRequestSettlementMutation(currentUserId, groupId);
   const confirmSettlementMutation = useConfirmSettlementMutation(currentUserId, groupId);
   const removeMemberMutation = useRemoveGroupMemberMutation(currentUserId, groupId);
+  const closeGroupMutation = useCloseGroupMutation(currentUserId, groupId);
+  const reopenGroupMutation = useReopenGroupMutation(currentUserId, groupId);
 
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [isCloseDialogVisible, setIsCloseDialogVisible] = useState(false);
+  const [isReopenDialogVisible, setIsReopenDialogVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<DetailsTab>('balances');
   const [isSplitModalVisible, setIsSplitModalVisible] = useState(false);
   const [isSettlementModalVisible, setIsSettlementModalVisible] = useState(false);
@@ -156,7 +183,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
   const resolveMemberName = (userId: string) => {
     if (userId === currentUserId) {
-      return 'Voce';
+      return 'Você';
     }
 
     return membersById.get(userId)?.fullName ?? 'Membro';
@@ -214,6 +241,20 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
   const handleOpenSplitModal = () => {
     resetSplitForm();
     setIsSplitModalVisible(true);
+  };
+
+  const handleCopyCode = async () => {
+    if (!groupData) {
+      return;
+    }
+
+    try {
+      await Clipboard.setStringAsync(groupData.group.shareCode);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    } catch {
+      showError('Não foi possível copiar o código.');
+    }
   };
 
   const handleShareCode = async () => {
@@ -417,48 +458,146 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
 
   if (groupDetailsQuery.isLoading || !groupData) {
     return (
-      <SafeAreaView style={styles.container}>
+      <PageShell onBackPress={() => navigation.goBack()} scroll={false}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      </SafeAreaView>
+      </PageShell>
     );
   }
 
+  const pendingSettlementsCount = groupData.settlements.filter((item) => item.status === 'pending').length;
+  const tabCounts: Record<DetailsTab, number | null> = {
+    balances: null,
+    splits: groupData.splits.length,
+    settlements: pendingSettlementsCount > 0 ? pendingSettlementsCount : null,
+    members: members.length,
+  };
+  const net = groupData.currentUserNet;
+  const isClosed = groupData.group.status === 'inactive';
+  const isAdmin = groupData.currentUserRole === 'admin';
+  const closedByName = groupData.group.closedBy
+    ? groupData.group.closedBy === currentUserId
+      ? 'você'
+      : (membersById.get(groupData.group.closedBy)?.fullName ?? null)
+    : null;
+
+  const handleRequestCloseGroup = () => {
+    if (pendingSettlementsCount > 0) {
+      showResult({
+        variant: 'error',
+        title: 'Não foi possível encerrar',
+        message: `Existem ${pendingSettlementsCount} acerto(s) aguardando confirmação. Conclua-os antes de encerrar o grupo.`,
+      });
+      return;
+    }
+
+    if (groupData.summary.pending > 0.009) {
+      showResult({
+        variant: 'error',
+        title: 'Não foi possível encerrar',
+        message: `Ainda há ${formatCurrencyBRL(groupData.summary.pending)} em aberto entre os membros. Quite todos os saldos antes de encerrar o grupo.`,
+      });
+      return;
+    }
+
+    setIsCloseDialogVisible(true);
+  };
+
+  const confirmCloseGroup = async () => {
+    try {
+      await closeGroupMutation.mutateAsync();
+      setIsCloseDialogVisible(false);
+      showSuccess('Grupo encerrado.');
+      navigation.goBack();
+    } catch (error) {
+      setIsCloseDialogVisible(false);
+      showResult({
+        variant: 'error',
+        title: 'Não foi possível encerrar',
+        message: error instanceof Error ? error.message : 'Tente novamente em instantes.',
+      });
+    }
+  };
+
+  const confirmReopenGroup = async () => {
+    try {
+      await reopenGroupMutation.mutateAsync();
+      setIsReopenDialogVisible(false);
+      showSuccess('Grupo reativado.');
+    } catch (error) {
+      setIsReopenDialogVisible(false);
+      showError(error instanceof Error ? error.message : 'Não foi possível reativar o grupo.');
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        <Pressable onPress={() => navigation.goBack()} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
-          <ArrowLeft size={20} color={colors.textPrimary} />
-        </Pressable>
-      </View>
-
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.headerCopy}>
-            <Text style={styles.headerTitle}>{groupData.group.title}</Text>
-            <Text style={styles.headerSubtitle}>{groupData.group.description || 'Sem descrição.'}</Text>
-          </View>
-
-          <Pressable onPress={handleShareCode} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
-            <Share2 size={20} color={colors.textPrimary} />
-          </Pressable>
-        </View>
-
-        <Card style={styles.heroCard}>
-          <View style={styles.heroCodeRow}>
-            <View style={styles.heroCodeBlock}>
-              <Text style={styles.heroMuted}>Código</Text>
-              <Text style={styles.heroCode} numberOfLines={1} adjustsFontSizeToFit>
-                {groupData.group.shareCode}
-              </Text>
-            </View>
-
+    <>
+      <PageShell
+        onBackPress={() => navigation.goBack()}
+        footer={
+          isClosed ? (
+            isAdmin ? (
+              <Button
+                label="Reativar grupo"
+                variant="secondary"
+                fullWidth
+                loading={reopenGroupMutation.isPending}
+                icon={<RotateCcw size={18} color={colors.textPrimary} />}
+                onPress={() => setIsReopenDialogVisible(true)}
+              />
+            ) : undefined
+          ) : (
             <Button
               label="Nova divisão"
-              size="sm"
-              icon={<Plus size={16} color={colors.white} />}
+              fullWidth
+              icon={<Plus size={18} color={colors.white} />}
               onPress={handleOpenSplitModal}
+            />
+          )
+        }
+      >
+        <PageHeader
+          title={groupData.group.title}
+          subtitle={groupData.group.description || 'Sem descrição.'}
+          variant="primary"
+          action={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Compartilhar código do grupo"
+              onPress={handleShareCode}
+              style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            >
+              <Share2 size={20} color={colors.textPrimary} />
+            </Pressable>
+          }
+        />
+
+        {isClosed ? (
+          <Card style={styles.closedBanner}>
+            <Lock size={20} color={colors.textSecondary} />
+            <View style={styles.listCopy}>
+              <Text style={styles.listTitle}>Grupo encerrado</Text>
+              <Text style={styles.caption}>
+                {groupData.group.closedAt ? `Em ${formatShortDate(groupData.group.closedAt)}` : 'Encerrado'}
+                {closedByName ? ` por ${closedByName}` : ''}
+                {'. Somente consulta: não aceita novas movimentações.'}
+              </Text>
+            </View>
+          </Card>
+        ) : null}
+
+        <Card style={styles.summaryCard}>
+          <View style={styles.rowBetween}>
+            <View style={styles.listCopy}>
+              <Text style={styles.caption}>Seu saldo no grupo</Text>
+              <Text style={[styles.balanceValue, net >= 0 ? styles.positive : styles.negative]}>
+                {formatNetAmount(net)}
+              </Text>
+            </View>
+            <Badge
+              label={groupData.currentUserRole === 'admin' ? 'ADM' : 'Membro'}
+              tone={groupData.currentUserRole === 'admin' ? 'primary' : 'neutral'}
             />
           </View>
 
@@ -468,60 +607,94 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
             <MetricCard label="Pendente" value={formatCurrencyBRL(groupData.summary.pending)} valueColor={colors.danger} styles={styles} />
           </View>
 
-          <View>
-            <Text style={styles.heroMuted}>Seu saldo no grupo</Text>
-            <Text style={[styles.heroBalance, groupData.currentUserNet >= 0 ? styles.positive : styles.negative]}>
-              {formatNetAmount(groupData.currentUserNet)}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Copiar código ${groupData.group.shareCode}`}
+            onPress={handleCopyCode}
+            style={({ pressed }) => [styles.codePill, pressed && styles.pressed]}
+          >
+            <Text style={styles.caption}>Código</Text>
+            <Text style={styles.codeText} numberOfLines={1} adjustsFontSizeToFit>
+              {groupData.group.shareCode}
             </Text>
-          </View>
+            {codeCopied ? (
+              <Check size={16} color={colors.success} />
+            ) : (
+              <Copy size={16} color={colors.textSecondary} />
+            )}
+          </Pressable>
         </Card>
 
-        <View style={styles.tabsRow}>
-          {TABS.map((tab) => (
-            <Chip
-              key={tab.key}
-              label={tab.label}
-              selected={activeTab === tab.key}
-              onPress={() => setActiveTab(tab.key)}
-            />
-          ))}
+        <View style={styles.tabsBar}>
+          {TABS.map((tab) => {
+            const selected = activeTab === tab.key;
+            const count = tabCounts[tab.key];
+            return (
+              <Pressable
+                key={tab.key}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                onPress={() => setActiveTab(tab.key)}
+                style={[styles.tabItem, selected && styles.tabItemSelected]}
+              >
+                <Text style={[styles.tabLabel, selected && styles.tabLabelSelected]} numberOfLines={1}>
+                  {tab.label}
+                  {count ? ` (${count})` : ''}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         {activeTab === 'balances' ? (
-          <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Saldos entre você e os outros membros</Text>
-            <Text style={styles.sectionDescription}>
+          <>
+            <Text style={styles.hintText}>
               Positivo indica crédito. Negativo indica que você deve para o membro.
             </Text>
 
-            {groupData.balances.map((balance) => (
-              <View key={balance.userId} style={styles.listRow}>
-                <View style={styles.listCopy}>
-                  <Text style={styles.listTitle}>{balance.fullName}</Text>
-                  <Text style={[styles.listAmount, balance.amount >= 0 ? styles.positive : styles.negative]}>
-                    {formatNetAmount(balance.amount)}
-                  </Text>
-                </View>
+            {groupData.balances.map((balance) => {
+              const owes = balance.amount < -0.009;
+              const isCredit = balance.amount > 0.009;
+              return (
+                <Card key={balance.userId} style={styles.itemCard}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{balance.fullName.slice(0, 1).toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle} numberOfLines={1}>{balance.fullName}</Text>
+                    <Text style={[styles.listAmount, owes ? styles.negative : isCredit ? styles.positive : styles.neutralText]}>
+                      {formatNetAmount(balance.amount)}
+                    </Text>
+                    <Text style={styles.caption}>
+                      {owes ? 'Você deve' : isCredit ? 'Deve para você' : 'Quitado'}
+                    </Text>
+                  </View>
+                  {owes && !isClosed ? (
+                    <Button label="Pagar" size="sm" onPress={() => handleOpenSettlementModal(balance)} />
+                  ) : null}
+                </Card>
+              );
+            })}
 
-                {balance.amount < -0.009 ? (
-                  <Button label="Pagar" size="sm" onPress={() => handleOpenSettlementModal(balance)} />
-                ) : null}
-              </View>
-            ))}
-
-            {groupData.balances.length === 0 ? <Text style={styles.emptyText}>Nenhum saldo aberto.</Text> : null}
-          </Card>
+            {groupData.balances.length === 0 ? (
+              <EmptyState icon={<Wallet size={28} color={colors.primary} />} text="Nenhum saldo aberto." styles={styles} />
+            ) : null}
+          </>
         ) : null}
 
         {activeTab === 'splits' ? (
           <>
             {groupData.splits.map((split) => (
-              <Card key={split.id} style={styles.sectionCard}>
+              <Card key={split.id} style={styles.itemCardColumn}>
                 <View style={styles.rowBetween}>
                   <View style={styles.listCopy}>
-                    <Text style={styles.listTitle}>{split.title}</Text>
-                    <Text style={styles.sectionDescription}>
-                      {split.kind === 'expense' ? 'Despesa' : 'Receita'} {' - '}{resolveMemberName(split.ownerUserId)}
+                    <Text style={styles.listTitle} numberOfLines={1}>{split.title}</Text>
+                    <Text style={styles.caption}>
+                      {split.kind === 'expense' ? 'Despesa' : 'Receita'}
+                      {' · '}
+                      {resolveMemberName(split.ownerUserId)}
+                      {' · '}
+                      {formatShortDate(split.occurredAt)}
                     </Text>
                   </View>
 
@@ -530,19 +703,18 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                   </Text>
                 </View>
 
-                <Text style={styles.sectionDescription}>
-                  {split.description || `${split.shares.length} participante(s) - modo ${split.splitMode}`}
-                </Text>
-                {split.receiptAttachmentId ? (
-                  <Badge label="Comprovante anexado" tone="primary" />
-                ) : null}
+                {split.description ? <Text style={styles.sectionDescription}>{split.description}</Text> : null}
+
+                <View style={styles.badgesRow}>
+                  <Badge label={`${split.shares.length} participante(s)`} tone="neutral" />
+                  <Badge label={SPLIT_MODE_LABELS[split.splitMode]} tone="neutral" />
+                  {split.receiptAttachmentId ? <Badge label="Comprovante" tone="primary" /> : null}
+                </View>
               </Card>
             ))}
 
             {groupData.splits.length === 0 ? (
-              <Card style={styles.sectionCard}>
-                <Text style={styles.emptyText}>Nenhuma divisão registrada.</Text>
-              </Card>
+              <EmptyState icon={<Receipt size={28} color={colors.primary} />} text="Nenhuma divisão registrada." styles={styles} />
             ) : null}
           </>
         ) : null}
@@ -552,24 +724,28 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
             {groupData.settlements.map((settlement) => {
               const canConfirm = settlement.status === 'pending' && settlement.toUserId === currentUserId;
               const isOutgoing = settlement.fromUserId === currentUserId;
+              const confirmed = settlement.status === 'confirmed';
 
               return (
-                <Card key={settlement.id} style={styles.sectionCard}>
+                <Card key={settlement.id} style={styles.itemCardColumn}>
                   <View style={styles.rowBetween}>
                     <View style={styles.listCopy}>
-                      <Text style={styles.listTitle}>
+                      <Text style={styles.listTitle} numberOfLines={2}>
                         {resolveMemberName(settlement.fromUserId)}
-                        {' -> '}
+                        {' → '}
                         {resolveMemberName(settlement.toUserId)}
                       </Text>
-                      <Text style={styles.sectionDescription}>
-                        {settlement.paymentMethod}
-                        {' - '}
-                        {settlement.status === 'confirmed' ? 'Confirmado' : 'Pendente'}
+                      <Text style={styles.caption}>
+                        {settlement.paymentMethod === 'Transferencia' ? 'Transferência' : settlement.paymentMethod}
+                        {' · '}
+                        {formatShortDate(settlement.createdAt)}
                       </Text>
                     </View>
 
-                    <Text style={styles.listAmount}>{formatCurrencyBRL(settlement.amount)}</Text>
+                    <View style={styles.amountColumn}>
+                      <Text style={styles.listAmount}>{formatCurrencyBRL(settlement.amount)}</Text>
+                      <Badge label={confirmed ? 'Confirmado' : 'Pendente'} tone={confirmed ? 'success' : 'warning'} />
+                    </View>
                   </View>
 
                   {settlement.note ? <Text style={styles.sectionDescription}>{settlement.note}</Text> : null}
@@ -578,6 +754,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
                     <Button
                       label="Confirmar recebimento"
                       size="sm"
+                      fullWidth
                       loading={confirmSettlementMutation.isPending}
                       onPress={() => handleConfirmSettlement(settlement)}
                     />
@@ -589,9 +766,7 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
             })}
 
             {groupData.settlements.length === 0 ? (
-              <Card style={styles.sectionCard}>
-                <Text style={styles.emptyText}>Nenhum acerto registrado.</Text>
-              </Card>
+              <EmptyState icon={<HandCoins size={28} color={colors.primary} />} text="Nenhum acerto registrado." styles={styles} />
             ) : null}
           </>
         ) : null}
@@ -600,25 +775,31 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
           <>
             {members.map((member) => {
               const canRemove =
-                groupData.currentUserRole === 'admin' &&
+                !isClosed &&
+                isAdmin &&
                 member.role !== 'admin' &&
                 member.userId !== currentUserId;
 
               return (
-                <Card key={member.userId} style={styles.memberRow}>
-                  <View style={styles.memberAvatar}>
-                    <Text style={styles.memberAvatarText}>{member.fullName.slice(0, 1).toUpperCase()}</Text>
+                <Card key={member.userId} style={styles.itemCard}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{member.fullName.slice(0, 1).toUpperCase()}</Text>
                   </View>
 
                   <View style={styles.listCopy}>
-                    <Text style={styles.listTitle}>{member.userId === currentUserId ? 'Você' : member.fullName}</Text>
-                    <Text style={styles.sectionDescription}>
-                      {member.role === 'admin' ? 'Administrador' : 'Membro'}
+                    <Text style={styles.listTitle} numberOfLines={1}>
+                      {member.userId === currentUserId ? 'Você' : member.fullName}
                     </Text>
+                    <Text style={styles.caption}>{member.role === 'admin' ? 'Administrador' : 'Membro'}</Text>
                   </View>
 
                   {canRemove ? (
-                    <Pressable onPress={() => handleRemoveMember(member)} style={({ pressed }) => [styles.removeButton, pressed && styles.pressed]}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remover ${member.fullName}`}
+                      onPress={() => handleRemoveMember(member)}
+                      style={({ pressed }) => [styles.removeButton, pressed && styles.pressed]}
+                    >
                       <Trash2 size={16} color={colors.danger} />
                     </Pressable>
                   ) : (
@@ -632,8 +813,25 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
             })}
           </>
         ) : null}
-      </ScrollView>
 
+        {isAdmin && !isClosed ? (
+          <Card style={styles.closeCard}>
+            <Text style={styles.listTitle}>Encerrar grupo</Text>
+            <Text style={styles.sectionDescription}>
+              Só é possível encerrar quando não houver saldos ou acertos pendentes. O histórico fica guardado e o grupo
+              deixa de aparecer na lista principal.
+            </Text>
+            <Button
+              label="Encerrar grupo"
+              variant="danger"
+              fullWidth
+              loading={closeGroupMutation.isPending}
+              icon={<Lock size={18} color={colors.white} />}
+              onPress={handleRequestCloseGroup}
+            />
+          </Card>
+        ) : null}
+      </PageShell>
       <BottomSheet
         visible={isSplitModalVisible}
         onClose={() => setIsSplitModalVisible(false)}
@@ -858,6 +1056,28 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
       />
 
       <ConfirmDialog
+        visible={isCloseDialogVisible}
+        title="Encerrar grupo"
+        message="O grupo será desativado, deixará de aparecer na lista principal e não poderá receber novas movimentações enquanto estiver inativo. O histórico continuará disponível para consulta."
+        confirmLabel="Encerrar"
+        destructive
+        loading={closeGroupMutation.isPending}
+        onConfirm={confirmCloseGroup}
+        onCancel={() => setIsCloseDialogVisible(false)}
+      />
+
+      <ConfirmDialog
+        visible={isReopenDialogVisible}
+        title="Reativar grupo"
+        message="O grupo voltará para a lista principal e poderá receber novas movimentações. O histórico anterior será mantido."
+        confirmLabel="Reativar"
+        destructive={false}
+        loading={reopenGroupMutation.isPending}
+        onConfirm={confirmReopenGroup}
+        onCancel={() => setIsReopenDialogVisible(false)}
+      />
+
+      <ConfirmDialog
         visible={memberToRemove !== null}
         title="Remover membro"
         message={memberToRemove ? `Deseja remover ${memberToRemove.fullName} do grupo?` : ''}
@@ -867,7 +1087,24 @@ export function GroupDetailsScreen({ currentUser, groupId }: GroupDetailsScreenP
         onConfirm={confirmRemoveMember}
         onCancel={() => setMemberToRemove(null)}
       />
-    </SafeAreaView>
+    </>
+  );
+}
+
+function EmptyState({
+  icon,
+  text,
+  styles,
+}: {
+  icon: ReactNode;
+  text: string;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  return (
+    <Card style={styles.emptyCard}>
+      {icon}
+      <Text style={styles.emptyText}>{text}</Text>
+    </Card>
   );
 }
 
@@ -890,54 +1127,46 @@ function MetricCard({
   );
 }
 
-const createStyles = (colors: AppColors, topInset: number) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+const createStyles = (colors: AppColors) => StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  topBar: {
-    backgroundColor: colors.surface,
-    paddingTop: topInset + spacing.xs,
-    paddingBottom: spacing.xs,
-    paddingHorizontal: layout.pageHorizontal,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  scroll: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: spacing.lg },
-  headerCopy: { flex: 1, gap: spacing.xs },
-  headerTitle: { ...typography.h1, color: colors.textPrimary },
-  headerSubtitle: { ...typography.body, color: colors.textSecondary },
   iconButton: { width: 40, height: 40, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.85 },
-  scrollContent: { padding: layout.pageHorizontal, gap: layout.pageSectionGap, paddingBottom: spacing.xxl },
-  heroCard: { backgroundColor: colors.primary, borderColor: colors.primary, gap: spacing.md },
-  heroMuted: { ...typography.caption, color: colors.whiteAlpha80 },
-  heroCode: { ...typography.h2, color: colors.white, letterSpacing: 1 },
-  heroBalance: { ...typography.value, fontWeight: '700' },
   positive: { color: colors.success },
   negative: { color: colors.danger },
+  neutralText: { color: colors.textSecondary },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-  heroCodeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: spacing.sm },
-  heroCodeBlock: { flexShrink: 1, minWidth: 0 },
+  caption: { ...typography.caption, color: colors.textSecondary },
+  summaryCard: { gap: spacing.md },
+  closedBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.mutedSurface },
+  closeCard: { gap: spacing.md },
+  balanceValue: { ...typography.value, fontWeight: '700' },
   metricsRow: { flexDirection: 'row', gap: spacing.sm },
-  metricCard: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
+  metricCard: { flex: 1, backgroundColor: colors.mutedSurface, borderRadius: radius.md, padding: spacing.md, gap: spacing.xs },
   metricLabel: { ...typography.caption, color: colors.textSecondary },
   metricValue: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },
-  tabsRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  sectionCard: { gap: spacing.sm },
-  sectionTitle: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },
-  sectionDescription: { ...typography.body, color: colors.textSecondary },
-  listRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.md },
+  codePill: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  codeText: { ...typography.body, flexShrink: 1, color: colors.textPrimary, fontWeight: '700', letterSpacing: 1 },
+  tabsBar: { flexDirection: 'row', backgroundColor: colors.mutedSurface, borderRadius: radius.md, padding: 4, gap: 4 },
+  tabItem: { flex: 1, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm, paddingHorizontal: 2 },
+  tabItemSelected: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary },
+  tabLabel: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
+  tabLabelSelected: { color: colors.primary, fontWeight: '700' },
+  hintText: { ...typography.caption, color: colors.textSecondary },
+  itemCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  itemCardColumn: { gap: spacing.sm },
+  avatar: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { ...typography.body, color: colors.primary, fontWeight: '700' },
   listCopy: { flex: 1, gap: spacing.xs },
   listTitle: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },
   listAmount: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },
-  emptyText: { ...typography.body, color: colors.textSecondary },
+  amountColumn: { alignItems: 'flex-end', gap: spacing.xs },
+  badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  sectionTitle: { ...typography.body, color: colors.textPrimary, fontWeight: '700' },
+  sectionDescription: { ...typography.body, color: colors.textSecondary },
+  emptyCard: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
+  emptyText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
   awaitingText: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
-  memberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  memberAvatar: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  memberAvatarText: { ...typography.body, color: colors.primary, fontWeight: '700' },
-  removeButton: { width: 36, height: 36, borderRadius: radius.pill, backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center' },
-  sheetContent: { gap: spacing.md, paddingBottom: spacing.lg },
+  removeButton: { width: 36, height: 36, borderRadius: radius.pill, backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center' },  sheetContent: { gap: spacing.md, paddingBottom: spacing.lg },
   fieldLabel: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   previewCard: { gap: spacing.sm, backgroundColor: colors.mutedSurface },

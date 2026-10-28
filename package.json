@@ -4,6 +4,7 @@
   "main": "index.ts",
   "scripts": {
     "test:groups:sql": "node scripts/test-group-splits.cjs",
+    "test:groups:closure:sql": "node scripts/test-group-closure.cjs",
     "test:goals:sql": "node scripts/test-goal-withdrawals.cjs",
     "test:notifications:sql": "node scripts/test-notifications.cjs",
     "start": "expo start",
@@ -27,6 +28,7 @@
     "expo": "~54.0.37",
     "expo-asset": "~12.0.13",
     "expo-audio": "~1.1.1",
+    "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.14",
     "expo-dev-client": "~6.0.21",
     "expo-document-picker": "~14.0.8",
