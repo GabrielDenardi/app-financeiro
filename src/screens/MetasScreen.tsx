@@ -121,6 +121,10 @@ export default function MetasScreen() {
   const [accountId, setAccountId] = useState("");
   const [tempDue, setTempDue] = useState(TODAY);
   const [goalToDelete, setGoalToDelete] = useState<string | null>(null);
+  const [reachedOpen, setReachedOpen] = useState(false);
+  const [continuing, setContinuing] = useState(false);
+  const [newTarget, setNewTarget] = useState("");
+  const [newDue, setNewDue] = useState(TODAY);
 
   const goals = goalsQuery.data ?? [];
   const accounts = (accountsQuery.data ?? []).filter((item) => item.isActive);
@@ -216,6 +220,17 @@ export default function MetasScreen() {
       showError("Selecione uma conta e informe um valor válido.");
       return;
     }
+    if (!isWithdrawal) {
+      const remaining = Number(
+        (selectedGoal.targetAmount - selectedGoal.currentAmount).toFixed(2),
+      );
+      if (Math.round(value * 100) > Math.round(remaining * 100)) {
+        showError(
+          `O aporte excede o que falta para a meta (${formatCurrencyBRL(remaining)}).`,
+        );
+        return;
+      }
+    }
     if (isWithdrawal && Math.round(value * 100) > Math.round(selectedGoal.currentAmount * 100)) {
       setMovementError("O valor da retirada não pode ser maior que o saldo da meta.");
       showError("O valor da retirada não pode ser maior que o saldo da meta.");
@@ -224,6 +239,8 @@ export default function MetasScreen() {
     submittingMovement.current = true;
     setMovementError(null);
     try {
+      const reachesTarget = !isWithdrawal &&
+        Math.round((selectedGoal.currentAmount + value) * 100) >= Math.round(selectedGoal.targetAmount * 100);
       await (isWithdrawal ? withdraw : contribute).mutateAsync({
         goalId: selectedGoal.id,
         accountId,
@@ -233,8 +250,12 @@ export default function MetasScreen() {
       setAddOpen(false);
       setAmount("");
       setNote("");
-      setGoalId(null);
       showSuccess(isWithdrawal ? "Retirada registrada." : "Aporte registrado.");
+      if (reachesTarget) {
+        openReachedPrompt(selectedGoal.id);
+      } else {
+        setGoalId(null);
+      }
     } catch (error) {
       setMovementError(error instanceof Error ? error.message : "Não foi possível registrar a movimentação.");
       showError(
@@ -244,6 +265,66 @@ export default function MetasScreen() {
       );
     } finally {
       submittingMovement.current = false;
+    }
+  };
+
+  const openReachedPrompt = (id: string) => {
+    setGoalId(id);
+    setContinuing(false);
+    setNewTarget("");
+    setNewDue(TODAY);
+    setReachedOpen(true);
+  };
+
+  const closeReachedPrompt = () => {
+    setReachedOpen(false);
+    setContinuing(false);
+    setGoalId(null);
+  };
+
+  const onCompleteGoal = async () => {
+    if (!goalId) return;
+    try {
+      await updateGoal.mutateAsync({ id: goalId, status: "completed" });
+      closeReachedPrompt();
+      setTab("completed");
+      showSuccess("Meta concluída.");
+    } catch (error) {
+      showError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível concluir a meta.",
+      );
+    }
+  };
+
+  const onContinueGoal = async () => {
+    if (!goalId || !selectedGoal) return;
+    const value = normalizeCurrencyInput(newTarget);
+    if (!Number.isFinite(value) || value <= selectedGoal.currentAmount) {
+      showError(
+        `Informe um valor maior que ${formatCurrencyBRL(selectedGoal.currentAmount)}.`,
+      );
+      return;
+    }
+    if (!newDue || newDue < CalendarUtils.getCalendarDateString(new Date())) {
+      showError("Informe um novo prazo a partir de hoje.");
+      return;
+    }
+    try {
+      await updateGoal.mutateAsync({
+        id: goalId,
+        targetAmount: value,
+        targetDate: newDue,
+      });
+      closeReachedPrompt();
+      showSuccess("Meta atualizada.");
+    } catch (error) {
+      showError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível atualizar a meta.",
+      );
     }
   };
 
@@ -303,6 +384,14 @@ export default function MetasScreen() {
           </Pressable>
         </View>
 
+        {tab === "completed" ? (
+          <View style={s.notice}>
+            <Text style={s.noticeText}>
+              Todas as metas concluídas, irão desaparecer dentro de 30 dias
+            </Text>
+          </View>
+        ) : null}
+
         {goalsQuery.isLoading ? (
           <View style={s.card}>
             <ActivityIndicator color={themeColors.primaryLight} />
@@ -325,6 +414,7 @@ export default function MetasScreen() {
         {list.map((goal) => {
           const Icon = iconOf(goal.icon);
           const done = goal.status === "completed";
+          const reached = !done && goal.currentAmount >= goal.targetAmount;
           return (
             <View
               key={goal.id}
@@ -386,7 +476,15 @@ export default function MetasScreen() {
               <Text style={s.pct}>
                 {goal.progressPercent.toFixed(1)}% alcançado
               </Text>
-              {!done ? (
+              {reached ? (
+                <View style={s.soft}>
+                  <Text style={s.softText}>
+                    <Text style={s.softStrong}>Meta atingida!</Text> Deseja
+                    continuar ou concluir esta meta?
+                  </Text>
+                </View>
+              ) : null}
+              {!done && !reached ? (
                 <View style={s.soft}>
                   <Text style={s.softText}>
                     Guarde{" "}
@@ -405,7 +503,18 @@ export default function MetasScreen() {
                 </View>
               ) : null}
               <View style={s.actions}>
-                {!done ? (
+                {reached ? (
+                  <Pressable
+                    style={s.add}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Continuar ou concluir ${goal.title}`}
+                    onPress={() => openReachedPrompt(goal.id)}
+                  >
+                    <Target size={18} color={themeColors.textPrimary} />
+                    <Text style={s.addText}>Continuar ou concluir</Text>
+                  </Pressable>
+                ) : null}
+                {!done && !reached ? (
                   <Pressable
                     style={s.add}
                     accessibilityRole="button"
@@ -610,6 +719,108 @@ export default function MetasScreen() {
         <View style={s.bottomSpacer} />
       </BottomSheet>
 
+      {/* Meta atingida: continuar ou concluir */}
+      <BottomSheet
+        visible={reachedOpen}
+        onClose={closeReachedPrompt}
+        title="Meta atingida! 🎉"
+        subtitle={
+          continuing
+            ? `Defina o novo valor e prazo de ${selectedGoal?.title ?? "Meta"}`
+            : `Você chegou ao valor de ${selectedGoal?.title ?? "Meta"}. O que deseja fazer?`
+        }
+        maxHeightRatio={0.92}
+        footer={
+          continuing ? (
+            <>
+              <Button
+                label="Voltar"
+                variant="secondary"
+                fullWidth
+                onPress={() => setContinuing(false)}
+                disabled={updateGoal.isPending}
+              />
+              <Button
+                label="Salvar"
+                fullWidth
+                onPress={onContinueGoal}
+                loading={updateGoal.isPending}
+              />
+            </>
+          ) : (
+            <>
+              <Button
+                label="Continuar"
+                variant="secondary"
+                fullWidth
+                onPress={() => {
+                  setNewTarget("");
+                  const today = CalendarUtils.getCalendarDateString(new Date());
+                  setNewDue(selectedGoal?.targetDate && selectedGoal.targetDate >= today ? selectedGoal.targetDate : today);
+                  setContinuing(true);
+                }}
+                disabled={updateGoal.isPending}
+              />
+              <Button
+                label="Concluir"
+                fullWidth
+                onPress={onCompleteGoal}
+                loading={updateGoal.isPending}
+              />
+            </>
+          )
+        }
+      >
+        {continuing ? (
+          <>
+            <FieldCard>
+              <FieldRow
+                label="Novo valor alvo"
+                accessibilityLabel="Novo valor alvo"
+                prefix="R$"
+                placeholder="0,00"
+                keyboardType="numeric"
+                value={newTarget}
+                onChangeText={(value) => setNewTarget(formatCurrencyInput(value))}
+                autoFocus
+              />
+            </FieldCard>
+
+            <Text style={s.label}>Novo prazo</Text>
+            <View style={s.calendar}>
+              <Calendar
+                current={newDue}
+                minDate={TODAY}
+                markedDates={{
+                  [newDue]: {
+                    selected: true,
+                    selectedColor: themeColors.primaryLight,
+                  },
+                }}
+                onDayPress={(day) => setNewDue(day.dateString)}
+                theme={{
+                  backgroundColor: themeColors.surface,
+                  calendarBackground: themeColors.surface,
+                  dayTextColor: themeColors.textPrimary,
+                  monthTextColor: themeColors.textPrimary,
+                  textDisabledColor: themeColors.textSecondary,
+                  todayTextColor: themeColors.primaryLight,
+                  selectedDayBackgroundColor: themeColors.primaryLight,
+                  selectedDayTextColor: themeColors.white,
+                  arrowColor: themeColors.primaryLight,
+                }}
+              />
+            </View>
+          </>
+        ) : (
+          <Text style={s.msg}>
+            Continuar mantém a meta ativa com um novo valor e prazo. Concluir
+            move a meta para a aba de concluídas.
+          </Text>
+        )}
+        <View style={s.bottomSpacer} />
+      </BottomSheet>
+
       {/* Editar Prazo */}
       <BottomSheet
         visible={deadlineOpen}
@@ -780,6 +991,19 @@ const createStyles = (colors: AppColors) =>
     addText: {
       ...typography.body,
       fontWeight: "800",
+      color: colors.textPrimary,
+    },
+    notice: {
+      backgroundColor: colors.warningSoft,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.warning,
+      padding: spacing.md,
+    },
+    noticeText: {
+      ...typography.caption,
+      textAlign: "center",
+      fontWeight: "700",
       color: colors.textPrimary,
     },
     msg: {

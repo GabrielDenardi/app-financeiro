@@ -5,6 +5,7 @@ import MetasScreen from '../MetasScreen';
 
 const mockWithdraw = jest.fn();
 const mockContribute = jest.fn();
+const mockUpdateGoal = jest.fn();
 const mockSuccess = jest.fn();
 const mockError = jest.fn();
 let mockGoals: any[];
@@ -14,7 +15,8 @@ jest.mock('../../features/auth/hooks/useAuthenticatedUser', () => ({ useAuthenti
 jest.mock('../../features/accounts/hooks/useAccounts', () => ({ useAccounts: () => ({ data: mockAccounts }) }));
 jest.mock('../../features/goals/hooks/useGoals', () => ({
   useGoals: () => ({ data: mockGoals }),
-  useCreateGoalMutation: () => ({}), useDeleteGoalMutation: () => ({}), useUpdateGoalMutation: () => ({}),
+  useCreateGoalMutation: () => ({}), useDeleteGoalMutation: () => ({}),
+  useUpdateGoalMutation: () => ({ mutateAsync: mockUpdateGoal }),
   useGoalContributionMutation: () => ({ mutateAsync: mockContribute }),
   useGoalWithdrawalMutation: () => ({ mutateAsync: mockWithdraw }),
 }));
@@ -22,7 +24,7 @@ jest.mock('../../components/Toast', () => ({ useToast: () => ({ showSuccess: moc
 jest.mock('../../components/PageShell', () => ({ PageShell: ({ children }: any) => children }));
 jest.mock('../../components/BottomSheet', () => ({ BottomSheet: ({ visible, title, children, footer, onClose }: any) => {
   const { View, Text } = require('react-native');
-  return visible ? <View><Text>{title}</Text>{children}{footer?.(onClose)}</View> : null;
+  return visible ? <View><Text>{title}</Text>{children}{typeof footer === 'function' ? footer(onClose) : footer}</View> : null;
 } }));
 jest.mock('../../components/ConfirmDialog', () => ({ ConfirmDialog: () => null }));
 jest.mock('react-native-calendars', () => ({ Calendar: () => null, CalendarUtils: { getCalendarDateString: () => '2026-10-21' } }));
@@ -35,6 +37,7 @@ describe('goal movement modal', () => {
     mockGoals = [{ id: 'goal', title: 'Reserva', currentAmount: 100, targetAmount: 500, progressPercent: 20, status: 'active', icon: 'wallet', color: '#338855', targetDate: null }];
     mockAccounts = [{ id: 'account', name: 'Conta corrente', isActive: true }];
     mockWithdraw.mockResolvedValue('withdrawal'); mockContribute.mockResolvedValue('contribution');
+    mockUpdateGoal.mockResolvedValue(undefined);
   });
   it('blocks an amount larger than the balance without submitting', async () => {
     const ui = screen();
@@ -96,5 +99,44 @@ describe('goal movement modal', () => {
     await waitFor(() => expect(mockSuccess).toHaveBeenCalledWith('Aporte registrado.'));
     expect(mockContribute).toHaveBeenCalledWith({ goalId: 'goal', accountId: 'account', amount: 25, note: '' });
     expect(mockWithdraw).not.toHaveBeenCalled();
+  });
+
+  it('asks the user to continue or complete after the final contribution', async () => {
+    mockGoals[0].currentAmount = 475;
+    const ui = screen();
+    fireEvent.press(ui.getByLabelText('Adicionar valor a Reserva'));
+    fireEvent.changeText(ui.getByLabelText('Valor da movimentação'), '2500');
+    fireEvent.press(ui.getByLabelText('Confirmar aporte'));
+    await waitFor(() => expect(ui.getByText('Meta atingida! 🎉')).toBeTruthy());
+    expect(mockUpdateGoal).not.toHaveBeenCalled();
+    fireEvent.press(ui.getByLabelText('Concluir'));
+    await waitFor(() => expect(mockUpdateGoal).toHaveBeenCalledWith({ id: 'goal', status: 'completed' }));
+    expect(ui.getByText('Todas as metas concluídas, irão desaparecer dentro de 30 dias')).toBeTruthy();
+  });
+
+  it('continues a reached goal with a higher target and a new deadline', async () => {
+    mockGoals[0].currentAmount = 500;
+    mockGoals[0].targetDate = '2026-01-01';
+    const ui = screen();
+    expect(ui.queryByLabelText('Adicionar valor a Reserva')).toBeNull();
+    expect(ui.getByLabelText('Retirar valor de Reserva')).toBeEnabled();
+    fireEvent.press(ui.getByLabelText('Continuar ou concluir Reserva'));
+    fireEvent.press(ui.getByLabelText('Continuar'));
+    fireEvent.changeText(ui.getByLabelText('Novo valor alvo'), '50000');
+    fireEvent.press(ui.getByLabelText('Salvar'));
+    expect(mockUpdateGoal).not.toHaveBeenCalled();
+    fireEvent.changeText(ui.getByLabelText('Novo valor alvo'), '70000');
+    fireEvent.press(ui.getByLabelText('Salvar'));
+    await waitFor(() => expect(mockUpdateGoal).toHaveBeenCalledWith({ id: 'goal', targetAmount: 700, targetDate: '2026-10-21' }));
+  });
+
+  it('keeps the choice open when completion fails', async () => {
+    mockGoals[0].currentAmount = 500;
+    mockUpdateGoal.mockRejectedValue(new Error('Falha ao concluir'));
+    const ui = screen();
+    fireEvent.press(ui.getByLabelText('Continuar ou concluir Reserva'));
+    fireEvent.press(ui.getByLabelText('Concluir'));
+    await waitFor(() => expect(mockError).toHaveBeenCalledWith('Falha ao concluir'));
+    expect(ui.getByLabelText('Concluir')).toBeTruthy();
   });
 });

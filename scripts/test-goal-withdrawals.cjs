@@ -16,7 +16,8 @@ async function main() {
     create table personal_accounts(id uuid primary key, user_id uuid, name text, type text, institution text,
       color text, is_active boolean default true, display_order integer default 0, opening_balance numeric default 100);
     create table financial_goals(id uuid primary key, user_id uuid, title text, current_amount numeric(14,2) check(current_amount >= 0),
-      target_amount numeric(14,2), status text, updated_at timestamptz default now());
+      target_amount numeric(14,2), status text, updated_at timestamptz default now(),
+      initial_amount numeric default 0, color text default 'blue', icon text default 'target', target_date date);
     create table personal_transactions(id uuid primary key default gen_random_uuid(), user_id uuid, account_id uuid,
       type text, title text, description text, notes text, payment_method text, amount numeric(14,2) check(amount > 0),
       occurred_at timestamptz, occurred_on date, source_type text, include_in_reports boolean default true,
@@ -31,6 +32,11 @@ async function main() {
   // Exercise the production account-balance view, not an imitation of its calculation.
   await db.exec(core.slice(core.indexOf('create or replace view public.v_account_current_balance'), core.indexOf('create or replace view public.v_goal_progress')));
   await db.exec(readFileSync('supabase/migrations/202610210001_goal_withdrawals.sql', 'utf8'));
+  await db.exec(core.slice(core.indexOf('create table if not exists public.goal_contributions'), core.indexOf('create table if not exists public.budget_plans')));
+  await db.exec(core.slice(core.indexOf('create or replace function public.assert_owned_personal_account'), core.indexOf('create or replace function public.normalize_personal_transaction')));
+  await db.exec(core.slice(core.indexOf('create or replace view public.v_goal_progress'), core.indexOf('create or replace view public.v_budget_progress')));
+  await db.exec(readFileSync('supabase/migrations/202610190001_goal_completion_flow.sql', 'utf8'));
+  await db.exec(readFileSync('supabase/migrations/202610270001_goal_completion_withdrawal_compatibility.sql', 'utf8'));
   await db.exec(`create trigger normalize before insert or update on personal_transactions for each row execute function normalize_personal_transaction();`);
   const rows = async sql => (await db.query(sql)).rows;
   const snapshot = async () => ({
@@ -101,9 +107,6 @@ async function main() {
   await assert.rejects(withdraw(1), /permission denied/);
   await db.exec('reset role;');
   // Verify the new operation composes with the existing production contribution RPC.
-  await db.exec(core.slice(core.indexOf('create table if not exists public.goal_contributions'), core.indexOf('create table if not exists public.budget_plans')));
-  await db.exec(core.slice(core.indexOf('create or replace function public.assert_owned_personal_account'), core.indexOf('create or replace function public.normalize_personal_transaction')));
-  await db.exec(core.slice(core.indexOf('create or replace function public.add_goal_contribution'), core.indexOf('create or replace function public.finalize_import_batch')));
   await db.exec(`select add_goal_contribution('${goal}', '${account}', 50);`);
   state = await snapshot();
   assert.equal(Number(state.goal.current_amount), 50);
@@ -115,7 +118,59 @@ async function main() {
   await db.exec(`update financial_goals set current_amount = 10, status = 'archived';`);
   await withdraw(1);
   assert.equal((await snapshot()).goal.status, 'archived', 'withdrawal preserves archived status');
+
+  // Reaching the target keeps the decision pending, including after a withdrawal.
+  await db.exec(`update financial_goals set current_amount = 450, target_amount = 500, status = 'active';`);
+  const contribute = amount => db.exec(`select add_goal_contribution('${goal}', '${account}', ${amount});`);
+  const beforeExcess = await snapshot();
+  await assert.rejects(contribute(50.01), /excede/);
+  assert.deepEqual(await snapshot(), beforeExcess);
+  await contribute(50);
+  assert.equal((await snapshot()).goal.status, 'active', 'reaching target does not complete the goal');
+  assert.equal((await rows('select completed_at from financial_goals'))[0].completed_at, null);
+  await assert.rejects(contribute(1), /atingiu/);
+  await db.exec(`update financial_goals set current_amount = 600;`);
+  await withdraw(50);
+  assert.equal((await snapshot()).goal.status, 'active', 'withdrawal above target cannot complete an active goal');
+
+  // Continuing changes the target and deadline while preserving the savings.
+  await db.exec(`update financial_goals set target_amount = 700, target_date = '2027-12-31';`);
+  await contribute(150);
+  assert.equal((await snapshot()).goal.status, 'active');
+  await db.exec(`update financial_goals set status = 'completed', completed_at = '2000-01-01';`);
+  const completedAt = (await rows('select completed_at from financial_goals'))[0].completed_at;
+  assert.ok(new Date(completedAt).getFullYear() >= 2026, 'server sets completion time instead of trusting the client');
+  await db.exec(`update financial_goals set title = 'Concluída', completed_at = '2000-01-01';`);
+  assert.deepEqual((await rows('select completed_at from financial_goals'))[0].completed_at, completedAt, 'edits preserve completion time');
+  await db.exec(`update financial_goals set current_amount = 800;`);
+  await withdraw(50);
+  assert.equal((await snapshot()).goal.status, 'completed', 'explicitly completed goal stays completed while above target');
+  assert.deepEqual((await rows('select completed_at from financial_goals'))[0].completed_at, completedAt);
+  await withdraw(100);
+  assert.equal((await snapshot()).goal.status, 'active', 'withdrawing below target reopens goal');
+  assert.equal((await rows('select completed_at from financial_goals'))[0].completed_at, null, 'reopening clears completion time');
+
+  // Time-limited visibility hides rows without deleting savings or ledger history.
+  await db.exec(`alter table financial_goals disable trigger trg_financial_goals_completed_at;
+    update financial_goals set status = 'completed', completed_at = now() - interval '31 days';`);
+  assert.equal((await rows('select * from v_goal_progress')).length, 0);
+  assert.equal((await rows('select * from financial_goals')).length, 1);
+  assert.ok(Number((await rows('select count(*) n from goal_withdrawals'))[0].n) > 0);
+  await db.exec(`update financial_goals set completed_at = now() - interval '29 days';`);
+  assert.equal((await rows('select * from v_goal_progress')).length, 1);
+  await db.exec(`update financial_goals set status = 'active', completed_at = null;
+    alter table financial_goals enable trigger trg_financial_goals_completed_at;
+    alter table financial_goals enable row level security;
+    alter table goal_contributions enable row level security;
+    create policy own_goals on financial_goals to authenticated using(user_id = auth.uid());
+    create policy own_contributions on goal_contributions to authenticated using(user_id = auth.uid());
+    grant select on financial_goals, goal_contributions, v_goal_progress to authenticated;
+    set role authenticated;`);
+  assert.equal((await rows('select * from v_goal_progress')).length, 1);
+  await db.exec(`select set_config('request.jwt.claim.sub', '${other}', false);`);
+  assert.equal((await rows('select * from v_goal_progress')).length, 0, 'security-invoker view preserves user isolation');
+  await db.exec('reset role;');
   await db.close();
-  console.log('Goal withdrawal SQL checks passed: balance, limits, ownership, MFA, RLS and rollback.');
+  console.log('Goal SQL checks passed: completion, continuation, 30-day visibility, withdrawals, balance, ownership, MFA, RLS and rollback.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
