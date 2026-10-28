@@ -4,6 +4,7 @@
   "main": "index.ts",
   "scripts": {
     "test:groups:sql": "node scripts/test-group-splits.cjs",
+    "test:groups:closure:sql": "node scripts/test-group-closure.cjs",
     "test:goals:sql": "node scripts/test-goal-withdrawals.cjs",
     "test:notifications:sql": "node scripts/test-notifications.cjs",
     "start": "expo start",

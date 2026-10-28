@@ -40,9 +40,10 @@ create policy "group_status_events_select_members"
 on public.group_status_events
 for select
 to authenticated
-using (public.is_active_group_member(group_id));
+using (public.is_active_group_member(group_id) and public.is_session_aal2_if_required());
 
-revoke insert, update, delete on public.group_status_events from anon, authenticated;
+revoke all on public.group_status_events from public, anon, authenticated;
+grant select on public.group_status_events to authenticated;
 
 -- Bloqueio de novas movimentações em grupo inativo.
 -- FOR SHARE serializa com close_group (FOR UPDATE na linha do grupo): ou a
@@ -55,30 +56,33 @@ security definer
 set search_path = ''
 as $$
 declare
+  old_row jsonb := case when tg_op <> 'INSERT' then to_jsonb(old) else '{}'::jsonb end;
+  new_row jsonb := case when tg_op <> 'DELETE' then to_jsonb(new) else '{}'::jsonb end;
   target_group_id uuid;
   current_status text;
 begin
-  if tg_table_name = 'group_split_shares' then
-    select gs.group_id into target_group_id
-    from public.group_splits gs
-    where gs.id = new.split_id;
-  else
-    target_group_id := new.group_id;
-  end if;
+  -- Check both sides of updates so links cannot be cleared or moved to bypass
+  -- closure. Lock groups in a stable order when an operation references two.
+  for target_group_id in
+    select distinct group_id from (
+      select (old_row ->> 'group_id')::uuid as group_id
+      union select (new_row ->> 'group_id')::uuid
+      union select gs.group_id from public.group_splits gs
+        where gs.id in ((old_row ->> 'split_id')::uuid, (new_row ->> 'split_id')::uuid,
+          (old_row ->> 'group_split_id')::uuid, (new_row ->> 'group_split_id')::uuid)
+      union select gst.group_id from public.group_settlements gst
+        where gst.id in ((old_row ->> 'settlement_id')::uuid, (new_row ->> 'settlement_id')::uuid)
+    ) linked_groups
+    where group_id is not null order by group_id
+  loop
+    select g.status into current_status from public.groups g
+    where g.id = target_group_id for share;
+    if current_status = 'inactive' then
+      raise exception 'Este grupo foi encerrado e não aceita novas movimentações.';
+    end if;
+  end loop;
 
-  if target_group_id is null then
-    return new;
-  end if;
-
-  select g.status into current_status
-  from public.groups g
-  where g.id = target_group_id
-  for share;
-
-  if current_status = 'inactive' then
-    raise exception 'Este grupo foi encerrado e não aceita novas movimentações.';
-  end if;
-
+  if tg_op = 'DELETE' then return old; end if;
   return new;
 end;
 $$;
@@ -87,22 +91,30 @@ revoke all on function private.enforce_group_active() from public, anon, authent
 
 drop trigger if exists trg_group_splits_enforce_active on public.group_splits;
 create trigger trg_group_splits_enforce_active
-before insert on public.group_splits
+before insert or update or delete on public.group_splits
 for each row execute function private.enforce_group_active();
 
 drop trigger if exists trg_group_split_shares_enforce_active on public.group_split_shares;
 create trigger trg_group_split_shares_enforce_active
-before insert on public.group_split_shares
+before insert or update or delete on public.group_split_shares
 for each row execute function private.enforce_group_active();
 
 drop trigger if exists trg_group_settlements_enforce_active on public.group_settlements;
 create trigger trg_group_settlements_enforce_active
-before insert or update on public.group_settlements
+before insert or update or delete on public.group_settlements
 for each row execute function private.enforce_group_active();
 
 drop trigger if exists trg_group_members_enforce_active on public.group_members;
 create trigger trg_group_members_enforce_active
-before insert or update on public.group_members
+before insert or update or delete on public.group_members
+for each row execute function private.enforce_group_active();
+
+create trigger trg_personal_transactions_enforce_group_active
+before insert or update or delete on public.personal_transactions
+for each row execute function private.enforce_group_active();
+
+create trigger trg_transaction_attachments_enforce_group_active
+before insert or update or delete on public.transaction_attachments
 for each row execute function private.enforce_group_active();
 
 create or replace function public.close_group(p_group_id uuid)
@@ -120,9 +132,8 @@ begin
   if current_user_id is null then
     raise exception 'Usuário não autenticado.';
   end if;
-
-  if not public.is_group_admin(p_group_id, current_user_id) then
-    raise exception 'Somente administradores podem encerrar o grupo.';
+  if not public.is_session_aal2_if_required() then
+    raise exception 'Confirme a autenticação de dois fatores para continuar.';
   end if;
 
   -- Trava a linha do grupo: nenhuma movimentação nova passa pelos triggers
@@ -134,6 +145,10 @@ begin
 
   if group_row.id is null then
     raise exception 'Grupo não encontrado.';
+  end if;
+
+  if not public.is_group_admin(p_group_id, current_user_id) then
+    raise exception 'Somente administradores podem encerrar o grupo.';
   end if;
 
   if group_row.status = 'inactive' then
@@ -149,13 +164,17 @@ begin
     raise exception 'Não é possível encerrar: existem % acerto(s) aguardando confirmação.', pending_settlements;
   end if;
 
+  with participants as (
+    select user_id from public.group_members where group_id = p_group_id
+    union select owner_user_id from public.group_splits where group_id = p_group_id
+    union select gss.user_id from public.group_split_shares gss
+      join public.group_splits gs on gs.id = gss.split_id where gs.group_id = p_group_id
+    union select from_user_id from public.group_settlements where group_id = p_group_id
+    union select to_user_id from public.group_settlements where group_id = p_group_id
+  )
   select count(*) into open_pairs
-  from public.group_members m1
-  join public.group_members m2
-    on m2.group_id = m1.group_id
-   and m2.user_id > m1.user_id
-  where m1.group_id = p_group_id
-    and abs(public.group_outstanding_amount(p_group_id, m1.user_id, m2.user_id)) > 0.009;
+  from participants m1 join participants m2 on m2.user_id > m1.user_id
+  where abs(public.group_outstanding_amount(p_group_id, m1.user_id, m2.user_id)) > 0.009;
 
   if open_pairs > 0 then
     raise exception 'Não é possível encerrar: ainda existem saldos em aberto entre os membros. Quite todos os saldos antes de encerrar o grupo.';
@@ -187,9 +206,8 @@ begin
   if current_user_id is null then
     raise exception 'Usuário não autenticado.';
   end if;
-
-  if not public.is_group_admin(p_group_id, current_user_id) then
-    raise exception 'Somente administradores podem reativar o grupo.';
+  if not public.is_session_aal2_if_required() then
+    raise exception 'Confirme a autenticação de dois fatores para continuar.';
   end if;
 
   select * into group_row
@@ -199,6 +217,10 @@ begin
 
   if group_row.id is null then
     raise exception 'Grupo não encontrado.';
+  end if;
+
+  if not public.is_group_admin(p_group_id, current_user_id) then
+    raise exception 'Somente administradores podem reativar o grupo.';
   end if;
 
   if group_row.status <> 'inactive' then
