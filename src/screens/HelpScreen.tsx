@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import {
   ArrowLeftRight,
+  Bell,
   BookOpen,
   ChartPie,
   CheckCircle2,
@@ -18,6 +19,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  Crown,
+  FileSpreadsheet,
   Lightbulb,
   Mail,
   MessageCircle,
@@ -25,7 +28,10 @@ import {
   Newspaper,
   PiggyBank,
   Receipt,
+  Repeat,
   Search,
+  Shield,
+  User,
   X,
 } from "lucide-react-native";
 
@@ -47,7 +53,7 @@ import {
   useThemeColors,
 } from "../theme";
 
-const SUPPORT_EMAIL = "suporte@financeapp.com";
+const SUPPORT_EMAIL = "contato@nitin.com.br";
 
 const CATEGORY_ICONS: Record<string, typeof BookOpen> = {
   transactions: ArrowLeftRight,
@@ -58,6 +64,14 @@ const CATEGORY_ICONS: Record<string, typeof BookOpen> = {
   accounts: Receipt,
   voice: Mic,
   reports: Newspaper,
+  recurring: Repeat,
+  imports: FileSpreadsheet,
+  "income-tax": Receipt,
+  plans: Crown,
+  profile: User,
+  security: Shield,
+  notifications: Bell,
+  support: MessageCircle,
 };
 
 const plural = (n: number, one: string, many: string) =>
@@ -75,6 +89,14 @@ const CATEGORY_TONES: Record<string, ToneKey> = {
   accounts: "primary",
   voice: "danger",
   reports: "success",
+  recurring: "primary",
+  imports: "success",
+  "income-tax": "success",
+  plans: "warning",
+  profile: "primary",
+  security: "primary",
+  notifications: "warning",
+  support: "success",
 };
 
 function getTone(colors: AppColors, key: ToneKey) {
@@ -454,7 +476,7 @@ export function HelpScreen({ navigation }: any) {
             >
               <IconBubble icon={Mail} tone="success" />
               <Text style={styles.qTitle}>E-mail</Text>
-              <Text style={styles.caption}>Resposta em até 1 dia útil</Text>
+              <Text style={styles.caption}>{SUPPORT_EMAIL}</Text>
             </Pressable>
           </View>
         </>
