@@ -1,5 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Modal,
   Pressable,
   Switch,
   Text,
@@ -76,6 +78,8 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
   const { colors, isDarkMode, setDarkMode } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { showError } = useToast();
+  const [isLogoutConfirmationVisible, setLogoutConfirmationVisible] = useState(false);
+  const [isSigningOut, setSigningOut] = useState(false);
   const currentUser = useAuthenticatedUser();
   const resolvedUserId = currentUser?.id ?? user?.id;
   const profileQuery = useProfile(resolvedUserId);
@@ -108,16 +112,21 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
   }));
 
   const handleLogout = async () => {
+    setLogoutConfirmationVisible(false);
+    setSigningOut(true);
+    void registerLoginEvent("sign_out").catch(() => undefined);
+    await new Promise<void>((resolve) => setTimeout(resolve, 800));
+
     try {
-      await registerLoginEvent("sign_out");
-    } catch {
-      // Ignore logging failures on sign out.
-    }
+      const { error } = await supabase.auth.signOut();
 
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
+      if (error) {
       showError("Não foi possível sair agora. Tente novamente.");
+      }
+    } catch {
+      showError("Não foi possível sair agora. Tente novamente.");
+    } finally {
+      setSigningOut(false);
     }
   };
 
@@ -247,10 +256,56 @@ export function MenuScreen({ navigation, user }: MenuScreenProps) {
         </View>
       ))}
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={() => setLogoutConfirmationVisible(true)}
+      >
         <LogOut size={20} color={colors.white} />
         <Text style={styles.logoutButtonText}>Sair da Conta</Text>
       </TouchableOpacity>
+
+      <Modal
+        visible={isLogoutConfirmationVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setLogoutConfirmationVisible(false)}
+      >
+        <View style={styles.logoutOverlay}>
+          <View style={styles.logoutDialog}>
+            <Text style={styles.logoutDialogTitle}>Deseja sair do aplicativo?</Text>
+            <Text style={styles.logoutDialogMessage}>
+              Sua sessão será encerrada e você voltará para a tela de login.
+            </Text>
+            <View style={styles.logoutActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setLogoutConfirmationVisible(false)}
+                style={({ pressed }) => [styles.logoutCancelButton, pressed && styles.pressed]}
+              >
+                <Text style={styles.logoutCancelText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleLogout}
+                style={({ pressed }) => [styles.logoutConfirmButton, pressed && styles.pressed]}
+              >
+                <Text style={styles.logoutConfirmText}>Sair</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={isSigningOut} animationType="fade" transparent onRequestClose={() => {}}>
+        <View style={styles.logoutOverlay}>
+          <View style={styles.logoutLoadingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text accessibilityLiveRegion="polite" style={styles.logoutLoadingText}>
+              Saindo do aplicativo...
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </PageShell>
   );
 }
@@ -393,5 +448,75 @@ const createStyles = (colors: AppColors) =>
       ...typography.body,
       color: colors.white,
       fontWeight: "700",
+    },
+    logoutOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(15, 23, 42, 0.6)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: spacing.lg,
+    },
+    logoutDialog: {
+      width: "100%",
+      maxWidth: 360,
+      padding: spacing.xl,
+      gap: spacing.md,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+    },
+    logoutDialogTitle: {
+      ...typography.h2,
+      color: colors.textPrimary,
+      textAlign: "center",
+    },
+    logoutDialogMessage: {
+      ...typography.body,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    logoutActions: {
+      flexDirection: "row",
+      gap: spacing.md,
+      marginTop: spacing.sm,
+    },
+    logoutCancelButton: {
+      flex: 1,
+      height: 48,
+      borderRadius: 12,
+      backgroundColor: colors.surfaceMuted,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    logoutCancelText: {
+      ...typography.body,
+      color: colors.textPrimary,
+      fontWeight: "600",
+    },
+    logoutConfirmButton: {
+      flex: 1,
+      height: 48,
+      borderRadius: 12,
+      backgroundColor: colors.danger,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    logoutConfirmText: {
+      ...typography.body,
+      color: colors.white,
+      fontWeight: "700",
+    },
+    logoutLoadingCard: {
+      minWidth: 240,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.xl,
+      gap: spacing.lg,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+    },
+    logoutLoadingText: {
+      ...typography.body,
+      color: colors.textPrimary,
+      textAlign: "center",
     },
   });
