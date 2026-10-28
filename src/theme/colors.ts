@@ -6,6 +6,10 @@ export type AppColors = {
   success: string;
   danger: string;
   warning: string;
+  primaryText: string;
+  successText: string;
+  dangerText: string;
+  warningText: string;
   primarySoft: string;
   successSoft: string;
   dangerSoft: string;
@@ -30,6 +34,10 @@ export type AppColors = {
 
 // Paleta da marca nitin: Abyss #02040C · Midnight #0330B0 · Sapphire #0A3FD4 · Electric #1D60F5
 export const lightColors: AppColors = {
+  primaryText: "#0330B0",
+  successText: "#16A34A",
+  dangerText: "#DC2626",
+  warningText: "#F59E0B",
   primary: "#0330B0",
   primaryLight: "#1D60F5",
   success: "#16A34A",
@@ -58,6 +66,10 @@ export const lightColors: AppColors = {
 };
 
 export const darkColors: AppColors = {
+  primaryText: "#93B4FF",
+  successText: "#86EFAC",
+  dangerText: "#FCA5A5",
+  warningText: "#FCD34D",
   primary: "#0A3FD4",
   primaryLight: "#1D60F5",
   success: "#16A34A",

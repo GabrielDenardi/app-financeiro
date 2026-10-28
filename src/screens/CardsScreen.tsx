@@ -229,14 +229,14 @@ export default function CardsScreen({ navigation, route }: any) {
         <View style={styles.summaryCard}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Em aberto</Text>
-            <Text style={[styles.summaryValue, { color: totalOpenAmount > 0 ? colors.danger : colors.textPrimary }]}>
+            <Text style={[styles.summaryValue, { color: totalOpenAmount > 0 ? colors.dangerText : colors.textPrimary }]}>
               {formatCurrencyBRL(totalOpenAmount)}
             </Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
             <Text style={styles.summaryLabel}>Alertas</Text>
-            <Text style={[styles.summaryValue, { color: urgentAlerts.length > 0 ? colors.warning : colors.textPrimary }]}>
+            <Text style={[styles.summaryValue, { color: urgentAlerts.length > 0 ? colors.warningText : colors.textPrimary }]}>
               {urgentAlerts.length === 0 ? 'Nenhum' : String(urgentAlerts.length)}
             </Text>
           </View>
@@ -247,7 +247,7 @@ export default function CardsScreen({ navigation, route }: any) {
           {urgentAlerts.length > 0 && (
             <View style={styles.alertCard}>
               <View style={styles.alertIcon}>
-                <AlertTriangle color={colors.warning} size={20} />
+                <AlertTriangle color={colors.warningText} size={20} />
               </View>
               <View style={styles.alertTextContent}>
                 <Text style={styles.alertTitle}>
@@ -465,7 +465,7 @@ export default function CardsScreen({ navigation, route }: any) {
           )}
 
           <Pressable style={styles.quickAddExpense} onPress={() => setChargeModalVisible(true)}>
-            <Receipt size={20} color={colors.primary} />
+            <Receipt size={20} color={colors.primaryText} />
             <Text style={styles.quickAddText}>Lançar compra</Text>
           </Pressable>
         </View>
@@ -901,10 +901,10 @@ const createStyles = (colors: AppColors) =>
       ...typography.caption,
       fontWeight: '600',
     },
-    badgePaidText: { color: colors.success },
-    badgeClosedText: { color: colors.warning },
-    badgeOverdueText: { color: colors.danger },
-    badgeOpenText: { color: colors.primary },
+    badgePaidText: { color: colors.successText },
+    badgeClosedText: { color: colors.warningText },
+    badgeOverdueText: { color: colors.dangerText },
+    badgeOpenText: { color: colors.primaryText },
     invoicePanelMonth: {
       ...typography.caption,
       color: colors.textSecondary,
@@ -917,14 +917,14 @@ const createStyles = (colors: AppColors) =>
       color: colors.textPrimary,
     },
     invoicePanelDueUrgent: {
-      color: colors.danger,
+      color: colors.dangerText,
     },
     invoicePanelAmount: {
       ...typography.value,
       color: colors.textPrimary,
     },
     invoicePanelAmountUrgent: {
-      color: colors.danger,
+      color: colors.dangerText,
     },
     openInvoiceHint: {
       backgroundColor: colors.primarySoft,
@@ -934,7 +934,7 @@ const createStyles = (colors: AppColors) =>
     },
     openInvoiceHintText: {
       ...typography.caption,
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '500',
       textAlign: 'center',
     },
@@ -1028,7 +1028,7 @@ const createStyles = (colors: AppColors) =>
     },
     quickAddText: {
       ...typography.body,
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '700',
     },
     emptyCard: {
@@ -1087,7 +1087,7 @@ const createStyles = (colors: AppColors) =>
       textAlign: 'center',
     },
     paymentModeLabelActive: {
-      color: colors.primary,
+      color: colors.primaryText,
     },
     paymentModeSub: {
       ...typography.caption,
@@ -1096,7 +1096,7 @@ const createStyles = (colors: AppColors) =>
       textAlign: 'center',
     },
     paymentModeSubActive: {
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '700',
     },
     customAmountWrap: {
@@ -1144,7 +1144,7 @@ const createStyles = (colors: AppColors) =>
       fontWeight: '600',
     },
     paymentChipTextActive: {
-      color: colors.primary,
+      color: colors.primaryText,
     },
     sheetSpacer: {
       height: spacing.xl,
@@ -1232,6 +1232,6 @@ const createStyles = (colors: AppColors) =>
     },
     historyItemOpen: {
       ...typography.caption,
-      color: colors.warning,
+      color: colors.warningText,
     },
   });
