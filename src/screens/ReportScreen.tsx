@@ -85,15 +85,44 @@ export default function ReportsScreen({ navigation }: any) {
     setOpen(false);
   };
 
+  const resetFilter = () => {
+    const today = new Date();
+    const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    const firstDay = isoDate(startOfMonth(today));
+    const lastDay = isoDate(endOfMonth(today));
+
+    setMonthKey(currentMonth);
+    setFrom(firstDay);
+    setTo(lastDay);
+    setTempFrom(firstDay);
+    setTempTo(lastDay);
+    setMode('month');
+    setSheetMode('month');
+    setSelecting('from');
+    setOpen(false);
+  };
+
   return (
     <PageShell onBackPress={() => navigation.goBack()}>
       <PageHeader title="Relatórios" />
 
-      <Pressable style={styles.selector} onPress={() => { setSheetMode(mode); setOpen(true); }}>
-        <Calendar size={16} color={colors.textSecondary} />
-        <Text style={styles.selectorText}>{mode === 'month' ? monthLabel : `${fmtDate(from)} - ${fmtDate(to)}`}</Text>
-        <ChevronDown size={16} color={colors.textSecondary} />
-      </Pressable>
+      <View style={styles.filterRow}>
+        <Pressable style={styles.selector} onPress={() => { setSheetMode(mode); setOpen(true); }}>
+          <Calendar size={16} color={colors.textSecondary} />
+          <Text style={styles.selectorText}>{mode === 'month' ? monthLabel : `${fmtDate(from)} - ${fmtDate(to)}`}</Text>
+          <ChevronDown size={16} color={colors.textSecondary} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Limpar filtro e voltar ao mês atual"
+          hitSlop={8}
+          style={styles.resetFilter}
+          onPress={resetFilter}
+        >
+          <X size={16} color={colors.primaryLight} />
+          <Text style={styles.resetFilterText}>Limpar filtro</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.rowGap}>
         <View style={[styles.sum, { backgroundColor: colors.success }]}>
@@ -308,6 +337,24 @@ export default function ReportsScreen({ navigation }: any) {
 
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
+    filterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    resetFilter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.sm,
+    },
+    resetFilterText: {
+      ...typography.caption,
+      color: colors.primaryLight,
+      fontWeight: '600',
+    },
     selector: {
       flexDirection: 'row',
       alignItems: 'center',
