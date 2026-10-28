@@ -1,7 +1,7 @@
 import { requireCurrentUserId } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
 import { toNumber } from '../../finance/utils';
-import type { CreateGoalInput, FinancialGoal, GoalContributionInput, UpdateGoalInput } from '../types';
+import type { CreateGoalInput, FinancialGoal, GoalContributionInput, GoalWithdrawalInput, UpdateGoalInput } from '../types';
 
 type GoalProgressRow = {
   goal_id: string;
@@ -15,6 +15,7 @@ type GoalProgressRow = {
   icon: string;
   target_date: string | null;
   status: FinancialGoal['status'];
+  completed_at: string | null;
 };
 
 function mapGoal(row: GoalProgressRow): FinancialGoal {
@@ -30,6 +31,7 @@ function mapGoal(row: GoalProgressRow): FinancialGoal {
     icon: row.icon,
     targetDate: row.target_date,
     status: row.status,
+    completedAt: row.completed_at,
   };
 }
 
@@ -37,7 +39,7 @@ export async function listGoals(): Promise<FinancialGoal[]> {
   const userId = await requireCurrentUserId();
   const { data, error } = await supabase
     .from('v_goal_progress')
-    .select('goal_id, title, target_amount, initial_amount, current_amount, contributed_amount, progress_percent, color, icon, target_date, status')
+    .select('goal_id, title, target_amount, initial_amount, current_amount, contributed_amount, progress_percent, color, icon, target_date, status, completed_at')
     .eq('user_id', userId)
     .order('target_date', { ascending: true, nullsFirst: false });
 
@@ -63,7 +65,7 @@ export async function createGoal(input: CreateGoalInput): Promise<string> {
       color: input.color,
       icon: input.icon,
       target_date: input.targetDate,
-      status: initialAmount >= input.targetAmount ? 'completed' : 'active',
+      status: 'active',
     })
     .select('id')
     .single();
@@ -88,6 +90,10 @@ export async function updateGoal(input: UpdateGoalInput): Promise<void> {
 
   if (typeof input.icon === 'string') {
     payload.icon = input.icon;
+  }
+
+  if (typeof input.targetAmount === 'number') {
+    payload.target_amount = Number(input.targetAmount.toFixed(2));
   }
 
   if ('targetDate' in input) {
@@ -126,5 +132,22 @@ export async function addGoalContribution(input: GoalContributionInput): Promise
     throw new Error(error.message);
   }
 
+  return data as string;
+}
+
+export async function withdrawFromGoal(input: GoalWithdrawalInput): Promise<string> {
+  await requireCurrentUserId();
+  const amount = Number(input.amount.toFixed(2));
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('Informe um valor válido para retirar.');
+  }
+  const { data, error } = await supabase.rpc('withdraw_from_goal', {
+    p_goal_id: input.goalId,
+    p_account_id: input.accountId,
+    p_amount: amount,
+    p_note: input.note?.trim() ?? '',
+    p_occurred_at: input.occurredAt ?? new Date().toISOString(),
+  });
+  if (error) throw new Error(error.message);
   return data as string;
 }

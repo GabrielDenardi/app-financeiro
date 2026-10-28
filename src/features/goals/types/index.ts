@@ -10,6 +10,7 @@ export type FinancialGoal = {
   icon: string;
   targetDate: string | null;
   status: 'active' | 'completed' | 'archived';
+  completedAt: string | null;
 };
 
 export type CreateGoalInput = {
@@ -29,11 +30,14 @@ export type GoalContributionInput = {
   occurredAt?: string;
 };
 
+export type GoalWithdrawalInput = GoalContributionInput;
+
 export type UpdateGoalInput = {
   id: string;
   title?: string;
   color?: string;
   icon?: string;
+  targetAmount?: number;
   targetDate?: string | null;
   status?: 'active' | 'completed' | 'archived';
 };

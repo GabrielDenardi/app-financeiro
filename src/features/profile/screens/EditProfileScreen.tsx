@@ -3,12 +3,15 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   type KeyboardTypeOptions,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { Check, ChevronDown } from "lucide-react-native";
 
+import { BottomSheet } from "../../../components/BottomSheet";
 import { Card } from "../../../components/Card";
 import { PageHeader } from "../../../components/PageHeader";
 import { PageShell } from "../../../components/PageShell";
@@ -186,6 +189,7 @@ export function EditProfileScreen({
   );
   const [cepMessage, setCepMessage] = useState<string | null>(null);
   const [isLookingUpCep, setIsLookingUpCep] = useState(false);
+  const [isStatePickerOpen, setIsStatePickerOpen] = useState(false);
 
   const profileQuery = useProfile(currentUser?.id);
   const updateProfileMutation = useUpdateProfileMutation(currentUser?.id);
@@ -454,25 +458,29 @@ export function EditProfileScreen({
           </View>
 
           <View style={styles.rowField}>
-            <ProfileField
-              colors={colors}
-              styles={styles}
-              label="UF"
-              placeholder="SP"
-              value={form.state}
-              onChangeText={(value) =>
-                setFieldValue(
-                  "state",
-                  value
-                    .toUpperCase()
-                    .replace(/[^A-Z]/g, "")
-                    .slice(0, 2),
-                )
-              }
-              autoCapitalize="characters"
-              maxLength={2}
-              error={errors.state}
-            />
+            <View style={styles.fieldWrap}>
+              <Text style={styles.fieldLabel}>UF</Text>
+              <Pressable
+                onPress={() => setIsStatePickerOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Selecionar UF"
+                style={[styles.inputShell, errors.state && styles.inputShellError]}
+              >
+                <Text
+                  style={[
+                    styles.input,
+                    styles.selectValue,
+                    !form.state && { color: colors.textSecondary },
+                  ]}
+                >
+                  {form.state || "Selecione"}
+                </Text>
+                <ChevronDown size={18} color={colors.textSecondary} />
+              </Pressable>
+              {errors.state ? (
+                <Text style={styles.errorText}>{errors.state}</Text>
+              ) : null}
+            </View>
           </View>
         </View>
 
@@ -519,6 +527,41 @@ export function EditProfileScreen({
         loading={updateProfileMutation.isPending}
         style={styles.saveButton}
       />
+
+      <BottomSheet
+        visible={isStatePickerOpen}
+        onClose={() => setIsStatePickerOpen(false)}
+        title="Selecione a UF"
+        maxHeightRatio={0.7}
+      >
+        {(close) => (
+          <View style={styles.stateList}>
+            {brazilStates.map((uf) => {
+              const isSelected = form.state === uf;
+              return (
+                <Pressable
+                  key={uf}
+                  onPress={() => {
+                    setFieldValue("state", uf);
+                    close();
+                  }}
+                  style={[styles.stateRow, isSelected && styles.stateRowSelected]}
+                >
+                  <Text
+                    style={[
+                      styles.stateRowText,
+                      isSelected && styles.stateRowTextSelected,
+                    ]}
+                  >
+                    {uf}
+                  </Text>
+                  {isSelected ? <Check size={18} color={colors.primaryLight} /> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+      </BottomSheet>
     </PageShell>
   );
 }
@@ -666,6 +709,34 @@ const createStyles = (colors: AppColors) =>
     },
     inputMultiline: {
       minHeight: 104,
+    },
+    selectValue: {
+      textAlignVertical: "center",
+      lineHeight: 48,
+      paddingVertical: 0,
+    },
+    stateList: {
+      paddingBottom: spacing.xl,
+    },
+    stateRow: {
+      minHeight: 48,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    stateRowSelected: {
+      backgroundColor: colors.primarySoft,
+    },
+    stateRowText: {
+      ...typography.body,
+      color: colors.textPrimary,
+    },
+    stateRowTextSelected: {
+      color: colors.primaryLight,
+      fontWeight: "700",
     },
     inputTrailing: {
       marginLeft: spacing.sm,

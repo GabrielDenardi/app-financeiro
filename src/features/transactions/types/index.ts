@@ -16,6 +16,7 @@ export type TransactionSourceType =
   | 'group_split'
   | 'group_settlement'
   | 'goal_contribution'
+  | 'goal_withdrawal'
   | 'imported'
   | 'card_payment'
   | 'card_installment';

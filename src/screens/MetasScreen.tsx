@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -11,6 +11,7 @@ import {
   Car,
   Home,
   Landmark,
+  Minus,
   Plane,
   Plus,
   Target,
@@ -34,6 +35,7 @@ import {
   useCreateGoalMutation,
   useDeleteGoalMutation,
   useGoalContributionMutation,
+  useGoalWithdrawalMutation,
   useGoals,
   useUpdateGoalMutation,
 } from "../features/goals/hooks/useGoals";
@@ -97,11 +99,15 @@ export default function MetasScreen() {
   const createGoal = useCreateGoalMutation(user?.id);
   const deleteGoal = useDeleteGoalMutation(user?.id);
   const contribute = useGoalContributionMutation(user?.id);
+  const withdraw = useGoalWithdrawalMutation(user?.id);
+  const submittingMovement = useRef(false);
   const updateGoal = useUpdateGoalMutation(user?.id);
 
   const [tab, setTab] = useState<"active" | "completed">("active");
   const [createOpen, setCreateOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [movementMode, setMovementMode] = useState<"contribution" | "withdrawal">("contribution");
+  const [movementError, setMovementError] = useState<string | null>(null);
   const [deadlineOpen, setDeadlineOpen] = useState(false);
   const [goalId, setGoalId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -115,6 +121,10 @@ export default function MetasScreen() {
   const [accountId, setAccountId] = useState("");
   const [tempDue, setTempDue] = useState(TODAY);
   const [goalToDelete, setGoalToDelete] = useState<string | null>(null);
+  const [reachedOpen, setReachedOpen] = useState(false);
+  const [continuing, setContinuing] = useState(false);
+  const [newTarget, setNewTarget] = useState("");
+  const [newDue, setNewDue] = useState(TODAY);
 
   const goals = goalsQuery.data ?? [];
   const accounts = (accountsQuery.data ?? []).filter((item) => item.isActive);
@@ -131,6 +141,19 @@ export default function MetasScreen() {
     () => goals.find((item) => item.id === goalId) ?? null,
     [goals, goalId],
   );
+  const isWithdrawal = movementMode === "withdrawal";
+  const movementPending = contribute.isPending || withdraw.isPending;
+
+  const openMovement = (id: string, mode: "contribution" | "withdrawal") => {
+    if (submittingMovement.current) return;
+    setGoalId(id);
+    setMovementMode(mode);
+    setMovementError(null);
+    setAccountId(accounts[0]?.id ?? "");
+    setAmount("");
+    setNote("");
+    setAddOpen(true);
+  };
 
   const resetCreate = () => {
     setTitle("");
@@ -190,27 +213,117 @@ export default function MetasScreen() {
   };
 
   const onContribute = async () => {
-    if (!goalId || !accountId || normalizeCurrencyInput(amount) <= 0) {
-      showError("Selecione uma conta e informe um aporte válido.");
+    if (submittingMovement.current) return;
+    const value = normalizeCurrencyInput(amount);
+    if (!selectedGoal || !accounts.some((account) => account.id === accountId) || !Number.isFinite(value) || value <= 0) {
+      setMovementError("Selecione uma conta e informe um valor válido.");
+      showError("Selecione uma conta e informe um valor válido.");
       return;
     }
+    if (!isWithdrawal) {
+      const remaining = Number(
+        (selectedGoal.targetAmount - selectedGoal.currentAmount).toFixed(2),
+      );
+      if (Math.round(value * 100) > Math.round(remaining * 100)) {
+        showError(
+          `O aporte excede o que falta para a meta (${formatCurrencyBRL(remaining)}).`,
+        );
+        return;
+      }
+    }
+    if (isWithdrawal && Math.round(value * 100) > Math.round(selectedGoal.currentAmount * 100)) {
+      setMovementError("O valor da retirada não pode ser maior que o saldo da meta.");
+      showError("O valor da retirada não pode ser maior que o saldo da meta.");
+      return;
+    }
+    submittingMovement.current = true;
+    setMovementError(null);
     try {
-      await contribute.mutateAsync({
-        goalId,
+      const reachesTarget = !isWithdrawal &&
+        Math.round((selectedGoal.currentAmount + value) * 100) >= Math.round(selectedGoal.targetAmount * 100);
+      await (isWithdrawal ? withdraw : contribute).mutateAsync({
+        goalId: selectedGoal.id,
         accountId,
-        amount: normalizeCurrencyInput(amount),
+        amount: value,
         note,
       });
       setAddOpen(false);
       setAmount("");
       setNote("");
-      setGoalId(null);
-      showSuccess("Aporte registrado.");
+      showSuccess(isWithdrawal ? "Retirada registrada." : "Aporte registrado.");
+      if (reachesTarget) {
+        openReachedPrompt(selectedGoal.id);
+      } else {
+        setGoalId(null);
+      }
+    } catch (error) {
+      setMovementError(error instanceof Error ? error.message : "Não foi possível registrar a movimentação.");
+      showError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível registrar a movimentação.",
+      );
+    } finally {
+      submittingMovement.current = false;
+    }
+  };
+
+  const openReachedPrompt = (id: string) => {
+    setGoalId(id);
+    setContinuing(false);
+    setNewTarget("");
+    setNewDue(TODAY);
+    setReachedOpen(true);
+  };
+
+  const closeReachedPrompt = () => {
+    setReachedOpen(false);
+    setContinuing(false);
+    setGoalId(null);
+  };
+
+  const onCompleteGoal = async () => {
+    if (!goalId) return;
+    try {
+      await updateGoal.mutateAsync({ id: goalId, status: "completed" });
+      closeReachedPrompt();
+      setTab("completed");
+      showSuccess("Meta concluída.");
     } catch (error) {
       showError(
         error instanceof Error
           ? error.message
-          : "Não foi possível registrar o aporte.",
+          : "Não foi possível concluir a meta.",
+      );
+    }
+  };
+
+  const onContinueGoal = async () => {
+    if (!goalId || !selectedGoal) return;
+    const value = normalizeCurrencyInput(newTarget);
+    if (!Number.isFinite(value) || value <= selectedGoal.currentAmount) {
+      showError(
+        `Informe um valor maior que ${formatCurrencyBRL(selectedGoal.currentAmount)}.`,
+      );
+      return;
+    }
+    if (!newDue || newDue < CalendarUtils.getCalendarDateString(new Date())) {
+      showError("Informe um novo prazo a partir de hoje.");
+      return;
+    }
+    try {
+      await updateGoal.mutateAsync({
+        id: goalId,
+        targetAmount: value,
+        targetDate: newDue,
+      });
+      closeReachedPrompt();
+      showSuccess("Meta atualizada.");
+    } catch (error) {
+      showError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível atualizar a meta.",
       );
     }
   };
@@ -271,6 +384,14 @@ export default function MetasScreen() {
           </Pressable>
         </View>
 
+        {tab === "completed" ? (
+          <View style={s.notice}>
+            <Text style={s.noticeText}>
+              Todas as metas concluídas, irão desaparecer dentro de 30 dias
+            </Text>
+          </View>
+        ) : null}
+
         {goalsQuery.isLoading ? (
           <View style={s.card}>
             <ActivityIndicator color={themeColors.primaryLight} />
@@ -293,6 +414,7 @@ export default function MetasScreen() {
         {list.map((goal) => {
           const Icon = iconOf(goal.icon);
           const done = goal.status === "completed";
+          const reached = !done && goal.currentAmount >= goal.targetAmount;
           return (
             <View
               key={goal.id}
@@ -354,7 +476,15 @@ export default function MetasScreen() {
               <Text style={s.pct}>
                 {goal.progressPercent.toFixed(1)}% alcançado
               </Text>
-              {!done ? (
+              {reached ? (
+                <View style={s.soft}>
+                  <Text style={s.softText}>
+                    <Text style={s.softStrong}>Meta atingida!</Text> Deseja
+                    continuar ou concluir esta meta?
+                  </Text>
+                </View>
+              ) : null}
+              {!done && !reached ? (
                 <View style={s.soft}>
                   <Text style={s.softText}>
                     Guarde{" "}
@@ -372,21 +502,41 @@ export default function MetasScreen() {
                   </Text>
                 </View>
               ) : null}
-              {!done ? (
+              <View style={s.actions}>
+                {reached ? (
+                  <Pressable
+                    style={s.add}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Continuar ou concluir ${goal.title}`}
+                    onPress={() => openReachedPrompt(goal.id)}
+                  >
+                    <Target size={18} color={themeColors.textPrimary} />
+                    <Text style={s.addText}>Continuar ou concluir</Text>
+                  </Pressable>
+                ) : null}
+                {!done && !reached ? (
+                  <Pressable
+                    style={s.add}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Adicionar valor a ${goal.title}`}
+                    onPress={() => openMovement(goal.id, "contribution")}
+                  >
+                    <Plus size={18} color={themeColors.textPrimary} />
+                    <Text style={s.addText}>Adicionar</Text>
+                  </Pressable>
+                ) : null}
                 <Pressable
-                  style={s.add}
-                  onPress={() => {
-                    setGoalId(goal.id);
-                    setAccountId(accounts[0]?.id ?? "");
-                    setAmount("");
-                    setNote("");
-                    setAddOpen(true);
-                  }}
+                  style={[s.add, goal.currentAmount <= 0 && s.disabledAction]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Retirar valor de ${goal.title}`}
+                  accessibilityState={{ disabled: goal.currentAmount <= 0 }}
+                  disabled={goal.currentAmount <= 0}
+                  onPress={() => openMovement(goal.id, "withdrawal")}
                 >
-                  <Plus size={18} color={themeColors.textPrimary} />
-                  <Text style={s.addText}>Adicionar</Text>
+                  <Minus size={18} color={themeColors.textPrimary} />
+                  <Text style={s.addText}>Retirar</Text>
                 </Pressable>
-              ) : null}
+              </View>
             </View>
           );
         })}
@@ -508,22 +658,26 @@ export default function MetasScreen() {
       <BottomSheet
         visible={addOpen}
         onClose={() => setAddOpen(false)}
-        title="Adicionar Valor"
-        subtitle={`Adicionando a ${selectedGoal?.title ?? "Meta"}`}
+        title={isWithdrawal ? "Retirar Valor" : "Adicionar Valor"}
+        subtitle={`${isWithdrawal ? "Retirando de" : "Adicionando a"} ${selectedGoal?.title ?? "Meta"}`}
         footer={(close) => (
           <>
-            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} />
+            <Button label="Cancelar" variant="secondary" fullWidth onPress={close} disabled={movementPending} />
             <Button
-              label="Adicionar"
+              label={isWithdrawal ? "Retirar" : "Adicionar"}
+              accessibilityLabel={isWithdrawal ? "Confirmar retirada" : "Confirmar aporte"}
               fullWidth
               onPress={onContribute}
               disabled={!accounts.length}
-              loading={contribute.isPending}
+              loading={movementPending}
             />
           </>
         )}
       >
-        <Text style={s.label}>Conta</Text>
+        {isWithdrawal ? (
+          <Text style={s.msg}>Saldo disponível: {formatCurrencyBRL(selectedGoal?.currentAmount ?? 0)}</Text>
+        ) : null}
+        <Text style={s.label}>{isWithdrawal ? "Conta de destino" : "Conta"}</Text>
         <View style={s.wrap}>
           {accounts.length ? (
             accounts.map((item) => (
@@ -535,29 +689,135 @@ export default function MetasScreen() {
               />
             ))
           ) : (
-            <Text style={s.msg}>Crie uma conta antes de aportar.</Text>
+            <Text style={s.msg}>Crie uma conta antes de {isWithdrawal ? "retirar" : "aportar"}.</Text>
           )}
         </View>
 
         <FieldCard>
           <FieldRow
             label="Valor"
+            accessibilityLabel="Valor da movimentação"
             prefix="R$"
             placeholder="0,00"
             keyboardType="numeric"
             value={amount}
-            onChangeText={(value) => setAmount(formatCurrencyInput(value))}
+            onChangeText={(value) => { setAmount(formatCurrencyInput(value)); setMovementError(null); }}
             autoFocus
           />
           <FieldDivider />
           <FieldRow
             label="Observação"
+            accessibilityLabel="Observação da movimentação"
             placeholder="Opcional"
             value={note}
             onChangeText={setNote}
           />
         </FieldCard>
 
+        {movementError ? <Text accessibilityRole="alert" style={s.movementError}>{movementError}</Text> : null}
+
+        <View style={s.bottomSpacer} />
+      </BottomSheet>
+
+      {/* Meta atingida: continuar ou concluir */}
+      <BottomSheet
+        visible={reachedOpen}
+        onClose={closeReachedPrompt}
+        title="Meta atingida! 🎉"
+        subtitle={
+          continuing
+            ? `Defina o novo valor e prazo de ${selectedGoal?.title ?? "Meta"}`
+            : `Você chegou ao valor de ${selectedGoal?.title ?? "Meta"}. O que deseja fazer?`
+        }
+        maxHeightRatio={0.92}
+        footer={
+          continuing ? (
+            <>
+              <Button
+                label="Voltar"
+                variant="secondary"
+                fullWidth
+                onPress={() => setContinuing(false)}
+                disabled={updateGoal.isPending}
+              />
+              <Button
+                label="Salvar"
+                fullWidth
+                onPress={onContinueGoal}
+                loading={updateGoal.isPending}
+              />
+            </>
+          ) : (
+            <>
+              <Button
+                label="Continuar"
+                variant="secondary"
+                fullWidth
+                onPress={() => {
+                  setNewTarget("");
+                  const today = CalendarUtils.getCalendarDateString(new Date());
+                  setNewDue(selectedGoal?.targetDate && selectedGoal.targetDate >= today ? selectedGoal.targetDate : today);
+                  setContinuing(true);
+                }}
+                disabled={updateGoal.isPending}
+              />
+              <Button
+                label="Concluir"
+                fullWidth
+                onPress={onCompleteGoal}
+                loading={updateGoal.isPending}
+              />
+            </>
+          )
+        }
+      >
+        {continuing ? (
+          <>
+            <FieldCard>
+              <FieldRow
+                label="Novo valor alvo"
+                accessibilityLabel="Novo valor alvo"
+                prefix="R$"
+                placeholder="0,00"
+                keyboardType="numeric"
+                value={newTarget}
+                onChangeText={(value) => setNewTarget(formatCurrencyInput(value))}
+                autoFocus
+              />
+            </FieldCard>
+
+            <Text style={s.label}>Novo prazo</Text>
+            <View style={s.calendar}>
+              <Calendar
+                current={newDue}
+                minDate={TODAY}
+                markedDates={{
+                  [newDue]: {
+                    selected: true,
+                    selectedColor: themeColors.primaryLight,
+                  },
+                }}
+                onDayPress={(day) => setNewDue(day.dateString)}
+                theme={{
+                  backgroundColor: themeColors.surface,
+                  calendarBackground: themeColors.surface,
+                  dayTextColor: themeColors.textPrimary,
+                  monthTextColor: themeColors.textPrimary,
+                  textDisabledColor: themeColors.textSecondary,
+                  todayTextColor: themeColors.primaryLight,
+                  selectedDayBackgroundColor: themeColors.primaryLight,
+                  selectedDayTextColor: themeColors.white,
+                  arrowColor: themeColors.primaryLight,
+                }}
+              />
+            </View>
+          </>
+        ) : (
+          <Text style={s.msg}>
+            Continuar mantém a meta ativa com um novo valor e prazo. Concluir
+            move a meta para a aba de concluídas.
+          </Text>
+        )}
         <View style={s.bottomSpacer} />
       </BottomSheet>
 
@@ -713,18 +973,37 @@ const createStyles = (colors: AppColors) =>
       lineHeight: 18,
     },
     softStrong: { fontWeight: "800", color: colors.textPrimary },
+    actions: {
+      flexDirection: "row",
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    disabledAction: { opacity: 0.4 },
+    movementError: { ...typography.caption, color: colors.danger, marginTop: spacing.sm },
     add: {
+      flex: 1,
       flexDirection: "row",
       justifyContent: "center",
       alignItems: "center",
       gap: spacing.sm,
       paddingTop: spacing.md,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
     },
     addText: {
       ...typography.body,
       fontWeight: "800",
+      color: colors.textPrimary,
+    },
+    notice: {
+      backgroundColor: colors.warningSoft,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.warning,
+      padding: spacing.md,
+    },
+    noticeText: {
+      ...typography.caption,
+      textAlign: "center",
+      fontWeight: "700",
       color: colors.textPrimary,
     },
     msg: {
