@@ -8,6 +8,8 @@
     "test:goals:sql": "node scripts/test-goal-withdrawals.cjs",
     "test:notifications:sql": "node scripts/test-notifications.cjs",
     "test:product-updates:sql": "node scripts/test-product-updates.cjs",
+    "test:product-update-subscribers:sql": "node scripts/test-product-update-subscribers.cjs",
+    "test:product-update-subscribers:mutations": "node scripts/test-product-update-subscribers.cjs --mutations",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",

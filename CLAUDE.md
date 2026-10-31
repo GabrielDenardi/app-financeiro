@@ -228,8 +228,12 @@ Cliente inicializado em `src/lib/supabase.ts` — storage adaptativo: AsyncStora
 | `revenuecat-webhook` | Sincroniza eventos da Google Play recebidos pelo RevenueCat |
 | `export-user-data` | Exportação de dados do usuário (LGPD) |
 | `delete-user-account` | Exclusão de conta (LGPD) |
+| `product-update-subscribe` | Inscrição pública nas novidades do site, com limite de tentativas e confirmação por e-mail |
+| `product-update-confirm` | Confirma a inscrição com o token do e-mail |
+| `product-update-unsubscribe` | Cancela a inscrição pela página ou pelo clique único dos provedores de e-mail |
+| `product-update-send` | Envia uma publicação aos inscritos confirmados, chamada pelo painel do site (`site_editors`) |
 
-Utilitários compartilhados ficam em `supabase/functions/_shared/`. As funções chamadas pelo app exigem JWT; `revenuecat-webhook` desabilita a verificação JWT da plataforma e valida seu próprio Bearer token secreto.
+Utilitários compartilhados ficam em `supabase/functions/_shared/`. As funções chamadas pelo app exigem JWT; `revenuecat-webhook` desabilita a verificação JWT da plataforma e valida seu próprio Bearer token secreto. As três funções públicas da inscrição nas novidades também não usam JWT: elas limitam tentativas e nunca revelam se um e-mail está inscrito (ver `docs/product-updates.md`).
 
 ---
 

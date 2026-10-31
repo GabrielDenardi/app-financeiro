@@ -417,3 +417,9 @@ enabled = true
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
 [functions.deliver-notifications]
 verify_jwt = false
+[functions.product-update-subscribe]
+verify_jwt = false
+[functions.product-update-confirm]
+verify_jwt = false
+[functions.product-update-unsubscribe]
+verify_jwt = false
