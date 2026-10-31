@@ -85,9 +85,9 @@ O primeiro roda as regras do banco e as funções de verdade contra um Postgres 
 
 A ordem importa: o formulário só pode aparecer quando as funções, o provedor e a nova política estiverem no ar.
 
-1. Crie a conta do Resend e adicione o subdomínio `updates.nitin.com.br`, como o Resend recomenda, para separar a reputação de envio do e-mail da equipe. Escolha a região nesse momento: há São Paulo (`sa-east-1`), Virgínia do Norte, Irlanda e Tóquio, e trocar depois exige remover e adicionar o domínio de novo. Anote a região, porque a Política de Privacidade precisa citar o país correto.
+1. No Resend, adicione o subdomínio `updates.nitin.com.br`, como o Resend recomenda, para separar a reputação de envio do e-mail da equipe. Escolha a região nesse momento: há São Paulo (`sa-east-1`), Virgínia do Norte, Irlanda e Tóquio, e trocar depois exige remover e adicionar o domínio de novo. Anote a região, porque a Política de Privacidade precisa citar o país correto. Deixe desligados o rastreamento de cliques e o de aberturas: o de cliques passa os links pelo servidor do Resend, inclusive os que levam tokens, e a Política de Privacidade diz que o nitin não usa análise de comportamento.
 2. Adicione na Vercel, que hospeda o DNS de `nitin.com.br`, os registros que o painel do Resend mostrar: `MX` e `TXT` em `send.updates` e `TXT` em `resend._domainkey.updates`. A opção Auto Configure do Resend também pode criá-los. Não altere os registros `MX` e SPF da raiz, que atendem o e-mail da Zoho usado por `contato@nitin.com.br`.
-3. Depois que o domínio aparecer como verificado, gere uma chave com permissão só de envio.
+3. Depois que o domínio aparecer como verificado, confira que os dois rastreamentos estão desligados e gere uma chave com permissão só de envio, limitada a esse domínio.
 4. Rode os testes acima.
 5. Aplique a migration no Supabase. Ela depende de `202610310001_product_updates.sql` e `202608020001_rate_limit_maintenance.sql`.
 6. Configure os segredos das Edge Functions. Não coloque a chave em arquivos nem em variáveis `VITE_`.
