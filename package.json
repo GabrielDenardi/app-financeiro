@@ -7,6 +7,7 @@
     "test:groups:closure:sql": "node scripts/test-group-closure.cjs",
     "test:goals:sql": "node scripts/test-goal-withdrawals.cjs",
     "test:notifications:sql": "node scripts/test-notifications.cjs",
+    "test:product-updates:sql": "node scripts/test-product-updates.cjs",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
