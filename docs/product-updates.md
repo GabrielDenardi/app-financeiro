@@ -63,7 +63,7 @@ select cron.schedule('purge-product-update-subscribers', '0 4 * * *', 'select pr
 | Confirmações no total | 300 | 15 minutos |
 | Cancelamentos no total | 600 | 15 minutos |
 
-Os limites não usam o IP do visitante, porque os cabeçalhos de IP podem ser forjados, como já está registrado em `cpf-auth`. Isso também evita tratar mais um dado pessoal. A contrapartida é que uma enxurrada de pedidos pode bloquear novas inscrições até a janela virar. Ajuste os valores em `consume_product_update_limit` se o plano do Resend for diferente, lembrando que o plano gratuito envia até 100 e-mails por dia.
+Os limites não usam o IP do visitante, porque os cabeçalhos de IP podem ser forjados, como já está registrado em `cpf-auth`. Isso também evita tratar mais um dado pessoal. A contrapartida é que uma enxurrada de pedidos pode bloquear novas inscrições até a janela virar. Ajuste os valores em `consume_product_update_limit` se o plano do Resend for diferente, lembrando que o plano gratuito envia até 100 e-mails por dia e 3.000 por mês, somando confirmações e novidades. Se um envio passar desse limite, o painel para e "Continuar envio" retoma quem faltou no dia seguinte.
 
 ### Testes
 
@@ -85,31 +85,33 @@ O primeiro roda as regras do banco e as funções de verdade contra um Postgres 
 
 A ordem importa: o formulário só pode aparecer quando as funções, o provedor e a nova política estiverem no ar.
 
-1. Confirme com a equipe se a conta do Resend e o domínio `nitin.com.br` já existem. Se não existirem, crie a conta, verifique o domínio no DNS (SPF e DKIM) e gere uma chave com permissão só de envio. Anote a região escolhida: a Política de Privacidade precisa citar o país correto.
-2. Rode os testes acima.
-3. Aplique a migration no Supabase. Ela depende de `202610310001_product_updates.sql` e `202608020001_rate_limit_maintenance.sql`.
-4. Configure os segredos das Edge Functions. Não coloque a chave em arquivos nem em variáveis `VITE_`.
+1. Crie a conta do Resend e adicione o subdomínio `updates.nitin.com.br`, como o Resend recomenda, para separar a reputação de envio do e-mail da equipe. Escolha a região nesse momento: há São Paulo (`sa-east-1`), Virgínia do Norte, Irlanda e Tóquio, e trocar depois exige remover e adicionar o domínio de novo. Anote a região, porque a Política de Privacidade precisa citar o país correto.
+2. Adicione na Vercel, que hospeda o DNS de `nitin.com.br`, os registros que o painel do Resend mostrar: `MX` e `TXT` em `send.updates` e `TXT` em `resend._domainkey.updates`. A opção Auto Configure do Resend também pode criá-los. Não altere os registros `MX` e SPF da raiz, que atendem o e-mail da Zoho usado por `contato@nitin.com.br`.
+3. Depois que o domínio aparecer como verificado, gere uma chave com permissão só de envio.
+4. Rode os testes acima.
+5. Aplique a migration no Supabase. Ela depende de `202610310001_product_updates.sql` e `202608020001_rate_limit_maintenance.sql`.
+6. Configure os segredos das Edge Functions. Não coloque a chave em arquivos nem em variáveis `VITE_`.
 
 ```bash
 supabase secrets set RESEND_API_KEY=CHAVE_DO_RESEND
 ```
 
 ```bash
-supabase secrets set "RESEND_FROM_EMAIL=nitin <novidades@nitin.com.br>"
+supabase secrets set "RESEND_FROM_EMAIL=nitin <novidades@updates.nitin.com.br>"
 ```
 
    Opcionais: `PRODUCT_UPDATES_SITE_URL` (padrão `https://nitin.com.br`), `PRODUCT_UPDATES_ALLOWED_ORIGINS` (padrão `https://nitin.com.br,https://www.nitin.com.br`, separadas por vírgula; inclua um endereço de Preview só durante um teste) e `PRODUCT_UPDATES_CONTACT_EMAIL` (padrão `contato@nitin.com.br`).
 
-5. Publique as funções a partir deste repositório, para que o `supabase/config.toml` desligue a verificação de JWT só nas três públicas.
+7. Publique as funções a partir deste repositório, para que o `supabase/config.toml` desligue a verificação de JWT só nas três públicas.
 
 ```bash
 supabase functions deploy product-update-subscribe product-update-confirm product-update-unsubscribe product-update-send
 ```
 
-6. Publique o site com `VITE_NEWS_SIGNUP_ENABLED` desligada.
-7. Revise e publique a Política de Privacidade, que está em um PR separado no repositório do site. Ela é um documento legal e precisa ser aprovada pela equipe antes de ir ao ar.
-8. Ligue `VITE_NEWS_SIGNUP_ENABLED=true` na Vercel, no ambiente Production, e publique de novo.
-9. Faça uma inscrição com um e-mail da equipe, confirme, envie uma publicação e cancele pelo link. Confira também o cancelamento com um clique em um provedor que ofereça a opção.
+8. Publique o site com `VITE_NEWS_SIGNUP_ENABLED` desligada.
+9. Revise e publique a Política de Privacidade, que está em um PR separado no repositório do site. Ela é um documento legal e precisa ser aprovada pela equipe antes de ir ao ar.
+10. Ligue `VITE_NEWS_SIGNUP_ENABLED=true` na Vercel, no ambiente Production, e publique de novo.
+11. Faça uma inscrição com um e-mail da equipe, confirme, envie uma publicação e cancele pelo link. Confira também o cancelamento com um clique em um provedor que ofereça a opção.
 
 ### Quando o texto do consentimento mudar
 
